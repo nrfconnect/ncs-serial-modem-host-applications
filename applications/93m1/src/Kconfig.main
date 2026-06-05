@@ -1,0 +1,21 @@
+#
+# Copyright (c) 2026 Nordic Semiconductor
+#
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+#
+
+menu "Main"
+
+config APP_MAIN_WATCHDOG_TIMEOUT_SECONDS
+	int "Watchdog timeout"
+	default 120
+
+config APP_MAIN_MSG_PROCESSING_TIMEOUT_SECONDS
+	int "Maximum message processing time"
+	default 110
+
+module = APP_MAIN
+module-str = Main
+source "subsys/logging/Kconfig.template.log_config"
+
+endmenu

@@ -1,0 +1,39 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: ghcr.io/zephyrproject-rtos/ci:v0.29.2
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - 91m1
+          - 93m1
+    name: Build ${{ matrix.app }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize West workspace
+        run: |
+          west init -l "${{ github.workspace }}"
+          west update -o=--depth=1 -n
+          west update
+
+      - name: Build application
+        working-directory: applications/${{ matrix.app }}
+        run: west build -b nrf54l15dk/nrf54l15/cpuapp -p
