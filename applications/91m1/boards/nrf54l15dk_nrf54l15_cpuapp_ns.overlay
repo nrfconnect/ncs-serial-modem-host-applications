@@ -6,6 +6,11 @@
  * Based on ncs-serial-modem samples/sm_ppp_shell for nRF54L15 DK + nRF9151 DK.
  * Disable VCOM0 in Board Configurator to release uart30 (P0 connector).
  *
+ * Two-DK wiring (in addition to UART/DTR/RI from sm_ppp_shell):
+ *   nRF54L15 P1.10 (modem reset out) -> nRF9151 DK P20 pin 7 (RESET)
+ *   Add a 1 kOhm series resistor in the reset wire if VDD levels differ.
+ *   Set matching VDD on both DKs in Board Configurator (typically 1.8 V).
+ *
  * Uses default RRAM/SRAM partitions from nrf54l15_cpuapp_ns_partition.dtsi.
  */
 
@@ -28,6 +33,7 @@
 	modem: modem {
 		compatible = "nordic,nrf91-sm-v2";
 		status = "okay";
+		mdm-reset-gpios = <&gpio1 10 (GPIO_ACTIVE_LOW | GPIO_OPEN_DRAIN)>;
 		mdm-ring-gpios = <&gpio1 12 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
 		mdm-dtr-gpios = <&gpio1 11 GPIO_ACTIVE_LOW>;
 		zephyr,pm-device-runtime-auto;
