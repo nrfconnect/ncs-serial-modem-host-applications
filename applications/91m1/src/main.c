@@ -11,6 +11,7 @@
 #include <zephyr/smf.h>
 
 #include "app_common.h"
+#include "modules/network/network.h"
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_MAIN_LOG_LEVEL);
 
@@ -18,25 +19,10 @@ BUILD_ASSERT(CONFIG_APP_MAIN_WATCHDOG_TIMEOUT_SECONDS >
 	     CONFIG_APP_MAIN_MSG_PROCESSING_TIMEOUT_SECONDS,
 	     "Watchdog timeout must be greater than maximum message processing time");
 
-enum main_msg_type {
-	MAIN_START,
-};
-
-struct main_msg {
-	enum main_msg_type type;
-};
-
-ZBUS_CHAN_DEFINE(main_chan,
-		 struct main_msg,
-		 NULL,
-		 NULL,
-		 ZBUS_OBSERVERS_EMPTY,
-		 ZBUS_MSG_INIT(0));
-
 ZBUS_MSG_SUBSCRIBER_DEFINE(main_subscriber);
 
 #define CHANNEL_LIST(X) \
-	X(main_chan, struct main_msg)
+	X(network_chan, struct network_msg)
 
 #define MAX_MSG_SIZE MAX_MSG_SIZE_FROM_LIST(CHANNEL_LIST)
 
@@ -45,7 +31,6 @@ ZBUS_MSG_SUBSCRIBER_DEFINE(main_subscriber);
 CHANNEL_LIST(ADD_OBSERVERS)
 
 enum main_app_state {
-	STATE_INIT,
 	STATE_RUNNING,
 };
 
@@ -55,41 +40,36 @@ struct main_state {
 	uint8_t msg_buf[MAX_MSG_SIZE];
 };
 
+static struct main_state main_state;
 static const struct smf_state states[];
-
-static enum smf_state_result init_run(void *obj)
-{
-	struct main_state *state_object = obj;
-
-	if (state_object->chan != &main_chan) {
-		return SMF_EVENT_HANDLED;
-	}
-
-	const struct main_msg *msg = (const struct main_msg *)state_object->msg_buf;
-
-	if (msg->type == MAIN_START) {
-		smf_set_state(SMF_CTX(state_object), &states[STATE_RUNNING]);
-	}
-
-	return SMF_EVENT_HANDLED;
-}
 
 static void running_entry(void *obj)
 {
 	ARG_UNUSED(obj);
 
-	LOG_INF("Serial Modem Host 91m1 starting");
+	LOG_INF("running_entry");
 }
 
 static enum smf_state_result running_run(void *obj)
 {
-	ARG_UNUSED(obj);
+	struct main_state *state_object = obj;
+	const struct network_msg *msg = (const struct network_msg *)state_object->msg_buf;
+
+	switch (msg->type) {
+	case NETWORK_CONNECTED:
+		LOG_INF("Network connected");
+		break;
+	case NETWORK_DISCONNECTED:
+		LOG_INF("Network disconnected");
+		break;
+	default:
+		break;
+	}
 
 	return SMF_EVENT_HANDLED;
 }
 
 static const struct smf_state states[] = {
-	[STATE_INIT] = SMF_CREATE_STATE(NULL, init_run, NULL, NULL, NULL),
 	[STATE_RUNNING] = SMF_CREATE_STATE(running_entry, running_run, NULL, NULL, NULL),
 };
 
@@ -110,10 +90,6 @@ int main(void)
 	const uint32_t execution_time_ms =
 		(CONFIG_APP_MAIN_MSG_PROCESSING_TIMEOUT_SECONDS * MSEC_PER_SEC);
 	const k_timeout_t zbus_wait = K_MSEC(wdt_timeout_ms - execution_time_ms);
-	static struct main_state main_state;
-	struct main_msg start_msg = {
-		.type = MAIN_START,
-	};
 
 	task_wdt_id = task_wdt_add(wdt_timeout_ms, main_wdt_callback, (void *)k_current_get());
 	if (task_wdt_id < 0) {
@@ -122,14 +98,7 @@ int main(void)
 		return -EFAULT;
 	}
 
-	smf_set_initial(SMF_CTX(&main_state), &states[STATE_INIT]);
-
-	err = zbus_chan_pub(&main_chan, &start_msg, PUB_TIMEOUT);
-	if (err) {
-		LOG_ERR("zbus_chan_pub, error: %d", err);
-		SEND_FATAL_ERROR();
-		return -EFAULT;
-	}
+	smf_set_initial(SMF_CTX(&main_state), &states[STATE_RUNNING]);
 
 	while (true) {
 		err = task_wdt_feed(task_wdt_id);

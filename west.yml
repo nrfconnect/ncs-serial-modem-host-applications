@@ -15,3 +15,8 @@ manifest:
       repo-path: sdk-nrf
       revision: v3.4-branch
       import: true
+    - name: serial-modem
+      remote: ncs
+      repo-path: ncs-serial-modem
+      revision: main
+      path: serial-modem

@@ -34,7 +34,7 @@ west update
 
 ```shell
 cd applications/91m1
-west build -b nrf54l15dk/nrf54l15/cpuapp -p
+west build -b nrf54l15dk/nrf54l15/cpuapp/ns -p
 ```
 
 ```shell

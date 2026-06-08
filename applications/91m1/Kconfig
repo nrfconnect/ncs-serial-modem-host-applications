@@ -7,6 +7,7 @@
 menu "Serial Modem Host 91m1"
 
 rsource "src/Kconfig.main"
+rsource "src/modules/network/Kconfig.network"
 
 endmenu
 
