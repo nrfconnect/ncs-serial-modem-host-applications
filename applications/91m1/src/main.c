@@ -9,9 +9,11 @@
 #include <zephyr/zbus/zbus.h>
 #include <zephyr/task_wdt/task_wdt.h>
 #include <zephyr/smf.h>
+#include <string.h>
 
 #include "app_common.h"
 #include "modules/network/network.h"
+#include "modules/cloud/cloud.h"
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_MAIN_LOG_LEVEL);
 
@@ -22,7 +24,8 @@ BUILD_ASSERT(CONFIG_APP_MAIN_WATCHDOG_TIMEOUT_SECONDS >
 ZBUS_MSG_SUBSCRIBER_DEFINE(main_subscriber);
 
 #define CHANNEL_LIST(X) \
-	X(network_chan, struct network_msg)
+	X(network_chan, struct network_msg) \
+	X(cloud_chan, struct cloud_msg)
 
 #define MAX_MSG_SIZE MAX_MSG_SIZE_FROM_LIST(CHANNEL_LIST)
 
@@ -43,6 +46,24 @@ struct main_state {
 static struct main_state main_state;
 static const struct smf_state states[];
 
+#define DEMO_CLOUD_PAYLOAD \
+	"{\"appId\":\"SMHA\",\"messageType\":\"DATA\",\"data\":\"hello\"}"
+
+static void send_demo_cloud_message(void)
+{
+	struct cloud_msg msg = {
+		.type = CLOUD_SEND_MESSAGE,
+		.payload = DEMO_CLOUD_PAYLOAD,
+	};
+	int err;
+
+	msg.payload_len = strlen(msg.payload);
+	err = zbus_chan_pub(&cloud_chan, &msg, PUB_TIMEOUT);
+	if (err) {
+		LOG_ERR("zbus_chan_pub demo message, error: %d", err);
+	}
+}
+
 static void running_entry(void *obj)
 {
 	ARG_UNUSED(obj);
@@ -53,17 +74,46 @@ static void running_entry(void *obj)
 static enum smf_state_result running_run(void *obj)
 {
 	struct main_state *state_object = obj;
-	const struct network_msg *msg = (const struct network_msg *)state_object->msg_buf;
 
-	switch (msg->type) {
-	case NETWORK_CONNECTED:
-		LOG_INF("Network connected");
-		break;
-	case NETWORK_DISCONNECTED:
-		LOG_INF("Network disconnected");
-		break;
-	default:
-		break;
+	if (state_object->chan == &network_chan) {
+		const struct network_msg *msg =
+			(const struct network_msg *)state_object->msg_buf;
+
+		switch (msg->type) {
+		case NETWORK_CONNECTED:
+			LOG_INF("Network connected");
+			break;
+		case NETWORK_DISCONNECTED:
+			LOG_INF("Network disconnected");
+			break;
+		default:
+			break;
+		}
+
+		return SMF_EVENT_HANDLED;
+	}
+
+	if (state_object->chan == &cloud_chan) {
+		const struct cloud_msg *msg =
+			(const struct cloud_msg *)state_object->msg_buf;
+
+		switch (msg->type) {
+		case CLOUD_CONNECTED:
+			LOG_INF("Cloud connected");
+			send_demo_cloud_message();
+			break;
+		case CLOUD_DISCONNECTED:
+			LOG_INF("Cloud disconnected");
+			break;
+		case CLOUD_MESSAGE_SENT:
+			LOG_INF("Cloud message sent");
+			break;
+		case CLOUD_MESSAGE_RECEIVED:
+			LOG_INF("Cloud message received: %s", msg->payload);
+			break;
+		default:
+			break;
+		}
 	}
 
 	return SMF_EVENT_HANDLED;

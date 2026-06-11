@@ -16,7 +16,6 @@ Supported product targets:
 | [`west.yml`](west.yml) | West manifest; pins NCS to `v3.4-branch` |
 | [`zephyr/module.yml`](zephyr/module.yml) | Registers this repo as a Zephyr module |
 | [`lib/include/`](lib/include/) | Shared headers (`app_common.h`) |
-| [`lib/modules/`](lib/modules/) | Shared zbus/SMF feature modules |
 | [`applications/91m1/`](applications/91m1/) | nRF91M1 host application |
 | [`applications/93m1/`](applications/93m1/) | nRF93M1 host application |
 
@@ -30,38 +29,13 @@ cd smha-workspace/project
 west update
 ```
 
-### Build an application
+### Build and flash
 
-```shell
-cd applications/91m1
-west build -b nrf54l15dk/nrf54l15/cpuapp/ns -p
-```
+See the [91m1 application documentation](applications/91m1/doc/README.md) for instructions.
 
-```shell
-cd applications/93m1
-west build -b nrf54l15dk/nrf54l15/cpuapp -p
-```
+### Documentation
 
-### Two-DK setup (91m1 + nRF9151 Serial Modem)
-
-Development setup: **nRF54L15 DK** (host) wired to **nRF9151 DK** (Serial Modem).
-
-**Board Configurator (both DKs):** disable VCOM0 on the nRF54L15; disable VCOM0/VCOM1 on the nRF9151. Set matching VDD (typically 1.8 V).
-
-| nRF54L15 DK | nRF9151 DK | Signal |
-|---|---|---|
-| P0.00 | P0.03 | UART TX → RX |
-| P0.01 | P0.02 | UART RX ← TX |
-| P0.02 | P0.07 | UART RTS → CTS |
-| P0.03 | P0.06 | UART CTS ← RTS |
-| P1.11 | P0.31 | DTR |
-| P1.12 | P0.30 | RI |
-| **P1.10** | **P20 pin 7** | **nRESET** |
-| GND | GND | Ground |
-
-P0 = UART (connector P0). P1 = DTR, RI, and reset. Add a 1 kΩ series resistor on the reset wire if IO levels differ.
-
-On host boot, `applications/91m1/src/modem_reset.c` pulses nRESET (500 ms), then waits for Serial Modem `"Ready"` before the cellular driver starts. Devicetree: `applications/91m1/boards/nrf54l15dk_nrf54l15_cpuapp_ns.overlay`.
+- [applications/91m1/doc/](applications/91m1/doc/README.md)
 
 ---
 
