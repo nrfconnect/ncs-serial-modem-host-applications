@@ -27,4 +27,5 @@ target_sources(app PRIVATE
 	src/main.c
 	src/modem_reset.c
 	src/modules/network/network.c
+	src/modules/cloud/cloud.c
 )
