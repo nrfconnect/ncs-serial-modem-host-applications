@@ -21,7 +21,31 @@ Supported product targets:
 
 ## Getting started
 
-### Initialize a West workspace
+### Install prerequisites
+
+1. Install nRF Util by following the instructions in the [nRF Util documentation](https://docs.nordicsemi.com/bundle/nrfutil/page/guides/installing.html).
+
+2. Install the SDK manager command:
+
+   ```shell
+   nrfutil install sdk-manager
+   ```
+
+3. Install the nRF Connect SDK toolchain (v3.4.0, matching [`west.yml`](west.yml)):
+
+   ```shell
+   nrfutil sdk-manager install v3.4.0
+   ```
+
+### Initialize the workspace
+
+Before initializing, start the toolchain environment:
+
+```shell
+nrfutil sdk-manager toolchain launch --ncs-version v3.4.0 --shell
+```
+
+To initialize the workspace folder (`smha-workspace`) where the firmware project and all nRF Connect SDK modules will be cloned, run:
 
 ```shell
 west init -m https://github.com/nrfconnect/ncs-serial-modem-host-applications --mr main smha-workspace
@@ -29,13 +53,16 @@ cd smha-workspace/project
 west update
 ```
 
+The repository is now cloned into the `smha-workspace/project` folder, the west modules are downloaded, and you are ready to build an application.
+
 ### Build and flash
 
-See the [91m1 application documentation](applications/91m1/doc/README.md) for instructions.
+Follow the application documentation for hardware setup, build, flash, and (where applicable) cloud provisioning:
 
-### Documentation
-
-- [applications/91m1/doc/](applications/91m1/doc/README.md)
+| Application | Documentation |
+|-------------|---------------|
+| **91m1** | [applications/91m1/doc/](applications/91m1/doc/README.md) |
+| **93m1** | Not yet supported |
 
 ---
 

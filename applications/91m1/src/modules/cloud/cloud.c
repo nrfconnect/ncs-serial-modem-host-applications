@@ -121,7 +121,7 @@ static bool credentials_ready(void)
 		return true;
 	}
 
-	LOG_WRN("Missing nRF Cloud credentials (see doc/nrf-cloud-onboarding.md)");
+	LOG_WRN("Missing nRF Cloud credentials (see doc/README.md)");
 	if (!cs.ca) {
 		LOG_WRN("  - CA cert (run device_credentials_installer --coap)");
 	}
