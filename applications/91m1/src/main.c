@@ -108,9 +108,6 @@ static enum smf_state_result running_run(void *obj)
 		case CLOUD_MESSAGE_SENT:
 			LOG_INF("Cloud message sent");
 			break;
-		case CLOUD_MESSAGE_RECEIVED:
-			LOG_INF("Cloud message received: %s", msg->payload);
-			break;
 		default:
 			break;
 		}

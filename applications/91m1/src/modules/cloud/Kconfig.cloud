@@ -11,8 +11,8 @@ menuconfig APP_CLOUD
 if APP_CLOUD
 
 config APP_CLOUD_THREAD_STACK_SIZE
-	int "Thread stack size"
-	default 6144
+	int "Cloud module thread stack size"
+	default 10240
 
 config APP_CLOUD_WATCHDOG_TIMEOUT_SECONDS
 	int "Watchdog timeout"
@@ -25,10 +25,6 @@ config APP_CLOUD_MSG_PROCESSING_TIMEOUT_SECONDS
 config APP_CLOUD_MSG_MAX_LEN
 	int "Maximum device message length"
 	default 512
-
-config APP_CLOUD_POLL_INTERVAL_SECONDS
-	int "Shadow poll interval for cloud-to-device messages"
-	default 30
 
 config APP_CLOUD_CREDENTIAL_RETRY_SECONDS
 	int "Retry interval when credentials are missing"

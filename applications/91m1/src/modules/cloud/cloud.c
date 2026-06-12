@@ -23,10 +23,8 @@
 
 LOG_MODULE_REGISTER(cloud, CONFIG_APP_CLOUD_LOG_LEVEL);
 
-#define SHADOW_POLL_BUF_SIZE 1024
 #define TIME_WAIT_TIMEOUT_S  120
 #define CREDENTIAL_RETRY	K_SECONDS(CONFIG_APP_CLOUD_CREDENTIAL_RETRY_SECONDS)
-#define SHADOW_POLL_INTERVAL	K_SECONDS(CONFIG_APP_CLOUD_POLL_INTERVAL_SECONDS)
 
 BUILD_ASSERT(CONFIG_APP_CLOUD_WATCHDOG_TIMEOUT_SECONDS >
 	     CONFIG_APP_CLOUD_MSG_PROCESSING_TIMEOUT_SECONDS,
@@ -60,15 +58,8 @@ struct cloud_state_object {
 static struct cloud_state_object cloud_state;
 static const struct smf_state states[];
 static atomic_t connect_abort;
-static bool shadow_poll_active;
 
 static K_SEM_DEFINE(date_time_sem, 0, 1);
-
-static void connect_work_fn(struct k_work *work);
-static void shadow_poll_work_fn(struct k_work *work);
-
-K_WORK_DEFINE(connect_work, connect_work_fn);
-K_WORK_DELAYABLE_DEFINE(shadow_poll_work, shadow_poll_work_fn);
 
 static void publish_cloud_msg(enum cloud_msg_type type, const char *payload,
 			      size_t payload_len)
@@ -155,10 +146,8 @@ static bool wait_for_valid_time(void)
 	return false;
 }
 
-static void connect_work_fn(struct k_work *work)
+static void cloud_connect(void)
 {
-	ARG_UNUSED(work);
-
 	char device_id[NRF_CLOUD_CLIENT_ID_MAX_LEN + 1];
 	int err;
 
@@ -197,33 +186,6 @@ static void connect_work_fn(struct k_work *work)
 	}
 }
 
-static void shadow_poll_work_fn(struct k_work *work)
-{
-	char buf[SHADOW_POLL_BUF_SIZE];
-	size_t buf_len = sizeof(buf);
-	int err;
-
-	ARG_UNUSED(work);
-
-	if (!shadow_poll_active) {
-		return;
-	}
-
-	err = nrf_cloud_coap_shadow_get(buf, &buf_len, true,
-					COAP_CONTENT_FORMAT_APP_JSON);
-	if (err == -EACCES) {
-		LOG_DBG("Shadow poll skipped, not connected");
-	} else if (err) {
-		LOG_ERR("nrf_cloud_coap_shadow_get, error: %d", err);
-	} else if (buf_len > 0) {
-		publish_cloud_msg(CLOUD_MESSAGE_RECEIVED, buf, buf_len);
-	}
-
-	if (shadow_poll_active) {
-		(void)k_work_reschedule(&shadow_poll_work, SHADOW_POLL_INTERVAL);
-	}
-}
-
 static void disconnected_entry(void *obj)
 {
 	ARG_UNUSED(obj);
@@ -256,7 +218,7 @@ static void connecting_entry(void *obj)
 	LOG_DBG("Cloud module connecting");
 
 	atomic_set(&connect_abort, 0);
-	k_work_submit(&connect_work);
+	cloud_connect();
 }
 
 static enum smf_state_result connecting_run(void *obj)
@@ -294,9 +256,6 @@ static void connected_entry(void *obj)
 	ARG_UNUSED(obj);
 
 	LOG_DBG("Cloud module connected");
-
-	shadow_poll_active = true;
-	(void)k_work_reschedule(&shadow_poll_work, K_NO_WAIT);
 }
 
 static enum smf_state_result connected_run(void *obj)
@@ -339,9 +298,6 @@ static enum smf_state_result connected_run(void *obj)
 static void connected_exit(void *obj)
 {
 	ARG_UNUSED(obj);
-
-	shadow_poll_active = false;
-	(void)k_work_cancel_delayable(&shadow_poll_work);
 
 	(void)nrf_cloud_coap_disconnect();
 }

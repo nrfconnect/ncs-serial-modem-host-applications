@@ -21,7 +21,6 @@ enum cloud_msg_type {
 	CLOUD_CONNECTED,
 	CLOUD_SEND_MESSAGE,
 	CLOUD_MESSAGE_SENT,
-	CLOUD_MESSAGE_RECEIVED,
 };
 
 struct cloud_msg {
