@@ -131,11 +131,18 @@ CoAP authentication uses a JWT signed with the installed private key. Only the *
 | Boot loop (~6 s) | Usually a hard fault from stack overflow. Increase `CONFIG_APP_CLOUD_THREAD_STACK_SIZE` (default 10240) if cloud connect faults; keep `CONFIG_MODEM_DEDICATED_WORKQUEUE=y`. To capture the fault, temporarily set `CONFIG_RESET_ON_FATAL_ERROR=n` and check for `fatal_error: Resetting system` or stack traces |
 | `device_credentials_installer` cannot connect | Confirm the shell prompt (`uart:~$`) is visible on the selected serial port |
 
+## Memfault
+
+The application includes Memfault for remote crash reporting and device health metrics. Once the device is onboarded and connected to nRF Cloud, coredumps and metrics are forwarded automatically via CoAP.
+
+See [Memfault remote debugging](memfault.md) for how to open the Memfault dashboard from nRF Cloud, upload `zephyr.elf`, and verify data collection.
+
 ## Reference guides
 
 | Guide | Description |
 |-------|-------------|
 | [Hardware setup](hardware-setup.md) | Two-DK wiring, board configurator, devicetree, Serial Modem firmware |
+| [Memfault remote debugging](memfault.md) | Open Memfault from nRF Cloud, upload symbol files, view coredumps |
 
 ## References
 

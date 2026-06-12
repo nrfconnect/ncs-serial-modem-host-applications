@@ -10,6 +10,11 @@ rsource "src/Kconfig.main"
 rsource "src/modules/network/Kconfig.network"
 rsource "src/modules/cloud/Kconfig.cloud"
 
+# Redefine symbol due to it being dependent on nRF Modem Library in the original definition.
+config MEMFAULT_USE_NRF_CLOUD_COAP
+	bool "Use nRF Cloud CoAP for device communication"
+	default y
+
 endmenu
 
 menu "Zephyr Kernel"
