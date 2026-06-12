@@ -14,6 +14,7 @@
 #include <zephyr/task_wdt/task_wdt.h>
 #include <zephyr/zbus/zbus.h>
 #include <date_time.h>
+#include <memfault/ports/zephyr/http.h>
 #include <net/nrf_cloud.h>
 #include <net/nrf_cloud_coap.h>
 
@@ -177,6 +178,15 @@ static void cloud_connect(void)
 			k_sleep(CREDENTIAL_RETRY);
 			continue;
 		}
+
+		LOG_INF("Connected to nRF Cloud");
+
+		err = memfault_zephyr_port_post_data();
+		if (err) {
+			LOG_WRN("Failed to post data to Memfault, error: %d", err);
+		}
+
+		LOG_INF("Memfault data posted successfully");
 
 		if (!atomic_get(&connect_abort)) {
 			publish_cloud_msg(CLOUD_CONNECTED, NULL, 0);
