@@ -112,7 +112,7 @@ The application connects to nRF Cloud over **CoAP/DTLS** from the host MCU (nRF5
 | Boot | nRF Cloud library prints device ID, protocol (CoAP), and sec tag |
 | Network up | Cloud module waits for valid time (NTP over PPP), then calls `nrf_cloud_coap_connect()` |
 | Missing credentials | Retries every 10 s; see [Troubleshooting](#troubleshooting) |
-| Connected | Polls device shadow periodically; accepts outbound messages on the cloud zbus channel |
+| Connected | Accepts outbound messages on the cloud zbus channel |
 
 CoAP authentication uses a JWT signed with the installed private key. Only the **CA certificate** and **private key** are required at runtime; the device certificate is used for portal onboarding.
 
@@ -123,7 +123,12 @@ CoAP authentication uses a JWT signed with the installed private key. Only the *
 | `Missing required nRF Cloud credentials` | Re-run `device_credentials_installer` with `--coap --cmd-type tls_cred_shell` |
 | `nrf_cloud_coap_connect` auth failure | Confirm the device is onboarded in the portal with the correct device ID |
 | Wrong device in portal | Use the nRF54L15 **Device ID** from boot log, not the modem `%DEVICEUUID` |
-| JWT / time errors | Wait for NTP after PPP connects; check `date_time` logs |
+| JWT / time errors | After `Network connected`, run `net dns query time.google.com`. Ping to an IP does not prove DNS works. If logs show `getaddrinfo entries overflow`, ensure `CONFIG_DNS_RESOLVER_AI_MAX_ENTRIES=4` is set. If SNTP fails with `Not enough connection contexts`, increase `CONFIG_NET_MAX_CONN` (IPv4-only builds default to 4, which is too low once DNS + modem + SNTP + CoAP are active) |
+| `nrf_cloud_coap_connect` error -111 | Host-native CoAP needs DTLS sockets (`CONFIG_NET_SOCKETS_SOCKOPT_TLS`, `CONFIG_NET_SOCKETS_ENABLE_DTLS`). If enabling DTLS causes `RAM overflowed`, lower `CONFIG_MBEDTLS_SSL_IN/OUT_CONTENT_LEN` to 1024 (defaults are 16 KB each) and disable IPv6. Then run `net dns query coap.nrfcloud.com` after PPP is up |
+| `Failed to parse certificate` err `-0x2180` | Shell-provisioned credentials are PEM. Enable `CONFIG_MBEDTLS_PEM_PARSE_C=y` (see `nrf/samples/wifi/nrf_cloud/prj.conf`). Reinstall credentials if a prior install truncated them |
+| `Failed to parse certificate` err `-0xffffffff` | mbedTLS returned `1`: one cert in the CA chain or device cert failed to parse. Enable `CONFIG_MBEDTLS_RSA_C`, `CONFIG_MBEDTLS_ECP_C`, and `CONFIG_PSA_WANT_ALG_ECDH` (see `nrf/samples/wifi/nrf_cloud/prj.conf`) |
+| `RAM overflowed` with cloud enabled | Trim TLS buffers (`MBEDTLS_SSL_IN/OUT_CONTENT_LEN=1024`), disable `CONFIG_NET_IPV6`, and reduce `NET_PKT/BUF` counts before dropping DTLS |
+| Boot loop (~6 s) | Usually a hard fault from stack overflow. Increase `CONFIG_APP_CLOUD_THREAD_STACK_SIZE` (default 10240) if cloud connect faults; keep `CONFIG_MODEM_DEDICATED_WORKQUEUE=y`. To capture the fault, temporarily set `CONFIG_RESET_ON_FATAL_ERROR=n` and check for `fatal_error: Resetting system` or stack traces |
 | `device_credentials_installer` cannot connect | Confirm the shell prompt (`uart:~$`) is visible on the selected serial port |
 
 ## Reference guides
