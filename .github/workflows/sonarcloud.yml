@@ -56,14 +56,10 @@ jobs:
         uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v7.1.0
 
       - name: Build with build wrapper
-        working-directory: serial-modem-host-applications
+        working-directory: serial-modem-host-applications/applications/91m1
         run: |
-          cd applications/91m1
           build-wrapper-linux-x86-64 --out-dir ../../${{ env.BUILD_WRAPPER_OUT_DIR }} \
             west build -b nrf54l15dk/nrf54l15/cpuapp/ns -p
-          cd ../93m1
-          build-wrapper-linux-x86-64 --out-dir ../../${{ env.BUILD_WRAPPER_OUT_DIR }} \
-            west build -b nrf54l15dk/nrf54l15/cpuapp -p
 
       - name: SonarQube Scan on main
         if: github.event_name != 'pull_request'
