@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Lychee link checker
-        uses: lycheeverse/lychee-action@v2
+        uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411 # v2
         with:
           fail: true
           # Don't fail on 403 (Forbidden), 429 (rate limit), or 200
