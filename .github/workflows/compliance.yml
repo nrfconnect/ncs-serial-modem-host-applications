@@ -14,7 +14,7 @@ jobs:
   compliance_job:
     runs-on: self-hosted
     name: Run compliance checks on patch series (PR)
-    container: python:3.13.0-slim-bookworm
+    container: ghcr.io/zephyrproject-rtos/ci:v0.29.2
 
     # Skip job if it was triggered by Renovate Bot
     if: ${{ !contains(github.actor, 'renovate') }}
@@ -22,8 +22,9 @@ jobs:
     steps:
       - name: Installation
         run: |
-          apt-get update && apt-get install --no-install-recommends -y libmagic1 git gcc build-essential
-          pip install west gitlint
+          apt-get update && apt-get install --no-install-recommends -y libmagic1
+          python3 -m pip install -U pip wheel setuptools
+          python3 -m pip install west gitlint
 
       - name: Checkout the code
         uses: actions/checkout@v4
@@ -44,10 +45,10 @@ jobs:
 
       - name: Install zephyr requirements
         run: |
-          pip install -r zephyr/scripts/requirements-compliance.txt
-          pip install -r zephyr/scripts/requirements-actions.txt
+          python3 -m pip install --no-cache-dir -r zephyr/scripts/requirements-compliance.txt
+          python3 -m pip install --no-cache-dir -r zephyr/scripts/requirements-actions.txt
           # Junitparser v3 and 4 don't work with check_compliance.py
-          pip install --upgrade junitparser==2.8.0
+          python3 -m pip install --no-cache-dir junitparser==2.8.0
 
       - name: Run Compliance Tests
         id: compliance
