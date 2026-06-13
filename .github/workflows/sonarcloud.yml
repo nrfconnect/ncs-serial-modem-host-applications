@@ -52,6 +52,10 @@ jobs:
           fi
           west update -o=--depth=1 -n
 
+      - name: Install build wrapper dependencies
+        run: |
+          apt-get update && apt-get install --no-install-recommends -y curl
+
       - name: Install Build Wrapper
         uses: SonarSource/sonarqube-scan-action/install-build-wrapper@299e4b793aaa83bf2aba7c9c14bedbb485688ec4 # v7.1.0
 
