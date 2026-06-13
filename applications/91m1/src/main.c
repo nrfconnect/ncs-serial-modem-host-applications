@@ -9,7 +9,6 @@
 #include <zephyr/zbus/zbus.h>
 #include <zephyr/task_wdt/task_wdt.h>
 #include <zephyr/smf.h>
-#include <string.h>
 
 #include "app_common.h"
 #include "modules/network/network.h"
@@ -57,7 +56,7 @@ static void send_demo_cloud_message(void)
 	};
 	int err;
 
-	msg.payload_len = strlen(msg.payload);
+	msg.payload_len = sizeof(DEMO_CLOUD_PAYLOAD) - 1;
 	err = zbus_chan_pub(&cloud_chan, &msg, PUB_TIMEOUT);
 	if (err) {
 		LOG_ERR("zbus_chan_pub demo message, error: %d", err);
