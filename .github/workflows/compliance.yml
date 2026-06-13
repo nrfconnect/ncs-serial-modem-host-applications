@@ -46,7 +46,6 @@ jobs:
       - name: Install zephyr requirements
         run: |
           python3 -m pip install --no-cache-dir -r zephyr/scripts/requirements-compliance.txt
-          python3 -m pip install --no-cache-dir -r zephyr/scripts/requirements-actions.txt
           # Junitparser v3 and 4 don't work with check_compliance.py
           python3 -m pip install --no-cache-dir junitparser==2.8.0
 
