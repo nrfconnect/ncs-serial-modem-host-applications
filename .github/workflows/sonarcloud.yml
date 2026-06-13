@@ -53,7 +53,7 @@ jobs:
           west update -o=--depth=1 -n
 
       - name: Install Build Wrapper
-        uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v7.1.0
+        uses: SonarSource/sonarqube-scan-action/install-build-wrapper@299e4b793aaa83bf2aba7c9c14bedbb485688ec4 # v7.1.0
 
       - name: Build with build wrapper
         working-directory: serial-modem-host-applications/applications/91m1
@@ -63,7 +63,7 @@ jobs:
 
       - name: SonarQube Scan on main
         if: github.event_name != 'pull_request'
-        uses: SonarSource/sonarqube-scan-action@v7.1.0
+        uses: SonarSource/sonarqube-scan-action@299e4b793aaa83bf2aba7c9c14bedbb485688ec4 # v7.1.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -78,7 +78,7 @@ jobs:
 
       - name: SonarQube Scan on PR
         if: github.event_name == 'pull_request'
-        uses: SonarSource/sonarqube-scan-action@v7.1.0
+        uses: SonarSource/sonarqube-scan-action@299e4b793aaa83bf2aba7c9c14bedbb485688ec4 # v7.1.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
