@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: sonarcloud-${{ github.event.pull_request.number || github.run_id }}
@@ -41,6 +42,11 @@ jobs:
         with:
           fetch-depth: 0
           path: serial-modem-host-applications
+
+      - name: Fetch base branch for SonarCloud PR analysis
+        if: github.event_name == 'pull_request'
+        working-directory: serial-modem-host-applications
+        run: git fetch origin ${{ github.base_ref }}:${{ github.base_ref }}
 
       - name: Initialize
         working-directory: serial-modem-host-applications
