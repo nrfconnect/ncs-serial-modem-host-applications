@@ -1,0 +1,34 @@
+#
+# Copyright (c) 2026 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+#
+
+menuconfig APP_MEMFAULT
+	bool "Memfault module"
+	depends on MEMFAULT
+	default y
+
+if APP_MEMFAULT
+
+config APP_MEMFAULT_THREAD_STACK_SIZE
+	int "Thread stack size"
+	default 10240
+	help
+	  The thread drives the blocking nRF Cloud CoAP upload path (connect +
+	  software-DTLS handshake + shadow + chunk post). mbedTLS buffers are
+	  heap-allocated, so measured stack use is modest (~2 KB); prj.conf sets 4096.
+
+config APP_MEMFAULT_WATCHDOG_TIMEOUT_SECONDS
+	int "Watchdog timeout"
+	default 300
+
+config APP_MEMFAULT_MSG_PROCESSING_TIMEOUT_SECONDS
+	int "Maximum message processing time"
+	default 290
+
+module = APP_MEMFAULT
+module-str = Memfault
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # APP_MEMFAULT

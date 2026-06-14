@@ -7,6 +7,12 @@
 menu "Serial Modem Host 93m1"
 
 rsource "src/Kconfig.main"
+rsource "src/modules/network/Kconfig.network"
+rsource "src/modules/memfault/Kconfig.memfault"
+rsource "src/modules/fota/Kconfig.fota"
+rsource "src/modules/battery/Kconfig.battery"
+rsource "src/modules/modem_at/Kconfig.modem_at"
+rsource "src/modules/location/Kconfig.location"
 
 endmenu
 

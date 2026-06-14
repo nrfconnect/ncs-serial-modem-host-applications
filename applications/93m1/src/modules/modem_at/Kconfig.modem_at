@@ -1,0 +1,45 @@
+#
+# Copyright (c) 2026 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+#
+
+menuconfig APP_MODEM_AT
+	bool "Modem AT handler (shared DLCI 3)"
+	default y
+	select MODEM_AT_USER_PIPE
+	help
+	  Owns the single host AT user pipe (DLCI 3) with its own modem_chat and
+	  serialises access between the `modem at` shell and application modules.
+	  Replaces the in-tree CONFIG_MODEM_AT_SHELL, which must be disabled.
+
+if APP_MODEM_AT
+
+config APP_MODEM_AT_SHELL
+	bool "modem at shell command"
+	default y if SHELL
+	help
+	  Re-adds the interactive `modem at "<command>"` shell on top of the
+	  shared handler.
+
+config APP_MODEM_AT_COMMAND_MAX_SIZE
+	int "Maximum AT command length"
+	default 128
+
+config APP_MODEM_AT_RESPONSE_MAX_SIZE
+	int "Maximum collected AT response size"
+	default 1024
+
+config APP_MODEM_AT_CHAT_RECEIVE_BUF_SIZE
+	int "Chat receive buffer size"
+	default 256
+
+config APP_MODEM_AT_TIMEOUT_SECONDS
+	int "Default AT command timeout (seconds)"
+	default 30
+
+module = APP_MODEM_AT
+module-str = modem_at
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # APP_MODEM_AT

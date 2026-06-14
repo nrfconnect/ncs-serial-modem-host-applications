@@ -1,0 +1,69 @@
+#
+# Copyright (c) 2026 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+#
+
+menuconfig APP_LOCATION
+	bool "Location module"
+	default y
+	depends on APP_MODEM_AT
+	depends on NRF_CLOUD_COAP
+	help
+	  Scrapes single-cell (%BCINFO) and Wi-Fi (%WIFISCAN) measurements over the
+	  shared AT pipe and resolves them to a position via the nRF Cloud ground-fix
+	  service over the shared CoAP/DTLS session.
+
+if APP_LOCATION
+
+config APP_LOCATION_MAX_WIFI_APS
+	int "Maximum Wi-Fi APs per fix"
+	default 6
+
+config APP_LOCATION_BOOT_DELAY_SECONDS
+	int "Delay before the first fix after connect (seconds)"
+	default 10
+	help
+	  Lets the initial Memfault sync finish so the first Wi-Fi scan isn't
+	  starved by data traffic.
+
+config APP_LOCATION_SHELL
+	bool "location shell command"
+	default y if SHELL
+	help
+	  Adds `location fix` to trigger an on-demand fix (useful for bring-up).
+
+config APP_LOCATION_THREAD_STACK_SIZE
+	int "Thread stack size"
+	default 4096
+	help
+	  Sizes the AT scans and the ground-fix CoAP request build. The DTLS
+	  session is owned by the nRF Cloud CoAP client on its own thread, so the
+	  heavy mbedTLS handshake does not run here.
+
+config APP_LOCATION_INTERVAL_SECONDS
+	int "Location fix interval (seconds)"
+	default 600
+	help
+	  Period between location fixes. The first fix runs on boot once the
+	  network is connected.
+
+config APP_LOCATION_AT_RESPONSE_SIZE
+	int "AT response buffer size"
+	default 2048
+	help
+	  Must hold the largest %BCINFO/%WIFISCAN response (up to 21 cells).
+
+config APP_LOCATION_BCINFO_TIMEOUT_SECONDS
+	int "%BCINFO command timeout (seconds)"
+	default 30
+
+config APP_LOCATION_WIFISCAN_TIMEOUT_SECONDS
+	int "%WIFISCAN command timeout (seconds)"
+	default 30
+
+module = APP_LOCATION
+module-str = location
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # APP_LOCATION

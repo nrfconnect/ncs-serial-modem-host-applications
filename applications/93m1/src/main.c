@@ -6,11 +6,20 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/logging/log_ctrl.h>
 #include <zephyr/zbus/zbus.h>
 #include <zephyr/task_wdt/task_wdt.h>
 #include <zephyr/smf.h>
+#include <zephyr/sys/reboot.h>
 
 #include "app_common.h"
+#include "modules/network/network.h"
+#if defined(CONFIG_APP_FOTA)
+#include "modules/fota/fota.h"
+#define FOTA_CHANNEL(X) X(fota_chan, struct fota_msg)
+#else
+#define FOTA_CHANNEL(X)
+#endif
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_MAIN_LOG_LEVEL);
 
@@ -36,7 +45,9 @@ ZBUS_CHAN_DEFINE(main_chan,
 ZBUS_MSG_SUBSCRIBER_DEFINE(main_subscriber);
 
 #define CHANNEL_LIST(X) \
-	X(main_chan, struct main_msg)
+	X(main_chan, struct main_msg) \
+	X(network_chan, struct network_msg) \
+	FOTA_CHANNEL(X)
 
 #define MAX_MSG_SIZE MAX_MSG_SIZE_FROM_LIST(CHANNEL_LIST)
 
@@ -83,7 +94,67 @@ static void running_entry(void *obj)
 
 static enum smf_state_result running_run(void *obj)
 {
-	ARG_UNUSED(obj);
+	struct main_state *state_object = obj;
+
+	if (state_object->chan == &network_chan) {
+		const struct network_msg *msg =
+			(const struct network_msg *)state_object->msg_buf;
+
+		switch (msg->type) {
+		case NETWORK_CONNECTED:
+			LOG_INF("Network connected");
+			break;
+		case NETWORK_DISCONNECTED:
+			LOG_INF("Network disconnected");
+#if defined(CONFIG_APP_FOTA)
+			{
+				struct fota_msg fota_msg = { .type = FOTA_NETWORK_DISCONNECTED };
+
+				(void)zbus_chan_pub(&fota_chan, &fota_msg, PUB_TIMEOUT);
+			}
+#endif /* CONFIG_APP_FOTA */
+			break;
+		default:
+			break;
+		}
+
+		return SMF_EVENT_HANDLED;
+	}
+
+#if defined(CONFIG_APP_FOTA)
+	if (state_object->chan == &fota_chan) {
+		const struct fota_msg *msg = (const struct fota_msg *)state_object->msg_buf;
+
+		switch (msg->type) {
+		case FOTA_NETWORK_DISCONNECT_NEEDED: {
+			/* Bring the link down; the resulting NETWORK_DISCONNECTED */
+			struct network_msg net_msg = { .type = NETWORK_DISCONNECT };
+			int err = zbus_chan_pub(&network_chan, &net_msg, PUB_TIMEOUT);
+
+			if (err) {
+				LOG_ERR("zbus_chan_pub network_chan, error: %d", err);
+				SEND_FATAL_ERROR();
+			}
+			break;
+		}
+		case FOTA_SUCCESS:
+			LOG_INF("FOTA successful, rebooting to apply the update");
+			LOG_PANIC();
+			sys_reboot(SYS_REBOOT_COLD);
+			break;
+		case FOTA_STARTING:
+			LOG_INF("FOTA download starting");
+			break;
+		case FOTA_ABORTED:
+			LOG_INF("No FOTA update available");
+			break;
+		default:
+			break;
+		}
+
+		return SMF_EVENT_HANDLED;
+	}
+#endif /* CONFIG_APP_FOTA */
 
 	return SMF_EVENT_HANDLED;
 }
