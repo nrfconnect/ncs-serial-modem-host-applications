@@ -1,0 +1,26 @@
+#
+# Copyright (c) 2026 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+#
+
+menuconfig APP_BATTERY
+	bool "Battery module"
+	depends on NRF_FUEL_GAUGE && NPM13XX_CHARGER
+	default y
+
+if APP_BATTERY
+
+config APP_BATTERY_SAMPLE_INTERVAL_SECONDS
+	int "Fuel gauge sample interval"
+	default 60
+
+config APP_BATTERY_THREAD_STACK_SIZE
+	int "Thread stack size"
+	default 2048
+
+module = APP_BATTERY
+module-str = Battery
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # APP_BATTERY

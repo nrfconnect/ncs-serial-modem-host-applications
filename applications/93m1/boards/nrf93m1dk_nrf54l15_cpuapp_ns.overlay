@@ -1,0 +1,42 @@
+/*
+ * Copyright (c) 2026 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+ */
+
+
+/ {
+	aliases {
+		modem = &modem;
+	};
+	chosen {
+		/* Switch console to uart20 */
+		zephyr,console = &uart20;
+		zephyr,shell-uart = &uart20;
+		zephyr,entropy = &psa_rng;
+	};
+};
+
+/* Zephyr modem UART <-> nRF91 Serial Modem UART */
+&uart30 {
+	status = "okay";
+	current-speed = <115200>;
+	zephyr,pm-device-runtime-auto;
+	hw-flow-control;
+};
+
+&modem {
+	status = "okay";
+	zephyr,pm-device-runtime-auto;
+};
+
+&psa_rng {
+	status = "okay";
+};
+
+&mx25r64 {
+	status = "disabled";
+};
+
+/* Flash/SRAM partitioning */
+#include "nrf93m1dk_partitions.dtsi"
