@@ -62,7 +62,7 @@ Follow the application documentation for hardware setup, build, flash, and (wher
 | Application | Documentation |
 |-------------|---------------|
 | **91m1** | [applications/91m1/doc/](applications/91m1/doc/README.md) |
-| **93m1** | Not yet supported |
+| **93m1** | [applications/93m1/doc/](applications/93m1/doc/README.md) |
 
 ---
 
