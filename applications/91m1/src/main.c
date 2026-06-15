@@ -72,7 +72,7 @@ static void running_entry(void *obj)
 
 static enum smf_state_result running_run(void *obj)
 {
-	struct main_state *state_object = obj;
+	const struct main_state *state_object = obj;
 
 	if (state_object->chan == &network_chan) {
 		const struct network_msg *msg =

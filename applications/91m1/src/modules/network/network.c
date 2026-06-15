@@ -60,19 +60,21 @@ static void publish_network_status(enum network_msg_type type)
 	}
 }
 
-static void l4_event_handler(struct net_mgmt_event_callback *cb, uint64_t event,
-			     struct net_if *iface)
+static void l4_event_handler(const struct net_mgmt_event_callback *cb, uint64_t event,
+			     const struct net_if *iface)
 {
 	ARG_UNUSED(cb);
 
 	switch (event) {
 	case NET_EVENT_L4_CONNECTED:
-		LOG_DBG("Network connectivity established (iface %d)", net_if_get_by_iface(iface));
+		LOG_DBG("Network connectivity established (iface %d)",
+			net_if_get_by_iface((struct net_if *)iface));
 
 		publish_network_status(NETWORK_CONNECTED);
 		break;
 	case NET_EVENT_L4_DISCONNECTED:
-		LOG_DBG("Network connectivity lost (iface %d)", net_if_get_by_iface(iface));
+		LOG_DBG("Network connectivity lost (iface %d)",
+			net_if_get_by_iface((struct net_if *)iface));
 
 		publish_network_status(NETWORK_DISCONNECTED);
 		break;
@@ -81,8 +83,8 @@ static void l4_event_handler(struct net_mgmt_event_callback *cb, uint64_t event,
 	}
 }
 
-static void connectivity_event_handler(struct net_mgmt_event_callback *cb, uint64_t event,
-				       struct net_if *iface)
+static void connectivity_event_handler(const struct net_mgmt_event_callback *cb, uint64_t event,
+				       const struct net_if *iface)
 {
 	ARG_UNUSED(cb);
 	ARG_UNUSED(iface);
@@ -189,10 +191,13 @@ static void network_module(void)
 		(CONFIG_APP_NETWORK_MSG_PROCESSING_TIMEOUT_SECONDS * MSEC_PER_SEC);
 	const k_timeout_t zbus_wait = K_MSEC(wdt_timeout_ms - execution_time_ms);
 
-	net_mgmt_init_event_callback(&l4_cb, l4_event_handler, L4_EVENT_MASK);
+	net_mgmt_init_event_callback(&l4_cb, (net_mgmt_event_handler_t)l4_event_handler,
+				     L4_EVENT_MASK);
 	net_mgmt_add_event_callback(&l4_cb);
 
-	net_mgmt_init_event_callback(&conn_cb, connectivity_event_handler, CONN_LAYER_EVENT_MASK);
+	net_mgmt_init_event_callback(&conn_cb,
+				     (net_mgmt_event_handler_t)connectivity_event_handler,
+				     CONN_LAYER_EVENT_MASK);
 	net_mgmt_add_event_callback(&conn_cb);
 
 	task_wdt_id = task_wdt_add(wdt_timeout_ms, network_wdt_callback, (void *)k_current_get());
