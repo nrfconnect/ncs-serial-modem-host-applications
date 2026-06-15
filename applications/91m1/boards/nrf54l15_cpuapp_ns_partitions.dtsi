@@ -1,0 +1,34 @@
+/*
+ * Copyright (c) 2026 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+ *
+ * SRAM layout for memory-optimized SFN TF-M (see board conf).
+ */
+
+/delete-node/ &slot0_partition;
+/delete-node/ &storage_partition;
+/delete-node/ &slot0_ns_partition;
+/delete-node/ &tfm_its_partition;
+/delete-node/ &tfm_otp_partition;
+/delete-node/ &tfm_ps_partition;
+/delete-node/ &sram0_s;
+/delete-node/ &sram0_ns;
+
+#include "nrf54l15_cpuapp_mcuboot_partitions.dtsi"
+
+&cpuapp_sram {
+	sram0_s: image_s@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		reg = <0x0 0xC000>;
+		ranges = <0x0 0x0 0xC000>;
+	};
+
+	sram0_ns: image_ns@c000 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		reg = <0xC000 0x34000>;
+		ranges = <0x0 0xC000 0x34000>;
+	};
+};

@@ -11,13 +11,16 @@
  *   Add a 1 kOhm series resistor in the reset wire if VDD levels differ.
  *   Set matching VDD on both DKs in Board Configurator (typically 1.8 V).
  *
- * Uses default RRAM/SRAM partitions from nrf54l15_cpuapp_ns_partition.dtsi.
+ * RRAM/SRAM partitions: nrf54l15_cpuapp_ns_partitions.dtsi (MCUboot + TF-M).
  */
+
+#include "nrf54l15_cpuapp_ns_partitions.dtsi"
 
 / {
 	chosen {
 		zephyr,console = &uart20;
 		zephyr,shell-uart = &uart20;
+		nordic,pm-ext-flash = &mx25r64;
 	};
 	aliases {
 		modem = &modem;

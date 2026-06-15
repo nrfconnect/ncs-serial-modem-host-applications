@@ -1,0 +1,23 @@
+/*
+ * Copyright (c) 2026 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+ *
+ * MCUboot child image for nRF54L15 + TF-M. The secure cpuapp board DTS
+ * defines an internal slot1; remove it because the secondary slot lives
+ * on external mx25r64 (see nrf54l15_cpuapp_mcuboot_partitions.dtsi).
+ */
+
+/delete-node/ &boot_partition;
+/delete-node/ &slot0_partition;
+/delete-node/ &slot1_partition;
+/delete-node/ &storage_partition;
+
+#include "../../../boards/nrf54l15_cpuapp_mcuboot_partitions.dtsi"
+
+/ {
+	chosen {
+		zephyr,code-partition = &boot_partition;
+		nordic,pm-ext-flash = &mx25r64;
+	};
+};

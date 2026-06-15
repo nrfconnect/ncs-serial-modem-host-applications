@@ -9,6 +9,7 @@ menu "Serial Modem Host 91m1"
 rsource "src/Kconfig.main"
 rsource "src/modules/network/Kconfig.network"
 rsource "src/modules/cloud/Kconfig.cloud"
+rsource "src/modules/fota/Kconfig.fota"
 
 # Redefine symbol due to it being dependent on nRF Modem Library in the original definition.
 config MEMFAULT_USE_NRF_CLOUD_COAP

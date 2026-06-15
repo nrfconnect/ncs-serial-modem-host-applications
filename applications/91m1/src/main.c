@@ -6,16 +6,20 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/logging/log_ctrl.h>
 #include <zephyr/zbus/zbus.h>
 #include <zephyr/task_wdt/task_wdt.h>
 #include <zephyr/smf.h>
+#include <zephyr/sys/reboot.h>
 
 #include "app_common.h"
 #include "modules/network/network.h"
 #include "modules/cloud/cloud.h"
+#include "modules/fota/fota.h"
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_MAIN_LOG_LEVEL);
 
+BUILD_ASSERT(IS_ENABLED(CONFIG_APP_FOTA), "FOTA module is required");
 BUILD_ASSERT(CONFIG_APP_MAIN_WATCHDOG_TIMEOUT_SECONDS >
 	     CONFIG_APP_MAIN_MSG_PROCESSING_TIMEOUT_SECONDS,
 	     "Watchdog timeout must be greater than maximum message processing time");
@@ -24,7 +28,8 @@ ZBUS_MSG_SUBSCRIBER_DEFINE(main_subscriber);
 
 #define CHANNEL_LIST(X) \
 	X(network_chan, struct network_msg) \
-	X(cloud_chan, struct cloud_msg)
+	X(cloud_chan, struct cloud_msg) \
+	X(fota_chan, struct fota_msg)
 
 #define MAX_MSG_SIZE MAX_MSG_SIZE_FROM_LIST(CHANNEL_LIST)
 
@@ -84,6 +89,36 @@ static enum smf_state_result running_run(void *obj)
 			break;
 		case NETWORK_DISCONNECTED:
 			LOG_INF("Network disconnected");
+			{
+				struct fota_msg fota_msg = { .type = FOTA_NETWORK_DISCONNECTED };
+
+				(void)zbus_chan_pub(&fota_chan, &fota_msg, PUB_TIMEOUT);
+			}
+			break;
+		default:
+			break;
+		}
+
+		return SMF_EVENT_HANDLED;
+	}
+
+	if (state_object->chan == &fota_chan) {
+		const struct fota_msg *msg = (const struct fota_msg *)state_object->msg_buf;
+
+		switch (msg->type) {
+		case FOTA_NETWORK_DISCONNECT_NEEDED:
+			LOG_INF("FOTA network disconnect needed");
+			break;
+		case FOTA_SUCCESS:
+			LOG_INF("FOTA successful, rebooting to apply the update");
+			LOG_PANIC();
+			sys_reboot(SYS_REBOOT_COLD);
+			break;
+		case FOTA_STARTING:
+			LOG_INF("FOTA download starting");
+			break;
+		case FOTA_ABORTED:
+			LOG_INF("No FOTA update available");
 			break;
 		default:
 			break;
