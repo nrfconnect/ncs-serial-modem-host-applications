@@ -35,4 +35,6 @@ Devicetree overlay: [`boards/nrf54l15dk_nrf54l15_cpuapp_ns.overlay`](../boards/n
 
 ## Serial Modem firmware
 
-Flash the nRF9151 DK with Serial Modem firmware built with PPP and CMUX enabled (stock nRF91M1 build or `overlay-ppp.conf` + `overlay-cmux.conf`).
+The 91m1 host application is tested with Serial Modem firmware at commit [`e23c2bde08a83e8a2908f78ee19f2b2ff5c6e46e`](https://github.com/nrfconnect/ncs-serial-modem/commit/e23c2bde08a83e8a2908f78ee19f2b2ff5c6e46e). Build and flash the nRF9151 DK with PPP and CMUX enabled (`overlay-ppp.conf` and `overlay-cmux.conf`).
+
+See the [Serial Modem getting started guide](https://docs.nordicsemi.com/bundle/addon-serial_modem-latest/page/gsg_guide.html#building_and_running) for how to build and flash Serial Modem firmware on the nRF91.

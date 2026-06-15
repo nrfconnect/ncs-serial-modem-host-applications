@@ -6,12 +6,9 @@
 
 cmake_minimum_required(VERSION 3.20.0)
 
-# serial-modem is a west sibling (smha/serial-modem); ensure the nrf91-sm driver
-# is always included even when ZEPHYR_BASE points at a standalone NCS install.
-set(SERIAL_MODEM_MODULE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../serial-modem)
-if(EXISTS ${SERIAL_MODEM_MODULE_DIR}/zephyr/module.yml)
-	list(APPEND EXTRA_ZEPHYR_MODULES ${SERIAL_MODEM_MODULE_DIR})
-endif()
+# Bundled nrf91-sm driver (see drivers/nrf91-sm/).
+set(NRF91SM_DRIVER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/drivers/nrf91-sm)
+list(APPEND EXTRA_ZEPHYR_MODULES ${NRF91SM_DRIVER_DIR})
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project("Serial Modem Host - 91m1")

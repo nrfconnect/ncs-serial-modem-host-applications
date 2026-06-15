@@ -6,7 +6,7 @@ The application connects to nRF Cloud over **CoAP/DTLS** from the host MCU (nRF5
 
 ## Getting started
 
-1. **Wire up the development boards** — Connect the nRF54L15 DK (host) to the nRF9151 DK (Serial Modem). Configure both DKs in the Board Configurator and flash Serial Modem firmware with PPP and CMUX enabled on the nRF9151. See [Hardware setup](hardware-setup.md) for wiring, pin assignments, and firmware requirements.
+1. **Wire up the development boards** — Connect the nRF54L15 DK (host) to the nRF9151 DK (Serial Modem). Configure both DKs in the Board Configurator and flash Serial Modem firmware with PPP and CMUX enabled on the nRF9151. The host application is tested with Serial Modem commit [`e23c2bde`](https://github.com/nrfconnect/ncs-serial-modem/commit/e23c2bde08a83e8a2908f78ee19f2b2ff5c6e46e). See [Hardware setup](hardware-setup.md) for wiring, pin assignments, and [how to flash Serial Modem on the nRF91](https://docs.nordicsemi.com/bundle/addon-serial_modem-latest/page/gsg_guide.html#building_and_running).
 
 2. **Build and flash 91m1 on the nRF54L15 DK**
 
@@ -141,7 +141,7 @@ See [Memfault remote debugging](memfault.md) for how to open the Memfault dashbo
 
 | Guide | Description |
 |-------|-------------|
-| [Hardware setup](hardware-setup.md) | Two-DK wiring, board configurator, devicetree, Serial Modem firmware |
+| [Hardware setup](hardware-setup.md) | Two-DK wiring, board configurator, Serial Modem firmware version and flashing |
 | [Memfault remote debugging](memfault.md) | Open Memfault from nRF Cloud, upload symbol files, view coredumps |
 
 ## References
