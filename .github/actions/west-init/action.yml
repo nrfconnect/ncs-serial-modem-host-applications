@@ -1,0 +1,30 @@
+name: Initialize West workspace
+description: Initialize or refresh the West workspace for CI builds
+
+inputs:
+  working-directory:
+    description: Path to the manifest repository checkout
+    required: false
+    default: serial-modem-host-applications
+
+runs:
+  using: composite
+  steps:
+    - name: Initialize West workspace
+      shell: sh
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -eu
+
+        if [ ! -d "../.west" ]; then
+          west init -l .
+        else
+          echo "Refreshing West-managed repositories."
+          west forall -c "git reset --hard HEAD"
+          west forall -c "git clean -fdx"
+        fi
+
+        west update -o=--depth=1 -n
+
+        echo "West workspace projects:"
+        west list
