@@ -44,15 +44,8 @@ jobs:
         working-directory: serial-modem-host-applications
         run: git fetch origin ${{ github.base_ref }}:${{ github.base_ref }}
 
-      - name: Initialize
-        working-directory: serial-modem-host-applications
-        run: |
-          if [ ! -d "../.west" ]; then
-            west init -l .
-          else
-            echo ".west folder already exists, skipping west init."
-          fi
-          west update -o=--depth=1 -n
+      - name: Initialize West workspace
+        uses: ./serial-modem-host-applications/.github/actions/west-init
 
       - name: Install build wrapper dependencies
         run: |

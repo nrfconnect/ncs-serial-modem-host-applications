@@ -33,14 +33,7 @@ jobs:
           path: serial-modem-host-applications
 
       - name: Initialize West workspace
-        working-directory: serial-modem-host-applications
-        run: |
-          if [ ! -d "../.west" ]; then
-            west init -l .
-          else
-            echo ".west folder already exists, skipping west init."
-          fi
-          west update -o=--depth=1 -n
+        uses: ./serial-modem-host-applications/.github/actions/west-init
 
       - name: Build application
         working-directory: serial-modem-host-applications/applications/${{ matrix.app }}
