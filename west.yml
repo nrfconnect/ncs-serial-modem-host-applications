@@ -18,5 +18,5 @@ manifest:
     - name: serial-modem
       remote: ncs
       repo-path: ncs-serial-modem
-      revision: main
+      revision: e23c2bde08a83e8a2908f78ee19f2b2ff5c6e46e
       path: serial-modem
