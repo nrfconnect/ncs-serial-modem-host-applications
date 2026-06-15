@@ -5,9 +5,12 @@ on:
     branches:
       - main
   pull_request:
+    types: [opened, synchronize, reopened]
     paths:
       - '**/*.c'
       - '**/*.h'
+      - .github/workflows/sonarcloud.yml
+      - sonar-project.properties
       - west.yml
       - '**/CMakeLists.txt'
       - '**/Kconfig*'
@@ -15,7 +18,7 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
+  pull-requests: write
 
 concurrency:
   group: sonarcloud-${{ github.event.pull_request.number || github.run_id }}
@@ -31,15 +34,8 @@ jobs:
       CMAKE_PREFIX_PATH: /opt/toolchains
     steps:
       - uses: actions/checkout@v4
-        if: github.event_name == 'pull_request'
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
-          path: serial-modem-host-applications
-
-      - uses: actions/checkout@v4
-        if: github.event_name != 'pull_request'
-        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           path: serial-modem-host-applications
 
@@ -71,8 +67,7 @@ jobs:
           build-wrapper-linux-x86-64 --out-dir ../../${{ env.BUILD_WRAPPER_OUT_DIR }} \
             west build -b nrf54l15dk/nrf54l15/cpuapp/ns -p
 
-      - name: SonarQube Scan on main
-        if: github.event_name != 'pull_request'
+      - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@299e4b793aaa83bf2aba7c9c14bedbb485688ec4 # v7.1.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -80,31 +75,4 @@ jobs:
         with:
           args: |
             --define sonar.cfamily.compile-commands=serial-modem-host-applications/${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json
-            --define sonar.projectKey=nrfconnect-ncs-serial-modem-host-applications
-            --define sonar.organization=nrfconnect
-            --define sonar.host.url=https://sonarcloud.io
-            --define sonar.inclusions=applications/**/src/**/*.c,applications/**/src/**/*.h,lib/include/**/*.h
-          projectBaseDir: serial-modem-host-applications
-
-      - name: SonarQube Scan on PR
-        if: github.event_name == 'pull_request'
-        uses: SonarSource/sonarqube-scan-action@299e4b793aaa83bf2aba7c9c14bedbb485688ec4 # v7.1.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        with:
-          args: |
-            --define sonar.cfamily.compile-commands=serial-modem-host-applications/${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json
-            --define sonar.projectKey=nrfconnect-ncs-serial-modem-host-applications
-            --define sonar.organization=nrfconnect
-            --define sonar.host.url=https://sonarcloud.io
-            --define sonar.inclusions=applications/**/src/**/*.c,applications/**/src/**/*.h,lib/include/**/*.h
-            --define sonar.scm.revision=${{ env.HEAD_SHA }}
-            --define sonar.pullrequest.key=${{ env.PR_NUMBER }}
-            --define sonar.pullrequest.branch=${{ env.PR_BRANCH }}
-            --define sonar.pullrequest.base=${{ env.BASE_REF }}
           projectBaseDir: serial-modem-host-applications
