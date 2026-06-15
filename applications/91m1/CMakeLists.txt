@@ -36,5 +36,6 @@ target_sources(app PRIVATE
 	src/modules/cloud/cloud.c
 )
 
+target_sources_ifdef(CONFIG_SHELL app PRIVATE src/modules/network/network_shell.c)
 target_sources_ifdef(CONFIG_APP_FOTA app PRIVATE src/modules/fota/fota.c)
 target_sources_ifdef(CONFIG_APP_FOTA_SHELL app PRIVATE src/modules/fota/fota_shell.c)
