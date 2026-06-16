@@ -27,7 +27,7 @@ jobs:
           python3 -m pip install west gitlint
 
       - name: Checkout the code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: serial-modem-host-applications
           ref: ${{ github.event.pull_request.head.sha }}
@@ -62,7 +62,7 @@ jobs:
           echo "COMPLIANCE_FAILED=true" >> $GITHUB_ENV
 
       - name: Upload compliance results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: compliance.xml
