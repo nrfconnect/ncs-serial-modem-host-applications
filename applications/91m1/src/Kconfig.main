@@ -14,6 +14,22 @@ config APP_MAIN_MSG_PROCESSING_TIMEOUT_SECONDS
 	int "Maximum message processing time"
 	default 110
 
+config APP_MAIN_CLOUD_SYNCHRONIZATION_PERIOD_SECONDS
+	int "Cloud-connected synchronization interval (seconds)"
+	default 30
+	range 5 3600
+	help
+	  While cloud is connected, periodically perform cloud synchronization:
+	  send the demo cloud payload and request a FOTA poll.
+
+config APP_MAIN_CLOUD_SYNC_WORKQ_STACK_SIZE
+	int "Cloud synchronization workqueue stack size"
+	default 1024
+
+config APP_MAIN_CLOUD_SYNC_WORKQ_PRIORITY
+	int "Cloud synchronization workqueue priority"
+	default 5
+
 module = APP_MAIN
 module-str = Main
 source "subsys/logging/Kconfig.template.log_config"
