@@ -101,18 +101,15 @@ The application connects to nRF Cloud over **CoAP/DTLS** from the host MCU (nRF5
       <inf> main: Cloud message sent
       ```
 
-   4. A demo JSON device message is sent automatically from `main.c`.
+   4. On first connect, the application sends a demo JSON message and polls for FOTA updates. While cloud stays connected, this **cloud synchronization** repeats every 30 seconds (see [Application behavior](application-behavior.md)).
 
    Credentials persist across reboot when `CONFIG_TLS_CREDENTIALS_BACKEND_PROTECTED_STORAGE` is enabled.
 
 ## Application behavior
 
-| Stage | Behavior |
-|-------|----------|
-| Boot | nRF Cloud library prints device ID, protocol (CoAP), and sec tag |
-| Network up | Cloud module waits for valid time (NTP over PPP), then calls `nrf_cloud_coap_connect()` |
-| Missing credentials | Retries every 10 s; see [Troubleshooting](#troubleshooting) |
-| Connected | Accepts outbound messages on the cloud zbus channel |
+The host application runs on nRF54L15 and uses the nRF91M1 Serial Modem for cellular data over PPP. Modules communicate over **zbus** and coordinate with **SMF** state machines. After network and cloud are up, the main module periodically sends a demo device message and requests a FOTA poll.
+
+See [Application behavior](application-behavior.md) for the full startup sequence, module roles, FOTA flow, and Memfault integration.
 
 CoAP authentication uses a JWT signed with the installed private key. Only the **CA certificate** and **private key** are required at runtime; the device certificate is used for portal onboarding.
 
@@ -133,7 +130,7 @@ CoAP authentication uses a JWT signed with the installed private key. Only the *
 
 ## Memfault
 
-The application includes Memfault for remote crash reporting and device health metrics. Once the device is onboarded and connected to nRF Cloud, coredumps and metrics are forwarded automatically via CoAP.
+The application includes Memfault for remote crash reporting and device health metrics. The SDK uploads data periodically in the background (`CONFIG_MEMFAULT_PERIODIC_UPLOAD`) over the nRF Cloud CoAP session.
 
 See [Memfault remote debugging](memfault.md) for how to open the Memfault dashboard from nRF Cloud, upload `zephyr.elf`, and verify data collection.
 
@@ -141,6 +138,7 @@ See [Memfault remote debugging](memfault.md) for how to open the Memfault dashbo
 
 | Guide | Description |
 |-------|-------------|
+| [Application behavior](application-behavior.md) | Module architecture, cloud sync, FOTA, and Memfault at runtime |
 | [Hardware setup](hardware-setup.md) | Two-DK wiring, board configurator, Serial Modem firmware version and flashing |
 | [Memfault remote debugging](memfault.md) | Open Memfault from nRF Cloud, upload symbol files, view coredumps |
 

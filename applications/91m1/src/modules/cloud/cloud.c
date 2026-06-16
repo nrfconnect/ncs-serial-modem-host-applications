@@ -14,6 +14,7 @@
 #include <zephyr/task_wdt/task_wdt.h>
 #include <zephyr/zbus/zbus.h>
 #include <date_time.h>
+#include <memfault/metrics/metrics.h>
 #include <memfault/ports/zephyr/http.h>
 #include <net/nrf_cloud.h>
 #include <net/nrf_cloud_coap.h>
@@ -147,6 +148,20 @@ static bool wait_for_valid_time(void)
 	return false;
 }
 
+static void post_memfault_data(void)
+{
+	int err;
+
+	memfault_metrics_heartbeat_debug_trigger();
+
+	err = memfault_zephyr_port_post_data();
+	if (err) {
+		LOG_WRN("memfault_zephyr_port_post_data, error: %d", err);
+	} else {
+		LOG_INF("Memfault data posted");
+	}
+}
+
 static void cloud_connect(void)
 {
 	char device_id[NRF_CLOUD_CLIENT_ID_MAX_LEN + 1];
@@ -180,13 +195,6 @@ static void cloud_connect(void)
 		}
 
 		LOG_INF("Connected to nRF Cloud");
-
-		err = memfault_zephyr_port_post_data();
-		if (err) {
-			LOG_WRN("Failed to post data to Memfault, error: %d", err);
-		}
-
-		LOG_INF("Memfault data posted successfully");
 
 		if (!atomic_get(&connect_abort)) {
 			publish_cloud_msg(CLOUD_CONNECTED, NULL, 0);
@@ -266,6 +274,9 @@ static void connected_entry(void *obj)
 	ARG_UNUSED(obj);
 
 	LOG_DBG("Cloud module connected");
+
+	/* Do an initial update on connect */
+	post_memfault_data();
 }
 
 static enum smf_state_result connected_run(void *obj)

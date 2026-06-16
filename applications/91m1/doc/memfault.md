@@ -27,16 +27,16 @@ Complete [Getting started](README.md) first — the device must be onboarded to 
      upload-mcu-symbols build/zephyr/zephyr.elf
    ```
 
-3. **Verify data is flowing** — After the device connects to nRF Cloud, the cloud module posts Memfault data automatically. Look for:
+3. **Verify data is flowing** — After the device connects to nRF Cloud, periodic Memfault uploads run in the background (`CONFIG_MEMFAULT_PERIODIC_UPLOAD`). Look for:
 
    ```text
-   <inf> cloud: Connected to nRF Cloud
-   <inf> cloud: Memfault data posted successfully
+   <inf> mflt: Periodic background upload scheduled - initial delay=... period=...
    ```
 
-   Periodic uploads also run in the background (`CONFIG_MEMFAULT_PERIODIC_UPLOAD`). To trigger a manual upload from the shell:
+   To trigger a manual upload from the shell:
 
    ```shell
+   uart:~$ mflt test heartbeat
    uart:~$ mflt post_chunks
    ```
 
