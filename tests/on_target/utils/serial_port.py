@@ -14,6 +14,13 @@ from utils.logger import get_logger
 logger = get_logger()
 
 
+def _hardware_vars(test_config: dict) -> tuple[str, str]:
+    hardware = test_config.get("hardware", {})
+    segger_var = hardware.get("segger_sn_var", "CI_NRF54L15_SEGGER_SN")
+    serial_port_var = hardware.get("serial_port_var", "CI_NRF54L15_SERIAL_PORT")
+    return segger_var, serial_port_var
+
+
 def _match_by_serial_by_id(segger_sn: str) -> str | None:
     if platform.system() == "Darwin":
         base = Path("/dev")
@@ -81,15 +88,18 @@ def _match_via_nrfutil(segger_sn: str) -> str | None:
     return None
 
 
-def resolve_serial_port() -> str:
-    if explicit := os.environ.get("CI_NRF54L15_SERIAL_PORT"):
+def resolve_serial_port(test_config: dict) -> str:
+    segger_var, serial_port_var = _hardware_vars(test_config)
+
+    if explicit := os.environ.get(serial_port_var):
         if not Path(explicit).exists():
             raise RuntimeError(f"Configured serial port does not exist: {explicit}")
         return explicit
 
-    segger_sn = os.environ.get("CI_NRF54L15_SEGGER_SN")
-    if not segger_sn:
-        raise RuntimeError("CI_NRF54L15_SEGGER_SN is not set")
+    try:
+        segger_sn = os.environ[segger_var]
+    except KeyError as exc:
+        raise RuntimeError(f"{segger_var} is not set") from exc
 
     for resolver in (_match_by_serial_by_id, _match_via_nrfutil):
         if port := resolver(segger_sn):
@@ -97,5 +107,5 @@ def resolve_serial_port() -> str:
 
     raise RuntimeError(
         f"Could not resolve serial port for SEGGER SN {segger_sn}. "
-        "Set CI_NRF54L15_SERIAL_PORT explicitly."
+        f"Set {serial_port_var} explicitly."
     )

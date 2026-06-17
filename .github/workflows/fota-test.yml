@@ -1,9 +1,8 @@
-# Reusable nRF Cloud connect hardware test workflow.
+# Reusable application FOTA hardware test workflow.
 #
-# Provisions credentials on a device with no stored credentials, onboards via
-# onboard.csv, and verifies "Cloud connected" in the serial log.
+# Enable the matching entry in .github/test/tests.yml when test_fota is restored.
 
-name: Cloud Connect Test
+name: FOTA Test
 
 on:
   workflow_call:
@@ -16,16 +15,13 @@ permissions:
   contents: read
 
 jobs:
-  cloud_connect:
+  fota:
     runs-on: self-hosted
     container:
       image: ghcr.io/zephyrproject-rtos/ci:v0.29.2
       options: --privileged -v /dev:/dev
     env:
       CMAKE_PREFIX_PATH: /opt/toolchains
-      NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
-      NRF_CLOUD_CA_CERT: ${{ secrets.NRF_CLOUD_CA_CERT }}
-      NRF_CLOUD_CA_KEY: ${{ secrets.NRF_CLOUD_CA_KEY }}
       CI_NRF54L15_SEGGER_SN: ${{ vars.CI_NRF54L15_SEGGER_SN }}
       CI_NRF54L15_SERIAL_PORT: ${{ vars.CI_NRF54L15_SERIAL_PORT }}
       CI_NRF54L15_DEVICE_ID: ${{ vars.CI_NRF54L15_DEVICE_ID }}
@@ -55,14 +51,14 @@ jobs:
         run: |
           nrfutil install device
 
-      - name: Run cloud connect test
+      - name: Run FOTA test
         working-directory: serial-modem-host-applications
         env:
           REPO_ROOT: ${{ github.workspace }}/serial-modem-host-applications
           TEST_JSON: ${{ steps.config.outputs.test_json }}
         run: |
           PYTHONPATH=tests/on_target python3 -m pytest \
-            tests/on_target/tests/test_cloud/ \
+            tests/on_target/tests/test_fota/ \
             -c tests/on_target/tests/pytest.ini \
             --html=build/hardware-pytest-report.html \
             --self-contained-html \
