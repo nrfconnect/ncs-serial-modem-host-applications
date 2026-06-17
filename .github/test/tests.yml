@@ -1,0 +1,19 @@
+tests:
+  - id: 91m1-cloud-connect-nrf54l15
+    enabled: true
+    type: cloud_connect
+    app: 91m1
+    board: nrf54l15dk/nrf54l15/cpuapp/ns
+    hardware:
+      segger_sn_var: CI_NRF54L15_SEGGER_SN
+      serial_port_var: CI_NRF54L15_SERIAL_PORT
+      # Required allowlist: only this 16-hex nRF54L15 host ID may be deleted from nRF Cloud.
+      device_id_var: CI_NRF54L15_DEVICE_ID
+      # boot + slot0 from nrf54l15_cpuapp_mcuboot_partitions.dtsi (PSA at 0x175000+)
+      internal_erase_end: "0x16b000"
+      erase_external_slot: true
+      erase_credentials: true
+    nrf_cloud:
+      api_key_var: NRF_CLOUD_API_KEY
+      ca_cert_var: NRF_CLOUD_CA_CERT
+      ca_key_var: NRF_CLOUD_CA_KEY

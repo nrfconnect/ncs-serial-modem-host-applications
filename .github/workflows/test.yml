@@ -1,0 +1,78 @@
+# On-target hardware test: nRF Cloud provisioning and connection verification.
+#
+# Prerequisites:
+# - nRF54L15 DK + nRF9151 Serial Modem wired and configured per applications/91m1/doc
+# - Self-signed CA certificate and private key stored in GitHub secrets
+# - nRF Cloud API key with permission to onboard/delete devices
+#
+# GitHub variables:
+#   CI_NRF54L15_SEGGER_SN=<SEGGER serial of the nRF54L15 DK J-Link>
+#   CI_NRF54L15_DEVICE_ID=<16-hex host device ID allowlist; only this ID may be deleted>
+#   CI_NRF54L15_SERIAL_PORT=<optional explicit /dev/tty... path; auto-resolved if unset>
+#
+# GitHub secrets:
+#   NRF_CLOUD_API_KEY, NRF_CLOUD_CA_CERT, NRF_CLOUD_CA_KEY
+#
+# Verification flow:
+# 1. Clear application firmware and TF-M credential storage.
+# 2. Start pyserial capture, build and flash firmware.
+# 3. Read device ID from boot log; confirm missing-credentials warning.
+# 4. Delete only CI_NRF54L15_DEVICE_ID from nRF Cloud if present; provision and onboard.
+# 5. Wait for "Cloud connected" in the serial log.
+
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      test:
+        description: Which test to run
+        required: true
+        type: choice
+        default: all
+        options:
+          - all
+          - 91m1-cloud-connect-nrf54l15
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hardware-test-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: self-hosted
+    outputs:
+      matrix: ${{ steps.resolve.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          path: serial-modem-host-applications
+
+      - name: Resolve test matrix
+        id: resolve
+        working-directory: serial-modem-host-applications
+        env:
+          TEST_FILTER: ${{ github.event_name == 'workflow_dispatch' && inputs.test || 'all' }}
+        run: |
+          pip install --quiet pyyaml
+          ROOT=. .github/test/scripts/resolve-matrix.sh
+
+  cloud_connect:
+    needs: plan
+    if: ${{ needs.plan.outputs.matrix != '[]' && needs.plan.outputs.matrix != '' }}
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include: ${{ fromJson(needs.plan.outputs.matrix) }}
+    uses: ./.github/workflows/cloud-connect-test.yml
+    with:
+      test_id: ${{ matrix.id }}
+    secrets: inherit
