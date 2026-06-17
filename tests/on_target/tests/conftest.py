@@ -15,13 +15,7 @@ from utils.flash_tools import (
     west_build,
     west_flash,
 )
-from utils.helpers import (
-    REPO_ROOT,
-    SERIAL_LOG,
-    SUMMARY_FILE,
-    load_expected_device_id,
-    load_test_config,
-)
+from utils.helpers import REPO_ROOT, SERIAL_LOG, load_test_config
 from utils.logger import get_logger
 from utils.serial_port import resolve_serial_port
 from utils.uart import Uart
@@ -43,9 +37,8 @@ def _hardware_context(test_config: dict) -> tuple[str, str, Path, int, bool, boo
     return segger_sn, board, app_dir, internal_erase_end, erase_external, erase_credentials
 
 
-def _prepare_serial_logs() -> None:
-    SUMMARY_FILE.parent.mkdir(parents=True, exist_ok=True)
-    SUMMARY_FILE.write_text("", encoding="utf-8")
+def _prepare_serial_log() -> None:
+    SERIAL_LOG.parent.mkdir(parents=True, exist_ok=True)
     SERIAL_LOG.write_text("", encoding="utf-8")
 
 
@@ -60,7 +53,7 @@ def cloud_connect_dut(request: pytest.FixtureRequest, test_config: dict) -> type
     segger_sn, board, app_dir, internal_erase_end, erase_external, erase_credentials = (
         _hardware_context(test_config)
     )
-    _prepare_serial_logs()
+    _prepare_serial_log()
 
     logger.info("Step 1/4 - Clear application firmware")
     clear_application_firmware(
@@ -76,7 +69,7 @@ def cloud_connect_dut(request: pytest.FixtureRequest, test_config: dict) -> type
         logger.info("Step 2/4 - Skipping credential erase (erase_credentials=false)")
 
     logger.info("Step 3/4 - Start serial capture")
-    serial_port = resolve_serial_port()
+    serial_port = resolve_serial_port(test_config)
     uart = Uart(serial_port, log_path=SERIAL_LOG)
 
     logger.info("Step 4/4 - Build and flash firmware")
@@ -90,7 +83,6 @@ def cloud_connect_dut(request: pytest.FixtureRequest, test_config: dict) -> type
         app_dir=app_dir,
         board=board,
         serial_log=SERIAL_LOG,
-        summary_file=SUMMARY_FILE,
     )
 
     yield dut
@@ -102,12 +94,8 @@ def cloud_connect_dut(request: pytest.FixtureRequest, test_config: dict) -> type
 @pytest.fixture(scope="function")
 def nrf_cloud_env(test_config: dict) -> dict:
     nrf_cloud = test_config.get("nrf_cloud", {})
-    api_key_var = nrf_cloud.get("api_key_var", "NRF_CLOUD_API_KEY")
     ca_cert_var = nrf_cloud.get("ca_cert_var", "NRF_CLOUD_CA_CERT")
     ca_key_var = nrf_cloud.get("ca_key_var", "NRF_CLOUD_CA_KEY")
-
-    os.environ["NRF_CLOUD_API_KEY"] = os.environ[api_key_var]
-    os.environ["CI_NRF54L15_DEVICE_ID"] = load_expected_device_id(test_config)
 
     work_dir = Path(tempfile.mkdtemp(prefix="cloud-provision-", dir=REPO_ROOT / "build"))
     ca_cert = work_dir / "ca.pem"

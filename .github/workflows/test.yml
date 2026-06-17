@@ -36,17 +36,20 @@ on:
         options:
           - all
           - 91m1-cloud-connect-nrf54l15
+          - 91m1-application-fota-nrf54l15
 
 permissions:
   contents: read
 
 concurrency:
-  group: hardware-test-${{ github.event.pull_request.number || github.run_id }}
+  group: hardware-test-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   plan:
     runs-on: self-hosted
+    container:
+      image: ghcr.io/zephyrproject-rtos/ci:v0.29.2
     outputs:
       matrix: ${{ steps.resolve.outputs.matrix }}
     steps:
@@ -61,10 +64,10 @@ jobs:
         env:
           TEST_FILTER: ${{ github.event_name == 'workflow_dispatch' && inputs.test || 'all' }}
         run: |
-          pip install --quiet pyyaml
-          ROOT=. .github/test/scripts/resolve-matrix.sh
+          pip install --quiet -r tests/on_target/requirements.txt
+          PYTHONPATH=tests/on_target python3 -m ci.catalog matrix --filter "$TEST_FILTER"
 
-  cloud_connect:
+  hardware_test:
     needs: plan
     if: ${{ needs.plan.outputs.matrix != '[]' && needs.plan.outputs.matrix != '' }}
     strategy:
@@ -72,7 +75,7 @@ jobs:
       max-parallel: 1
       matrix:
         include: ${{ fromJson(needs.plan.outputs.matrix) }}
-    uses: ./.github/workflows/cloud-connect-test.yml
+    uses: ./.github/workflows/${{ matrix.type }}-test.yml
     with:
       test_id: ${{ matrix.id }}
     secrets: inherit
