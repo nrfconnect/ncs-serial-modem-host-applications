@@ -7,7 +7,7 @@
 cmake_minimum_required(VERSION 3.20.0)
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
-project("Serial Modem Host - 93m1")
+project("Serial Modem Host -  PPP")
 
 # Memfault CoAP includes unused nRF91 modem headers. Provide stubs on host MCU builds.
 # Remove when Memfault updates their SDK
