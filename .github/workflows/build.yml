@@ -42,6 +42,8 @@ jobs:
             board: nrf54l15dk/nrf54l15/cpuapp/ns
           - app: 93m1_ppp
             board: nrf93m1dk/nrf54l15/cpuapp/ns
+          - app: 93m1_at
+            board: nrf93m1dk/nrf54l15/cpuapp/ns
     name: Build ${{ matrix.app }} (${{ matrix.board }})
     steps:
       - name: Checkout

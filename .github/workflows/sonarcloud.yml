@@ -65,6 +65,10 @@ jobs:
           build-wrapper-linux-x86-64 --out-dir ../../${{ env.BUILD_WRAPPER_OUT_DIR }} \
             west build -b nrf93m1dk/nrf54l15/cpuapp/ns -p
 
+          cd ../93m1_at
+          build-wrapper-linux-x86-64 --out-dir ../../${{ env.BUILD_WRAPPER_OUT_DIR }} \
+            west build -b nrf93m1dk/nrf54l15/cpuapp/ns -p
+
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@299e4b793aaa83bf2aba7c9c14bedbb485688ec4 # v7.1.0
         env:
