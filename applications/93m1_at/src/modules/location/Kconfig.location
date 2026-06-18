@@ -1,0 +1,32 @@
+#
+# Copyright (c) 2026 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+#
+
+menuconfig APP_LOCATION
+	bool "Location module"
+	default y
+	depends on APP_MODEM_AT
+	help
+	  Requests an nRF Cloud location fix with AT%NRFCLOUDLOCATION. Driven by the
+	  sync state machine in main.
+
+if APP_LOCATION
+
+config APP_LOCATION_METHOD
+	int "Location data collection method (1-7)"
+	default 7
+	range 1 7
+	help
+	  The AT%NRFCLOUDLOCATION method parameter. See the AT command reference for details.
+
+config APP_LOCATION_AT_TIMEOUT_SECONDS
+	int "AT%NRFCLOUDLOCATION timeout (seconds)"
+	default 60
+
+module = APP_LOCATION
+module-str = location
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # APP_LOCATION

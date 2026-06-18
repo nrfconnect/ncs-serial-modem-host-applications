@@ -1,0 +1,12 @@
+sample:
+  name: Serial Modem Host 93m1 AT
+  description: AT host application for nRF93m1 serial modem.
+tests:
+  serial_modem_host.applications.93m1_at:
+    build_only: true
+    integration_platforms:
+      - nrf93m1dk/nrf54l15/cpuapp/ns
+    platform_allow:
+      - nrf93m1dk/nrf54l15/cpuapp/ns
+    tags:
+      - ci_build

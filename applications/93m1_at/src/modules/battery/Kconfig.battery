@@ -1,0 +1,26 @@
+#
+# Copyright (c) 2026 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+#
+
+menuconfig APP_BATTERY
+	bool "Battery module"
+	default y
+	depends on APP_MODEM_AT && NRF_FUEL_GAUGE && NPM13XX_CHARGER
+	help
+	  Samples the nPM1300 fuel gauge and reports state of charge to nRF Cloud as
+	  an AT%NRFCLOUDMESSAGE (appId "BATTERY"). Driven by the sync state machine in
+	  main.
+
+if APP_BATTERY
+
+config APP_BATTERY_AT_TIMEOUT_SECONDS
+	int "AT%NRFCLOUDMESSAGE timeout (seconds)"
+	default 60
+
+module = APP_BATTERY
+module-str = battery
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # APP_BATTERY

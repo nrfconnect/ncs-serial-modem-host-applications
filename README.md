@@ -5,7 +5,8 @@ Host-side firmware for Nordic Smart Modem modules. This repository is built on [
 Supported product targets:
 
 * **91m1** — host application for the [nRF91M1](https://www.nordicsemi.com/Products/nRF91M1) Smart Modem
-* **93m1** — host application for the [nRF93M1](https://www.nordicsemi.com/Products/nRF93-Series) Smart Modem
+* **93m1_ppp** — PPP host application for the [nRF93M1](https://www.nordicsemi.com/Products/nRF93-Series) Smart Modem
+* **93m1_at** — pure-AT host application for the [nRF93M1](https://www.nordicsemi.com/Products/nRF93-Series) Smart Modem
 
 ---
 
@@ -17,7 +18,8 @@ Supported product targets:
 | [`zephyr/module.yml`](zephyr/module.yml) | Registers this repo as a Zephyr module |
 | [`lib/include/`](lib/include/) | Shared headers (`app_common.h`) |
 | [`applications/91m1/`](applications/91m1/) | nRF91M1 host application |
-| [`applications/93m1/`](applications/93m1/) | nRF93M1 host application |
+| [`applications/93m1_ppp/`](applications/93m1_ppp/) | nRF93M1 PPP host application |
+| [`applications/93m1_at/`](applications/93m1_at/) | nRF93M1 pure-AT host application |
 
 ## Getting started
 
@@ -62,7 +64,8 @@ Follow the application documentation for hardware setup, build, flash, and (wher
 | Application | Documentation |
 |-------------|---------------|
 | **91m1** | [applications/91m1/doc/](applications/91m1/doc/README.md) |
-| **93m1** | [applications/93m1/doc/](applications/93m1/doc/README.md) |
+| **93m1_ppp** | [applications/93m1_ppp/doc/](applications/93m1_ppp/doc/README.md) |
+| **93m1_at** | [applications/93m1_at/doc/](applications/93m1_at/doc/README.md) |
 
 ---
 
