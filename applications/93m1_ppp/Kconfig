@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 #
 
-menu "Serial Modem Host 93m1"
+menu "Serial Modem Host 93m1_ppp"
 
 rsource "src/Kconfig.main"
 rsource "src/modules/network/Kconfig.network"

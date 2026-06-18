@@ -40,7 +40,7 @@ jobs:
         include:
           - app: 91m1
             board: nrf54l15dk/nrf54l15/cpuapp/ns
-          - app: 93m1
+          - app: 93m1_ppp
             board: nrf93m1dk/nrf54l15/cpuapp/ns
     name: Build ${{ matrix.app }} (${{ matrix.board }})
     steps:
