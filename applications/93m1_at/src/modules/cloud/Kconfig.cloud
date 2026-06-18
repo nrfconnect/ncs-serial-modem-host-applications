@@ -1,0 +1,21 @@
+#
+# Copyright (c) 2026 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+#
+
+menuconfig APP_CLOUD
+	bool "Cloud module (nRF Cloud identity)"
+	default y
+	depends on APP_MODEM_AT
+	help
+	  At boot, logs the modem's nRF Cloud device UUID and ensures the access key pair exists
+	  so the device can be onboarded.
+
+if APP_CLOUD
+
+module = APP_CLOUD
+module-str = cloud
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # APP_CLOUD
