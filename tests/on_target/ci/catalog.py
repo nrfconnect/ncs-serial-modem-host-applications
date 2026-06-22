@@ -42,6 +42,11 @@ def cmd_load(root: Path, test_id: str) -> None:
     raise SystemExit(f"test id not found: {test_id}")
 
 
+def cmd_list(root: Path) -> None:
+    for test in load_catalog(root):
+        print(test["id"])
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument(
@@ -70,6 +75,12 @@ def main(argv: list[str] | None = None) -> None:
     )
     load_parser.add_argument("test_id", help="Test id from tests.yml")
 
+    subparsers.add_parser(
+        "list",
+        help="Print enabled test ids, one per line",
+        allow_abbrev=False,
+    )
+
     args = parser.parse_args(argv)
     root = args.root.resolve()
 
@@ -77,6 +88,8 @@ def main(argv: list[str] | None = None) -> None:
         cmd_matrix(root, args.filter)
     elif args.command == "load":
         cmd_load(root, args.test_id)
+    elif args.command == "list":
+        cmd_list(root)
 
 
 if __name__ == "__main__":

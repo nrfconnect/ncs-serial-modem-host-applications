@@ -1,4 +1,10 @@
-# On-target hardware test: nRF Cloud provisioning and connection verification.
+# On-target hardware tests on self-hosted runners.
+#
+# Triggers:
+# - push to main: runs every enabled test in .github/test/tests.yml
+# - workflow_dispatch: pick branch (GitHub branch dropdown) and test (all or one id)
+#
+# When adding tests, update workflow_dispatch options below and .github/test/tests.yml.
 #
 # Prerequisites:
 # - nRF54L15 DK + nRF9151 Serial Modem wired and configured per applications/91m1/doc
@@ -12,13 +18,6 @@
 #
 # GitHub secrets:
 #   NRF_CLOUD_API_KEY, NRF_CLOUD_CA_CERT, NRF_CLOUD_CA_KEY
-#
-# Verification flow:
-# 1. Clear application firmware and TF-M credential storage.
-# 2. Start pyserial capture, build and flash firmware.
-# 3. Read device ID from boot log; confirm missing-credentials warning.
-# 4. Delete only CI_NRF54L15_DEVICE_ID from nRF Cloud if present; provision and onboard.
-# 5. Wait for "Cloud connected" in the serial log.
 
 name: Test
 
@@ -70,12 +69,75 @@ jobs:
   hardware_test:
     needs: plan
     if: ${{ needs.plan.outputs.matrix != '[]' && needs.plan.outputs.matrix != '' }}
+    name: ${{ matrix.id }}
+    runs-on: self-hosted
+    container:
+      image: ghcr.io/zephyrproject-rtos/ci:v0.29.2
+      options: --privileged -v /dev:/dev
     strategy:
       fail-fast: false
       max-parallel: 1
       matrix:
         include: ${{ fromJson(needs.plan.outputs.matrix) }}
-    uses: ./.github/workflows/${{ matrix.type }}-test.yml
-    with:
-      test_id: ${{ matrix.id }}
-    secrets: inherit
+    env:
+      CMAKE_PREFIX_PATH: /opt/toolchains
+      NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
+      NRF_CLOUD_CA_CERT: ${{ secrets.NRF_CLOUD_CA_CERT }}
+      NRF_CLOUD_CA_KEY: ${{ secrets.NRF_CLOUD_CA_KEY }}
+      CI_NRF54L15_SEGGER_SN: ${{ vars.CI_NRF54L15_SEGGER_SN }}
+      CI_NRF54L15_SERIAL_PORT: ${{ vars.CI_NRF54L15_SERIAL_PORT }}
+      CI_NRF54L15_DEVICE_ID: ${{ vars.CI_NRF54L15_DEVICE_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          path: serial-modem-host-applications
+
+      - name: Load test configuration
+        id: config
+        working-directory: serial-modem-host-applications
+        run: |
+          set -eu
+          pip install --quiet -r tests/on_target/requirements.txt
+          TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load "${{ matrix.id }}")"
+          {
+            echo "test_json<<EOF"
+            echo "$TEST_JSON"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Initialize West workspace
+        uses: ./serial-modem-host-applications/.github/actions/west-init
+
+      - name: Install test dependencies
+        run: |
+          nrfutil install device
+
+      - name: Run hardware test
+        working-directory: serial-modem-host-applications
+        env:
+          REPO_ROOT: ${{ github.workspace }}/serial-modem-host-applications
+          TEST_JSON: ${{ steps.config.outputs.test_json }}
+        run: |
+          PYTHONPATH=tests/on_target python3 -m pytest \
+            ${{ matrix.pytest_dir }} \
+            -c tests/on_target/tests/pytest.ini \
+            --html=build/hardware-pytest-report.html \
+            --self-contained-html \
+            -v
+
+      - name: Upload serial log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hardware-serial-log-${{ matrix.id }}-${{ github.run_id }}
+          path: serial-modem-host-applications/build/hardware-serial.log
+          if-no-files-found: ignore
+
+      - name: Upload pytest report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hardware-pytest-report-${{ matrix.id }}-${{ github.run_id }}
+          path: serial-modem-host-applications/build/hardware-pytest-report.html
+          if-no-files-found: ignore

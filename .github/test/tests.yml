@@ -2,6 +2,7 @@ tests:
   - id: 91m1-cloud-connect-nrf54l15
     enabled: true
     type: cloud_connect
+    pytest_dir: tests/on_target/tests/test_cloud/
     app: 91m1
     board: nrf54l15dk/nrf54l15/cpuapp/ns
     hardware:
@@ -21,6 +22,7 @@ tests:
   - id: 91m1-application-fota-nrf54l15
     enabled: false
     type: fota
+    pytest_dir: tests/on_target/tests/test_fota/
     app: 91m1
     board: nrf54l15dk/nrf54l15/cpuapp/ns
     hardware:
