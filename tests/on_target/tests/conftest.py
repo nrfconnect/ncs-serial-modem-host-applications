@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+import time
 import types
 from pathlib import Path
 
@@ -45,15 +46,16 @@ def cloud_connect_dut(request: pytest.FixtureRequest, test_config: dict) -> type
     segger_sn, board, app_dir = _hardware_context(test_config)
     _prepare_serial_log()
 
-    logger.info("Step 1/3 - Start serial capture")
-    serial_port = resolve_serial_port(test_config)
-    uart = Uart(serial_port, log_path=SERIAL_LOG)
-
-    logger.info("Step 2/3 - Build firmware")
+    logger.info("Step 1/3 - Build firmware")
     west_build(app_dir, board)
 
-    logger.info("Step 3/3 - Recover and flash firmware (clears all flash including TF-M storage)")
+    logger.info("Step 2/3 - Recover and flash firmware (clears all flash including TF-M storage)")
     west_flash(app_dir, segger_sn, recover=True)
+
+    logger.info("Step 3/3 - Start serial capture")
+    time.sleep(2)
+    serial_port = resolve_serial_port(test_config)
+    uart = Uart(serial_port, log_path=SERIAL_LOG)
 
     dut = types.SimpleNamespace(
         uart=uart,

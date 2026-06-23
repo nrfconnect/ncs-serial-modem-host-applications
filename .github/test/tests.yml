@@ -8,6 +8,8 @@ tests:
     hardware:
       segger_sn_var: CI_NRF54L15_SEGGER_SN
       serial_port_var: CI_NRF54L15_SERIAL_PORT
+      # uart20 console; VCOM0 disabled on CI DUT to release uart30 for the modem link.
+      console_vcom: 1
       # Required allowlist: only this 16-hex nRF54L15 host ID may be deleted from nRF Cloud.
       device_id_var: CI_NRF54L15_DEVICE_ID
     nrf_cloud:
@@ -24,4 +26,5 @@ tests:
     hardware:
       segger_sn_var: CI_NRF54L15_SEGGER_SN
       serial_port_var: CI_NRF54L15_SERIAL_PORT
+      console_vcom: 1
       device_id_var: CI_NRF54L15_DEVICE_ID
