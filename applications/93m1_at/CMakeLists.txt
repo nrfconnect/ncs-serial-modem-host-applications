@@ -20,9 +20,9 @@ target_sources(app PRIVATE
 	src/main.c
 	src/modules/network/network.c
 	src/modules/modem_at/modem_at.c
-	src/modules/cloud/cloud.c
 )
 
+target_sources_ifdef(CONFIG_APP_CLOUD app PRIVATE src/modules/cloud/cloud.c)
 target_sources_ifdef(CONFIG_APP_MODEM_AT_SHELL app PRIVATE src/modules/modem_at/modem_at_shell.c)
 target_sources_ifdef(CONFIG_APP_LOCATION app PRIVATE src/modules/location/location.c)
 target_sources_ifdef(CONFIG_APP_BATTERY app PRIVATE src/modules/battery/battery.c)

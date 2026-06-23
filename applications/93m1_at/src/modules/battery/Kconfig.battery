@@ -7,17 +7,16 @@
 menuconfig APP_BATTERY
 	bool "Battery module"
 	default y
-	depends on APP_MODEM_AT && NRF_FUEL_GAUGE && NPM13XX_CHARGER
+	depends on APP_CLOUD && NRF_FUEL_GAUGE && NPM13XX_CHARGER
 	help
-	  Samples the nPM1300 fuel gauge and reports state of charge to nRF Cloud as
-	  an AT%NRFCLOUDMESSAGE (appId "BATTERY"). Driven by the sync state machine in
-	  main.
+	  Samples the nPM1300 fuel gauge and publishes state of charge to the cloud
+	  module, which forwards it to nRF Cloud.
 
 if APP_BATTERY
 
-config APP_BATTERY_AT_TIMEOUT_SECONDS
-	int "AT%NRFCLOUDMESSAGE timeout (seconds)"
-	default 60
+config APP_BATTERY_THREAD_STACK_SIZE
+	int "Battery thread stack size (bytes)"
+	default 2048
 
 module = APP_BATTERY
 module-str = battery

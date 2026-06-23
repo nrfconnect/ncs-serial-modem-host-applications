@@ -14,6 +14,10 @@ menuconfig APP_LOCATION
 
 if APP_LOCATION
 
+config APP_LOCATION_THREAD_STACK_SIZE
+	int "Location thread stack size (bytes)"
+	default 1024
+
 config APP_LOCATION_METHOD
 	int "Location data collection method (1-7)"
 	default 7

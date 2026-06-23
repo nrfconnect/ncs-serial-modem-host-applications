@@ -5,14 +5,22 @@
 #
 
 menuconfig APP_CLOUD
-	bool "Cloud module (nRF Cloud identity)"
+	bool "Cloud module (nRF Cloud egress)"
 	default y
 	depends on APP_MODEM_AT
 	help
-	  At boot, logs the modem's nRF Cloud device UUID and ensures the access key pair exists
-	  so the device can be onboarded.
+	  Single owner of outbound nRF Cloud AT traffic. Forwards telemetry that other
+	  modules publish to cloud_chan while connected.
 
 if APP_CLOUD
+
+config APP_CLOUD_THREAD_STACK_SIZE
+	int "Thread stack size"
+	default 2048
+
+config APP_CLOUD_AT_TIMEOUT_SECONDS
+	int "Cloud AT command timeout (seconds)"
+	default 30
 
 module = APP_CLOUD
 module-str = cloud

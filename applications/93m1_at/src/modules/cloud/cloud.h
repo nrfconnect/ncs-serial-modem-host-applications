@@ -7,11 +7,24 @@
 #ifndef CLOUD_H_
 #define CLOUD_H_
 
+#include <zephyr/kernel.h>
+#include <zephyr/zbus/zbus.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void cloud_provision(void);
+ZBUS_CHAN_DECLARE(cloud_chan);
+
+enum cloud_msg_type {
+	/* Battery state-of-charge percentage, value in .battery_percent. */
+	CLOUD_BATTERY_SAMPLE = 0x1,
+};
+
+struct cloud_msg {
+	enum cloud_msg_type type;
+	int battery_percent;
+};
 
 #ifdef __cplusplus
 }

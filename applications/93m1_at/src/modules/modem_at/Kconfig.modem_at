@@ -5,14 +5,11 @@
 #
 
 menuconfig APP_MODEM_AT
-	bool "Modem AT transport (raw UART)"
+	bool "Modem AT handler (shared DLCI 3)"
 	default y
-	depends on MODEM_CHAT && MODEM_PIPE && MODEM_BACKEND_UART
+	select MODEM_AT_USER_PIPE
 	help
-	  Pure-AT transport: a single modem_chat instance attached directly to the
-	  modem UART (no CMUX, no PPP, no cellular driver). Provides the synchronous
-	  modem_at_run() request/response API and dispatches unsolicited result codes
-	  (URCs) to subscribers.
+	  Shared AT request/response API over the modem's host pipe (DLCI 3).
 
 if APP_MODEM_AT
 
@@ -20,7 +17,8 @@ config APP_MODEM_AT_SHELL
 	bool "modem at shell command"
 	default y if SHELL
 	help
-	  Adds the interactive `modem at "<command>"` shell for bring-up.
+	  Re-adds the interactive `modem at "<command>"` shell on top of the shared
+	  handler.
 
 config APP_MODEM_AT_COMMAND_MAX_SIZE
 	int "Maximum AT command length"
@@ -37,14 +35,6 @@ config APP_MODEM_AT_CHAT_RECEIVE_BUF_SIZE
 	  Must hold the longest single response line (e.g. a registration JWT from
 	  %REGJWT) plus the longest match.
 
-config APP_MODEM_AT_UART_RECEIVE_BUF_SIZE
-	int "UART backend receive buffer size"
-	default 1024
-
-config APP_MODEM_AT_UART_TRANSMIT_BUF_SIZE
-	int "UART backend transmit buffer size"
-	default 512
-
 config APP_MODEM_AT_TIMEOUT_SECONDS
 	int "Default AT command timeout (seconds)"
 	default 30
@@ -52,28 +42,6 @@ config APP_MODEM_AT_TIMEOUT_SECONDS
 config APP_MODEM_AT_URC_SUBSCRIBERS
 	int "Maximum URC subscribers"
 	default 4
-
-config APP_MODEM_AT_BOOT_RETRIES
-	int "Bare-AT ping retries while the modem boots"
-	default 40
-	help
-	  Number of 500 ms-spaced "AT" pings the transport sends at startup waiting
-	  for the modem to answer OK before running the startup configuration.
-
-config APP_MODEM_AT_POWER_OFF_MS
-	int "Modem rail off (drain) time during the boot power-cycle (ms)"
-	default 2000
-	help
-	  How long modem_dcdc is held off so the modem fully powers down before being
-	  re-enabled. Must exceed the rail's off-on-delay (500 ms) and be long enough
-	  to drain the modem after it has been powered through a flash session.
-
-config APP_MODEM_AT_POWER_ON_DELAY_MS
-	int "Delay after re-enabling the rail before pulsing the power key (ms)"
-	default 2000
-	help
-	  Time to let the modem_dcdc rail / board supply stabilise after the boot
-	  power-cycle before pulsing the power key.
 
 module = APP_MODEM_AT
 module-str = modem_at

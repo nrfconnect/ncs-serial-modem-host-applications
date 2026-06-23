@@ -32,6 +32,9 @@ static int cmd_modem_at(const struct shell *sh, size_t argc, char **argv)
 	case -EPERM:
 		shell_error(sh, "modem is not ready");
 		break;
+	case -EBUSY:
+		shell_error(sh, "AT pipe busy");
+		break;
 	default:
 		shell_error(sh, "AT command failed (%d)", ret);
 		break;

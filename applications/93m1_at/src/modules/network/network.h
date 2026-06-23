@@ -17,8 +17,12 @@ extern "C" {
 ZBUS_CHAN_DECLARE(network_chan);
 
 enum network_msg_type {
+	/* Reported by the module: current link state. */
 	NETWORK_DISCONNECTED = 0x1,
 	NETWORK_CONNECTED,
+	/* Requested of the module: bring the link up / down. */
+	NETWORK_CONNECT,
+	NETWORK_DISCONNECT,
 };
 
 struct network_msg {
