@@ -6,7 +6,9 @@ from __future__ import annotations
 import json
 import os
 import platform
+import re
 import subprocess
+import time
 from pathlib import Path
 
 from utils.logger import get_logger
@@ -24,6 +26,22 @@ def _hardware_vars(test_config: dict) -> tuple[str, str, int | None]:
     if console_vcom is not None:
         console_vcom = int(console_vcom)
     return segger_var, serial_port_var, console_vcom
+
+
+def _normalize_serial_number(serial_number: str) -> str:
+    serial_number = str(serial_number).strip()
+    if serial_number.isdigit():
+        return str(int(serial_number))
+    return serial_number
+
+
+def _serial_numbers_match(left: str, right: str) -> bool:
+    return _normalize_serial_number(left) == _normalize_serial_number(right)
+
+
+def _by_id_interface_index(path: str) -> int:
+    match = re.search(r"-if(\d+)$", Path(path).name)
+    return int(match.group(1)) if match else 0
 
 
 def _port_path(port: dict | str) -> str | None:
@@ -70,6 +88,10 @@ def _parse_nrfutil_devices(stdout: str) -> list[dict]:
         except json.JSONDecodeError:
             continue
 
+        if isinstance(payload.get("devices"), list):
+            devices = payload["devices"]
+            continue
+
         data = payload.get("data")
         if not isinstance(data, dict):
             continue
@@ -83,18 +105,38 @@ def _parse_nrfutil_devices(stdout: str) -> list[dict]:
             if isinstance(inner, list):
                 devices = inner
 
+    if devices:
+        return devices
+
+    try:
+        payload = json.loads(stdout)
+    except json.JSONDecodeError:
+        return devices
+
+    if isinstance(payload.get("devices"), list):
+        return payload["devices"]
+
+    data = payload.get("data")
+    if isinstance(data, dict) and isinstance(data.get("devices"), list):
+        return data["devices"]
+
     return devices
 
 
-def _match_by_serial_by_id(segger_sn: str) -> str | None:
+def _match_by_serial_by_id(segger_sn: str, console_vcom: int | None) -> str | None:
+    padded_sn = segger_sn.zfill(12)
     if platform.system() == "Darwin":
         base = Path("/dev")
-        candidates = sorted(p for p in base.glob("tty.*") if segger_sn in p.name)
+        candidates = sorted(
+            p for p in base.glob("tty.*") if segger_sn in p.name or padded_sn in p.name
+        )
     else:
         base = Path("/dev/serial/by-id")
         if not base.is_dir():
             return None
-        candidates = sorted(p for p in base.iterdir() if segger_sn in p.name)
+        candidates = sorted(
+            p for p in base.iterdir() if segger_sn in p.name or padded_sn in p.name
+        )
 
     if not candidates:
         return None
@@ -116,7 +158,28 @@ def _match_by_serial_by_id(segger_sn: str) -> str | None:
         )
         return None
 
-    logger.info("Resolved serial port via by-id: %s", console_candidates[0])
+    console_candidates.sort(key=_by_id_interface_index)
+    if len(console_candidates) > 1:
+        logger.info(
+            "Found %d console TTY paths for SEGGER SN %s: %s",
+            len(console_candidates),
+            segger_sn,
+            ", ".join(console_candidates),
+        )
+
+    chosen = _select_by_id_port(console_candidates, console_vcom)
+    logger.info("Resolved serial port via by-id: %s", chosen)
+    return chosen
+
+
+def _select_by_id_port(console_candidates: list[str], console_vcom: int | None) -> str:
+    if console_vcom is not None and len(console_candidates) > 1:
+        index = min(console_vcom, len(console_candidates) - 1)
+        return console_candidates[index]
+
+    if len(console_candidates) > 1:
+        return console_candidates[-1]
+
     return console_candidates[0]
 
 
@@ -137,6 +200,7 @@ def _match_via_nrfutil(segger_sn: str, console_vcom: int | None) -> str | None:
         logger.warning("Could not parse nrfutil device list output")
         return None
 
+    matched_device = False
     for device in devices:
         if not isinstance(device, dict):
             continue
@@ -145,9 +209,14 @@ def _match_via_nrfutil(segger_sn: str, console_vcom: int | None) -> str | None:
             device.get("serial_number"),
             device.get("jlinkSerialNumber"),
         ]
-        if segger_sn not in {str(value) for value in serial_candidates if value}:
+        if not any(
+            _serial_numbers_match(str(value), segger_sn)
+            for value in serial_candidates
+            if value
+        ):
             continue
 
+        matched_device = True
         for key in ("serialPorts", "serial_ports", "vcomPorts", "vcom_ports"):
             ports = device.get(key)
             if not isinstance(ports, list) or not ports:
@@ -155,6 +224,15 @@ def _match_via_nrfutil(segger_sn: str, console_vcom: int | None) -> str | None:
             if port := _select_console_port(ports, console_vcom):
                 logger.info("Resolved serial port via nrfutil: %s", port)
                 return port
+
+        logger.warning(
+            "nrfutil found SEGGER SN %s but reported no serial ports (traits=%s)",
+            segger_sn,
+            device.get("traits"),
+        )
+
+    if not matched_device:
+        logger.warning("nrfutil device list did not include SEGGER SN %s", segger_sn)
 
     return None
 
@@ -172,12 +250,18 @@ def resolve_serial_port(test_config: dict) -> str:
     except KeyError as exc:
         raise RuntimeError(f"{segger_var} is not set") from exc
 
-    for resolver in (
-        lambda: _match_via_nrfutil(segger_sn, console_vcom),
-        lambda: _match_by_serial_by_id(segger_sn),
-    ):
-        if port := resolver():
-            return port
+    deadline = time.monotonic() + 10.0
+    while True:
+        for resolver in (
+            lambda: _match_via_nrfutil(segger_sn, console_vcom),
+            lambda: _match_by_serial_by_id(segger_sn, console_vcom),
+        ):
+            if port := resolver():
+                return port
+
+        if time.monotonic() >= deadline:
+            break
+        time.sleep(1.0)
 
     raise RuntimeError(
         f"Could not resolve serial port for SEGGER SN {segger_sn}. "
