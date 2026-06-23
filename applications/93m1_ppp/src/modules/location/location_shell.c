@@ -6,7 +6,9 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/shell/shell.h>
+#include <zephyr/zbus/zbus.h>
 
+#include "app_common.h"
 #include "location.h"
 
 static int cmd_location_fix(const struct shell *sh, size_t argc, char **argv)
@@ -14,7 +16,9 @@ static int cmd_location_fix(const struct shell *sh, size_t argc, char **argv)
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
 
-	location_trigger(LOCATION_MODE_ALL);
+	struct location_msg msg = { .type = LOCATION_FIX_REQUEST, .mode = LOCATION_MODE_ALL };
+
+	(void)zbus_chan_pub(&location_chan, &msg, PUB_TIMEOUT);
 	shell_print(sh, "Location fix requested (cell + wifi)");
 
 	return 0;
@@ -25,7 +29,9 @@ static int cmd_location_cell(const struct shell *sh, size_t argc, char **argv)
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
 
-	location_trigger(LOCATION_MODE_CELL);
+	struct location_msg msg = { .type = LOCATION_FIX_REQUEST, .mode = LOCATION_MODE_CELL };
+
+	(void)zbus_chan_pub(&location_chan, &msg, PUB_TIMEOUT);
 	shell_print(sh, "Location fix requested (cell only)");
 
 	return 0;
@@ -36,7 +42,9 @@ static int cmd_location_wifi(const struct shell *sh, size_t argc, char **argv)
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
 
-	location_trigger(LOCATION_MODE_WIFI);
+	struct location_msg msg = { .type = LOCATION_FIX_REQUEST, .mode = LOCATION_MODE_WIFI };
+
+	(void)zbus_chan_pub(&location_chan, &msg, PUB_TIMEOUT);
 	shell_print(sh, "Location fix requested (wifi only)");
 
 	return 0;

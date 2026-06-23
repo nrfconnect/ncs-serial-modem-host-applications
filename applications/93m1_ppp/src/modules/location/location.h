@@ -7,6 +7,8 @@
 #ifndef LOCATION_H_
 #define LOCATION_H_
 
+#include <zephyr/zbus/zbus.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -17,13 +19,16 @@ enum location_mode {
 	LOCATION_MODE_WIFI, /* Wi-Fi only   */
 };
 
-/**
- * @brief Request an on-demand location fix with the given source(s).
- *
- * Wakes the location thread to scan and POST now, in addition to the periodic
- * schedule. No-op until the network is connected.
- */
-void location_trigger(enum location_mode mode);
+enum location_msg_type {
+	LOCATION_FIX_REQUEST,
+};
+
+struct location_msg {
+	enum location_msg_type type;
+	enum location_mode mode;
+};
+
+ZBUS_CHAN_DECLARE(location_chan);
 
 #ifdef __cplusplus
 }

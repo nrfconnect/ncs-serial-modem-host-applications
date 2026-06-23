@@ -36,6 +36,17 @@ ZBUS_CHAN_ADD_OBS(network_chan, memfault_subscriber, 0);
 #if defined(CONFIG_MEMFAULT_USE_NRF_CLOUD_COAP)
 #define DATE_TIME_WAIT_SECONDS 120
 
+static void date_time_evt_handler(const struct date_time_evt *evt);
+static int coap_prepare(void);
+#endif
+static void upload_memfault_data(void);
+#if defined(CONFIG_APP_FOTA)
+static void request_fota_poll(void);
+#endif
+static void memfault_wdt_callback(int channel_id, void *user_data);
+static void memfault_module_thread(void);
+
+#if defined(CONFIG_MEMFAULT_USE_NRF_CLOUD_COAP)
 static K_SEM_DEFINE(date_time_ready, 0, 1);
 
 static void date_time_evt_handler(const struct date_time_evt *evt)

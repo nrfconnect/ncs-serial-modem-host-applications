@@ -6,10 +6,13 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/zbus/zbus.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/sensor/npm13xx_charger.h>
 #include <nrf_fuel_gauge.h>
 
+#include "app_common.h"
+#include "battery.h"
 #include "lp803448_model.h"
 
 LOG_MODULE_REGISTER(battery, CONFIG_APP_BATTERY_LOG_LEVEL);
@@ -20,12 +23,33 @@ LOG_MODULE_REGISTER(battery, CONFIG_APP_BATTERY_LOG_LEVEL);
 #define CHG_STATUS_CC_MASK       BIT(3)
 #define CHG_STATUS_CV_MASK       BIT(4)
 
-#define SAMPLE_INTERVAL K_SECONDS(CONFIG_APP_BATTERY_SAMPLE_INTERVAL_SECONDS)
+ZBUS_CHAN_DEFINE(battery_chan,
+		 struct battery_msg,
+		 NULL,
+		 NULL,
+		 ZBUS_OBSERVERS_EMPTY,
+		 ZBUS_MSG_INIT(0));
 
-static const struct device *const charger = DEVICE_DT_GET(DT_NODELABEL(npm1300_charger));
+ZBUS_MSG_SUBSCRIBER_DEFINE(battery);
 
-static int read_sensors(float *voltage, float *current, float *temp, int32_t *chg_status,
-			bool *vbus)
+#define CHANNEL_LIST(X) X(battery_chan, struct battery_msg)
+
+#define MAX_MSG_SIZE MAX_MSG_SIZE_FROM_LIST(CHANNEL_LIST)
+
+#define ADD_OBSERVERS(_chan, _type) ZBUS_CHAN_ADD_OBS(_chan, battery, 0);
+
+CHANNEL_LIST(ADD_OBSERVERS)
+
+static int read_sensors(const struct device *charger, float *voltage, float *current,
+			float *temp, int32_t *chg_status, bool *vbus);
+static void update_charge_state(int32_t chg_status, int32_t *prev);
+static int fuel_gauge_setup(const struct device *charger);
+static void battery_sample(const struct device *charger, int64_t *ref_time,
+			   int32_t *prev_chg_status);
+static void battery_thread(void);
+
+static int read_sensors(const struct device *charger, float *voltage, float *current,
+			float *temp, int32_t *chg_status, bool *vbus)
 {
 	int err;
 	struct sensor_value val = {0};
@@ -96,7 +120,7 @@ static void update_charge_state(int32_t chg_status, int32_t *prev)
 					      &ext);
 }
 
-static int fuel_gauge_setup(void)
+static int fuel_gauge_setup(const struct device *charger)
 {
 	int err;
 	int32_t chg_status;
@@ -104,7 +128,7 @@ static int fuel_gauge_setup(void)
 	struct nrf_fuel_gauge_init_parameters params = { .model = &battery_model };
 	struct sensor_value desired;
 
-	err = read_sensors(&params.v0, &params.i0, &params.t0, &chg_status, &vbus);
+	err = read_sensors(charger, &params.v0, &params.i0, &params.t0, &chg_status, &vbus);
 	if (err) {
 		return err;
 	}
@@ -139,18 +163,55 @@ static int fuel_gauge_setup(void)
 /* Owns the fuel gauge: init once, then keep it fed. Memfault reads SoC/SoH via
  * nrf_fuel_gauge_soc_get()/soh_get() on its own heartbeat.
  */
+static void battery_sample(const struct device *charger, int64_t *ref_time,
+			   int32_t *prev_chg_status)
+{
+	int err;
+	float voltage;
+	float current;
+	float temp;
+	float soc;
+	int32_t chg_status;
+	bool vbus;
+
+	err = read_sensors(charger, &voltage, &current, &temp, &chg_status, &vbus);
+	if (err) {
+		LOG_WRN("read_sensors, error: %d", err);
+		return;
+	}
+
+	(void)nrf_fuel_gauge_ext_state_update(
+		vbus ? NRF_FUEL_GAUGE_EXT_STATE_INFO_VBUS_CONNECTED
+		     : NRF_FUEL_GAUGE_EXT_STATE_INFO_VBUS_DISCONNECTED, NULL);
+	update_charge_state(chg_status, prev_chg_status);
+
+	float delta = (float)k_uptime_delta(ref_time) / 1000.0f;
+
+	err = nrf_fuel_gauge_process(voltage, current, temp, delta, &soc, NULL);
+	if (err) {
+		LOG_WRN("nrf_fuel_gauge_process, error: %d", err);
+		return;
+	}
+
+	LOG_DBG("SoC %d%%, %d mV, %s", (int)soc, (int)(voltage * 1000),
+		vbus ? "VBUS" : "battery");
+}
+
 static void battery_thread(void)
 {
 	int err;
+	const struct zbus_channel *chan;
+	uint8_t msg_buf[MAX_MSG_SIZE];
 	int64_t ref_time;
 	int32_t prev_chg_status = -1;
+	const struct device *const charger = DEVICE_DT_GET(DT_NODELABEL(npm1300_charger));
 
 	if (!device_is_ready(charger)) {
 		LOG_ERR("Charger device not ready");
 		return;
 	}
 
-	err = fuel_gauge_setup();
+	err = fuel_gauge_setup(charger);
 	if (err) {
 		LOG_ERR("fuel_gauge_setup, error: %d", err);
 		return;
@@ -158,36 +219,13 @@ static void battery_thread(void)
 	ref_time = k_uptime_get();
 
 	while (true) {
-		float voltage;
-		float current;
-		float temp;
-		float soc;
-		int32_t chg_status;
-		bool vbus;
-
-		k_sleep(SAMPLE_INTERVAL);
-
-		err = read_sensors(&voltage, &current, &temp, &chg_status, &vbus);
+		err = zbus_sub_wait_msg(&battery, &chan, msg_buf, K_FOREVER);
 		if (err) {
-			LOG_WRN("read_sensors, error: %d", err);
-			continue;
+			LOG_ERR("zbus_sub_wait_msg, error: %d", err);
+			return;
 		}
 
-		(void)nrf_fuel_gauge_ext_state_update(
-			vbus ? NRF_FUEL_GAUGE_EXT_STATE_INFO_VBUS_CONNECTED
-			     : NRF_FUEL_GAUGE_EXT_STATE_INFO_VBUS_DISCONNECTED, NULL);
-		update_charge_state(chg_status, &prev_chg_status);
-
-		float delta = (float)k_uptime_delta(&ref_time) / 1000.0f;
-
-		err = nrf_fuel_gauge_process(voltage, current, temp, delta, &soc, NULL);
-		if (err) {
-			LOG_WRN("nrf_fuel_gauge_process, error: %d", err);
-			continue;
-		}
-
-		LOG_DBG("SoC %d%%, %d mV, %s", (int)soc, (int)(voltage * 1000),
-			vbus ? "VBUS" : "battery");
+		battery_sample(charger, &ref_time, &prev_chg_status);
 	}
 }
 
