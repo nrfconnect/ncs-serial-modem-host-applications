@@ -5,7 +5,7 @@ from __future__ import annotations
 from utils.helpers import (
     assert_dut_device_id,
     load_expected_device_id,
-    parse_device_id,
+    wait_for_device_id,
 )
 from utils.logger import get_logger
 from utils.nrf_cloud_device import delete_if_exists, onboard
@@ -16,7 +16,6 @@ logger = get_logger()
 
 CLOUD_CONNECTED_LOG = "Cloud connected"
 MISSING_CREDENTIALS_LOG = "Missing nRF Cloud credentials"
-SHELL_PROMPT = "uart:~$"
 
 
 def test_cloud_connect_after_provisioning(
@@ -28,10 +27,9 @@ def test_cloud_connect_after_provisioning(
     dut = cloud_connect_dut
     expected_device_id = load_expected_device_id(test_config)
 
-    logger.info("Phase 1/5 - Wait for shell and read device ID from boot log")
-    dut.uart.wait_for_substring(SHELL_PROMPT, timeout=120)
+    logger.info("Phase 1/5 - Wait for device ID in boot log")
     device_id = assert_dut_device_id(
-        parse_device_id(dut.uart.whole_log),
+        wait_for_device_id(dut.uart, timeout=30),
         expected_device_id,
     )
 
