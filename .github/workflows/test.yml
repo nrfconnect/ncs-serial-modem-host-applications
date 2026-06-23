@@ -7,6 +7,7 @@
 # When adding tests, update workflow_dispatch options below and .github/test/tests.yml.
 #
 # Prerequisites:
+# - Self-hosted Linux runner with USB access to the DK (container runs --privileged -v /dev:/dev)
 # - nRF54L15 DK + nRF9151 Serial Modem wired and configured per applications/91m1/doc
 # - Self-signed CA certificate and private key stored in GitHub secrets
 # - nRF Cloud API key with permission to onboard/delete devices
@@ -109,9 +110,20 @@ jobs:
       - name: Initialize West workspace
         uses: ./serial-modem-host-applications/.github/actions/west-init
 
-      - name: Install test dependencies
+      - name: Install nrfutil
         run: |
-          nrfutil install device
+          set -eu
+          work_dir="$(mktemp -d)"
+          curl -fsSL \
+            https://files.nordicsemi.com/artifactory/swtools/external/nrfutil/executables/x86_64-unknown-linux-gnu/nrfutil \
+            -o "$work_dir/nrfutil"
+          chmod +x "$work_dir/nrfutil"
+          install -m 0755 "$work_dir/nrfutil" /usr/local/bin/nrfutil
+          curl -fsSL \
+            https://files.nordicsemi.com/artifactory/swtools/external/nrfutil/packages/nrfutil/nrfutil-x86_64-unknown-linux-gnu-8.1.1.tar.gz \
+            -o "$work_dir/nrfutil-core.tar.gz"
+          export NRFUTIL_BOOTSTRAP_TARBALL_PATH="$work_dir/nrfutil-core.tar.gz"
+          nrfutil install device=2.19.0 --force
 
       - name: Run hardware test
         working-directory: serial-modem-host-applications
