@@ -113,6 +113,7 @@ jobs:
       - name: Install nrfutil
         run: |
           set -eu
+          apt-get update && apt-get install --no-install-recommends -y curl
           work_dir="$(mktemp -d)"
           curl -fsSL \
             https://files.nordicsemi.com/artifactory/swtools/external/nrfutil/executables/x86_64-unknown-linux-gnu/nrfutil \
