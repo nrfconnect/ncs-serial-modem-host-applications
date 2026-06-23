@@ -42,10 +42,23 @@ struct network_state_object {
 	uint8_t msg_buf[sizeof(struct network_msg)];
 };
 
-static struct net_mgmt_event_callback l4_cb;
-static struct net_mgmt_event_callback conn_cb;
-static struct network_state_object network_state;
-static const struct smf_state states[];
+static void publish_network_status(enum network_msg_type type);
+static void l4_event_handler(struct net_mgmt_event_callback *cb, uint64_t event,
+			     struct net_if *iface);
+static void connectivity_event_handler(struct net_mgmt_event_callback *cb, uint64_t event,
+				       struct net_if *iface);
+static void disconnected_entry(void *obj);
+static enum smf_state_result disconnected_run(void *obj);
+static void connected_entry(void *obj);
+static enum smf_state_result connected_run(void *obj);
+static void network_wdt_callback(int channel_id, void *user_data);
+
+static const struct smf_state states[] = {
+	[STATE_DISCONNECTED] = SMF_CREATE_STATE(disconnected_entry,
+						disconnected_run, NULL, NULL, NULL),
+	[STATE_CONNECTED] = SMF_CREATE_STATE(connected_entry,
+					     connected_run, NULL, NULL, NULL),
+};
 
 static void publish_network_status(enum network_msg_type type)
 {
@@ -164,13 +177,6 @@ static enum smf_state_result connected_run(void *obj)
 	return SMF_EVENT_HANDLED;
 }
 
-static const struct smf_state states[] = {
-	[STATE_DISCONNECTED] = SMF_CREATE_STATE(disconnected_entry,
-						disconnected_run, NULL, NULL, NULL),
-	[STATE_CONNECTED] = SMF_CREATE_STATE(connected_entry,
-					     connected_run, NULL, NULL, NULL),
-};
-
 static void network_wdt_callback(int channel_id, void *user_data)
 {
 	LOG_ERR("Network watchdog expired, channel: %d, thread: %s",
@@ -183,6 +189,9 @@ static void network_module(void)
 {
 	int err;
 	int task_wdt_id;
+	static struct net_mgmt_event_callback l4_cb;
+	static struct net_mgmt_event_callback conn_cb;
+	static struct network_state_object network_state;
 	const uint32_t wdt_timeout_ms =
 		(CONFIG_APP_NETWORK_WATCHDOG_TIMEOUT_SECONDS * MSEC_PER_SEC);
 	const uint32_t execution_time_ms =

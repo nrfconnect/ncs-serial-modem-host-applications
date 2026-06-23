@@ -20,6 +20,12 @@
 #else
 #define FOTA_CHANNEL(X)
 #endif
+#if defined(CONFIG_APP_LOCATION)
+#include "modules/location/location.h"
+#endif
+#if defined(CONFIG_APP_BATTERY)
+#include "modules/battery/battery.h"
+#endif
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_MAIN_LOG_LEVEL);
 
@@ -66,7 +72,61 @@ struct main_state {
 	uint8_t msg_buf[MAX_MSG_SIZE];
 };
 
-static const struct smf_state states[];
+#if defined(CONFIG_APP_LOCATION)
+static void location_fix_handler(struct k_work *work);
+K_WORK_DELAYABLE_DEFINE(location_fix_work, location_fix_handler);
+#endif
+#if defined(CONFIG_APP_BATTERY)
+static void battery_sample_handler(struct k_work *work);
+K_WORK_DELAYABLE_DEFINE(battery_sample_work, battery_sample_handler);
+#endif
+
+static enum smf_state_result init_run(void *obj);
+static void running_entry(void *obj);
+static enum smf_state_result running_run(void *obj);
+
+static const struct smf_state states[] = {
+	[STATE_INIT] = SMF_CREATE_STATE(NULL, init_run, NULL, NULL, NULL),
+	[STATE_RUNNING] = SMF_CREATE_STATE(running_entry, running_run, NULL, NULL, NULL),
+};
+
+#if defined(CONFIG_APP_LOCATION)
+static void location_fix_handler(struct k_work *work)
+{
+	struct location_msg msg = { .type = LOCATION_FIX_REQUEST, .mode = LOCATION_MODE_ALL };
+	int err;
+
+	err = zbus_chan_pub(&location_chan, &msg, PUB_TIMEOUT);
+	if (err) {
+		LOG_ERR("zbus_chan_pub location_chan, error: %d", err);
+	}
+
+	err = k_work_reschedule(&location_fix_work,
+				K_SECONDS(CONFIG_APP_LOCATION_INTERVAL_SECONDS));
+	if (err < 0) {
+		LOG_ERR("k_work_reschedule location_fix_work, error: %d", err);
+	}
+}
+#endif
+
+#if defined(CONFIG_APP_BATTERY)
+static void battery_sample_handler(struct k_work *work)
+{
+	struct battery_msg msg = { .type = BATTERY_SAMPLE };
+	int err;
+
+	err = zbus_chan_pub(&battery_chan, &msg, PUB_TIMEOUT);
+	if (err) {
+		LOG_ERR("zbus_chan_pub battery_chan, error: %d", err);
+	}
+
+	err = k_work_reschedule(&battery_sample_work,
+				K_SECONDS(CONFIG_APP_BATTERY_SAMPLE_INTERVAL_SECONDS));
+	if (err < 0) {
+		LOG_ERR("k_work_reschedule battery_sample_work, error: %d", err);
+	}
+}
+#endif
 
 static enum smf_state_result init_run(void *obj)
 {
@@ -90,6 +150,14 @@ static void running_entry(void *obj)
 	ARG_UNUSED(obj);
 
 	LOG_INF("Serial Modem Host 93m1 starting");
+
+#if defined(CONFIG_APP_BATTERY)
+	int err = k_work_reschedule(&battery_sample_work, K_NO_WAIT);
+
+	if (err < 0) {
+		LOG_ERR("k_work_reschedule battery_sample_work, error: %d", err);
+	}
+#endif
 }
 
 static enum smf_state_result running_run(void *obj)
@@ -103,9 +171,16 @@ static enum smf_state_result running_run(void *obj)
 		switch (msg->type) {
 		case NETWORK_CONNECTED:
 			LOG_INF("Network connected");
+#if defined(CONFIG_APP_LOCATION)
+			k_work_reschedule(&location_fix_work,
+					  K_SECONDS(CONFIG_APP_LOCATION_BOOT_DELAY_SECONDS));
+#endif
 			break;
 		case NETWORK_DISCONNECTED:
 			LOG_INF("Network disconnected");
+#if defined(CONFIG_APP_LOCATION)
+			k_work_cancel_delayable(&location_fix_work);
+#endif
 #if defined(CONFIG_APP_FOTA)
 			{
 				struct fota_msg fota_msg = { .type = FOTA_NETWORK_DISCONNECTED };
@@ -158,11 +233,6 @@ static enum smf_state_result running_run(void *obj)
 
 	return SMF_EVENT_HANDLED;
 }
-
-static const struct smf_state states[] = {
-	[STATE_INIT] = SMF_CREATE_STATE(NULL, init_run, NULL, NULL, NULL),
-	[STATE_RUNNING] = SMF_CREATE_STATE(running_entry, running_run, NULL, NULL, NULL),
-};
 
 static void main_wdt_callback(int channel_id, void *user_data)
 {

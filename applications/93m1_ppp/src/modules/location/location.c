@@ -7,7 +7,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/zbus/zbus.h>
-#include <zephyr/sys/atomic.h>
+#include <zephyr/smf.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <net/nrf_cloud_coap.h>
@@ -16,13 +16,31 @@
 #include <modem/lte_lc.h>
 #include <zephyr/net/wifi_mgmt.h>
 
+#include "app_common.h"
 #include "modules/modem_at/modem_at.h"
 #include "modules/network/network.h"
 #include "location.h"
 
 LOG_MODULE_REGISTER(location, CONFIG_APP_LOCATION_LOG_LEVEL);
 
-#define SAMPLE_INTERVAL K_SECONDS(CONFIG_APP_LOCATION_INTERVAL_SECONDS)
+ZBUS_CHAN_DEFINE(location_chan,
+		 struct location_msg,
+		 NULL,
+		 NULL,
+		 ZBUS_OBSERVERS_EMPTY,
+		 ZBUS_MSG_INIT(0));
+
+ZBUS_MSG_SUBSCRIBER_DEFINE(location);
+
+#define CHANNEL_LIST(X)				\
+	X(network_chan, struct network_msg)	\
+	X(location_chan, struct location_msg)
+
+#define MAX_MSG_SIZE MAX_MSG_SIZE_FROM_LIST(CHANNEL_LIST)
+
+#define ADD_OBSERVERS(_chan, _type) ZBUS_CHAN_ADD_OBS(_chan, location, 0);
+
+CHANNEL_LIST(ADD_OBSERVERS)
 
 /* Single-cell + Wi-Fi measurements over the shared AT pipe (DLCI 3), resolved
  * to a position by the nRF Cloud ground-fix service over the shared CoAP/DTLS
@@ -46,32 +64,102 @@ struct wifi_ap {
 	int rssi;
 };
 
-static char at_resp[CONFIG_APP_LOCATION_AT_RESPONSE_SIZE];
-static struct cell_info cell;
-static struct wifi_ap aps[CONFIG_APP_LOCATION_MAX_WIFI_APS];
-static int ap_count;
+struct location_scan_ctx {
+	char at_resp[CONFIG_APP_LOCATION_AT_RESPONSE_SIZE];
+	struct cell_info cell;
+	struct wifi_ap aps[CONFIG_APP_LOCATION_MAX_WIFI_APS];
+	int ap_count;
+	struct wifi_scan_result coap_aps[CONFIG_APP_LOCATION_MAX_WIFI_APS];
+};
 
-static atomic_t connected;
-static atomic_t requested_mode = ATOMIC_INIT(LOCATION_MODE_ALL);
-static K_SEM_DEFINE(connected_sem, 0, 1);
-static K_SEM_DEFINE(fix_trigger, 0, 1);
+enum location_state {
+	STATE_DISCONNECTED,
+	STATE_CONNECTED,
+};
 
-static void on_network(const struct zbus_channel *chan)
+struct location_state_object {
+	struct smf_ctx ctx;
+	const struct zbus_channel *chan;
+	uint8_t msg_buf[MAX_MSG_SIZE];
+};
+
+static void disconnected_entry(void *obj);
+static enum smf_state_result disconnected_run(void *obj);
+static void connected_entry(void *obj);
+static enum smf_state_result connected_run(void *obj);
+
+static const struct smf_state states[] = {
+	[STATE_DISCONNECTED] = SMF_CREATE_STATE(disconnected_entry,
+						disconnected_run, NULL, NULL, NULL),
+	[STATE_CONNECTED] = SMF_CREATE_STATE(connected_entry,
+					     connected_run, NULL, NULL, NULL),
+};
+
+static void scan_cell(struct location_scan_ctx *ctx);
+static bool parse_wifi_ap(const char *line, char *mac, size_t mac_size, int *rssi, int *channel);
+static void scan_wifi(struct location_scan_ctx *ctx);
+static void ground_fix(struct location_scan_ctx *ctx);
+static void do_fix(struct location_scan_ctx *ctx, enum location_mode mode);
+
+static void disconnected_entry(void *obj)
 {
-	const struct network_msg *msg = zbus_chan_const_msg(chan);
+	ARG_UNUSED(obj);
 
-	if (msg->type == NETWORK_CONNECTED) {
-		atomic_set(&connected, 1);
-		k_sem_give(&connected_sem);
-	} else if (msg->type == NETWORK_DISCONNECTED) {
-		atomic_set(&connected, 0);
-	}
+	LOG_DBG("Location module disconnected");
 }
 
-ZBUS_LISTENER_DEFINE(location_lis, on_network);
-ZBUS_CHAN_ADD_OBS(network_chan, location_lis, 0);
+static enum smf_state_result disconnected_run(void *obj)
+{
+	struct location_state_object *state_object = obj;
 
-static void scan_cell(void)
+	if (state_object->chan == &network_chan) {
+		const struct network_msg *msg =
+			(const struct network_msg *)state_object->msg_buf;
+
+		if (msg->type == NETWORK_CONNECTED) {
+			smf_set_state(SMF_CTX(state_object), &states[STATE_CONNECTED]);
+		}
+	}
+
+	return SMF_EVENT_HANDLED;
+}
+
+static void connected_entry(void *obj)
+{
+	ARG_UNUSED(obj);
+
+	LOG_DBG("Location module connected");
+}
+
+static enum smf_state_result connected_run(void *obj)
+{
+	struct location_state_object *state_object = obj;
+	static struct location_scan_ctx ctx;
+
+	if (state_object->chan == &network_chan) {
+		const struct network_msg *msg =
+			(const struct network_msg *)state_object->msg_buf;
+
+		if (msg->type == NETWORK_DISCONNECTED) {
+			smf_set_state(SMF_CTX(state_object), &states[STATE_DISCONNECTED]);
+		}
+
+		return SMF_EVENT_HANDLED;
+	}
+
+	if (state_object->chan == &location_chan) {
+		const struct location_msg *msg =
+			(const struct location_msg *)state_object->msg_buf;
+
+		if (msg->type == LOCATION_FIX_REQUEST) {
+			do_fix(&ctx, msg->mode);
+		}
+	}
+
+	return SMF_EVENT_HANDLED;
+}
+
+static void scan_cell(struct location_scan_ctx *ctx)
 {
 	int earfcn;
 	int pci;
@@ -83,16 +171,16 @@ static void scan_cell(void)
 	char tac[8];
 	int err;
 
-	cell.valid = false;
+	ctx->cell.valid = false;
 
-	err = modem_at_run("AT%BCINFO=1", at_resp, sizeof(at_resp),
+	err = modem_at_run("AT%BCINFO=1", ctx->at_resp, sizeof(ctx->at_resp),
 			   CONFIG_APP_LOCATION_BCINFO_TIMEOUT_SECONDS);
 	if (err) {
 		LOG_WRN("AT%%BCINFO failed, error: %d", err);
 		return;
 	}
 
-	const char *p = strstr(at_resp, "%BCINFOSC:");
+	const char *p = strstr(ctx->at_resp, "%BCINFOSC:");
 
 	if (p == NULL) {
 		LOG_WRN("No serving cell in %%BCINFO response");
@@ -106,19 +194,19 @@ static void scan_cell(void)
 		return;
 	}
 
-	cell.mcc = atoi(mcc);
-	cell.mnc = atoi(mnc);
-	cell.eci = strtoul(cellid, NULL, 16);
-	cell.tac = strtoul(tac, NULL, 16);
-	cell.rsrp = rsrp;
-	cell.rsrq = rsrq;
-	cell.earfcn = earfcn;
-	cell.pci = pci;
-	cell.valid = true;
+	ctx->cell.mcc = atoi(mcc);
+	ctx->cell.mnc = atoi(mnc);
+	ctx->cell.eci = strtoul(cellid, NULL, 16);
+	ctx->cell.tac = strtoul(tac, NULL, 16);
+	ctx->cell.rsrp = rsrp;
+	ctx->cell.rsrq = rsrq;
+	ctx->cell.earfcn = earfcn;
+	ctx->cell.pci = pci;
+	ctx->cell.valid = true;
 
 	LOG_DBG("Cell: mcc=%d mnc=%d eci=%u tac=%u rsrp=%d (earfcn=%d pci=%d)",
-		cell.mcc, cell.mnc, (unsigned int)cell.eci, (unsigned int)cell.tac, rsrp,
-		earfcn, pci);
+		ctx->cell.mcc, ctx->cell.mnc, (unsigned int)ctx->cell.eci,
+		(unsigned int)ctx->cell.tac, rsrp, earfcn, pci);
 }
 
 /* %WIFISCAN:(<ecn>,"<ssid>",<rssi>,"<mac>",<channel>)
@@ -148,38 +236,36 @@ static bool parse_wifi_ap(const char *line, char *mac, size_t mac_size, int *rss
 	return sscanf(q2 + 1, ",%d", rssi) == 1 && sscanf(q4 + 1, ",%d", channel) == 1;
 }
 
-static void scan_wifi(void)
+static void scan_wifi(struct location_scan_ctx *ctx)
 {
 	int err;
 
-	ap_count = 0;
+	ctx->ap_count = 0;
 
-	err = modem_at_run("AT%WIFISCAN=12000,1,5", at_resp, sizeof(at_resp),
+	err = modem_at_run("AT%WIFISCAN=12000,1,5", ctx->at_resp, sizeof(ctx->at_resp),
 			   CONFIG_APP_LOCATION_WIFISCAN_TIMEOUT_SECONDS);
 	if (err) {
 		LOG_WRN("AT%%WIFISCAN failed, error: %d", err);
 		return;
 	}
 
-	const char *p = strstr(at_resp, "%WIFISCAN:");
+	const char *p = strstr(ctx->at_resp, "%WIFISCAN:");
 
-	while (p != NULL && ap_count < CONFIG_APP_LOCATION_MAX_WIFI_APS) {
-		struct wifi_ap *ap = &aps[ap_count];
+	while (p != NULL && ctx->ap_count < CONFIG_APP_LOCATION_MAX_WIFI_APS) {
+		struct wifi_ap *ap = &ctx->aps[ctx->ap_count];
 
 		if (parse_wifi_ap(p, ap->mac, sizeof(ap->mac), &ap->rssi, &ap->channel)) {
 			LOG_DBG("WiFi: mac=%s ch=%d rssi=%d", ap->mac, ap->channel, ap->rssi);
-			ap_count++;
+			ctx->ap_count++;
 		}
 
 		p = strstr(p + 1, "%WIFISCAN:");
 	}
 
-	LOG_DBG("WiFi APs found: %d", ap_count);
+	LOG_DBG("WiFi APs found: %d", ctx->ap_count);
 }
 
 /* nRF Cloud ground-fix over the shared CoAP/DTLS session (no OAT, no JSON). */
-static struct wifi_scan_result coap_aps[CONFIG_APP_LOCATION_MAX_WIFI_APS];
-
 static const char *fix_type_str(enum nrf_cloud_location_type type)
 {
 	switch (type) {
@@ -194,45 +280,47 @@ static const char *fix_type_str(enum nrf_cloud_location_type type)
 	}
 }
 
-static void ground_fix(void)
+static void ground_fix(struct location_scan_ctx *ctx)
 {
 	struct lte_lc_cells_info cells = {
 		.current_cell = {
-			.mcc = cell.mcc,
-			.mnc = cell.mnc,
-			.id = cell.eci,
-			.tac = cell.tac,
-			.earfcn = cell.earfcn,
-			.phys_cell_id = (uint16_t)cell.pci,
+			.mcc = ctx->cell.mcc,
+			.mnc = ctx->cell.mnc,
+			.id = ctx->cell.eci,
+			.tac = ctx->cell.tac,
+			.earfcn = ctx->cell.earfcn,
+			.phys_cell_id = (uint16_t)ctx->cell.pci,
 			.timing_advance = LTE_LC_CELL_TIMING_ADVANCE_INVALID,
 			/* Codec applies RSRP_IDX_TO_DBM(); convert dBm back to the index. */
-			.rsrp = cell.valid ? (int16_t)CLAMP(cell.rsrp + 141, 0, 97)
-					     : LTE_LC_CELL_RSRP_INVALID,
+			.rsrp = ctx->cell.valid
+					? (int16_t)CLAMP(ctx->cell.rsrp + 141, 0, 97)
+					: LTE_LC_CELL_RSRP_INVALID,
 		},
 	};
-	struct wifi_scan_info wifi = { .ap_info = coap_aps };
+	struct wifi_scan_info wifi = { .ap_info = ctx->coap_aps };
 	struct nrf_cloud_location_config config = { .do_reply = true, .fallback = true };
 	struct nrf_cloud_coap_location_request req = { .config = &config };
 	struct nrf_cloud_location_result result;
 	int err;
 
-	for (int i = 0; i < ap_count; i++) {
+	wifi.cnt = 0;
+	for (int i = 0; i < ctx->ap_count; i++) {
 		unsigned int b[6];
 
-		if (sscanf(aps[i].mac, "%x:%x:%x:%x:%x:%x",
+		if (sscanf(ctx->aps[i].mac, "%x:%x:%x:%x:%x:%x",
 			   &b[0], &b[1], &b[2], &b[3], &b[4], &b[5]) != 6) {
 			continue;
 		}
 		for (int j = 0; j < 6; j++) {
-			coap_aps[wifi.cnt].mac[j] = (uint8_t)b[j];
+			ctx->coap_aps[wifi.cnt].mac[j] = (uint8_t)b[j];
 		}
-		coap_aps[wifi.cnt].mac_length = WIFI_MAC_ADDR_LEN;
-		coap_aps[wifi.cnt].channel = (uint8_t)aps[i].channel;
-		coap_aps[wifi.cnt].rssi = (int8_t)aps[i].rssi;
+		ctx->coap_aps[wifi.cnt].mac_length = WIFI_MAC_ADDR_LEN;
+		ctx->coap_aps[wifi.cnt].channel = (uint8_t)ctx->aps[i].channel;
+		ctx->coap_aps[wifi.cnt].rssi = (int8_t)ctx->aps[i].rssi;
 		wifi.cnt++;
 	}
 
-	req.cell_info = cell.valid ? &cells : NULL;
+	req.cell_info = ctx->cell.valid ? &cells : NULL;
 	req.wifi_info = (wifi.cnt >= NRF_CLOUD_LOCATION_WIFI_AP_CNT_MIN) ? &wifi : NULL;
 
 	if (req.cell_info == NULL && req.wifi_info == NULL) {
@@ -250,51 +338,46 @@ static void ground_fix(void)
 		result.lat, result.lon, result.unc, fix_type_str(result.type));
 }
 
-static void do_fix(enum location_mode mode)
+static void do_fix(struct location_scan_ctx *ctx, enum location_mode mode)
 {
 	static const char *const mode_str[] = { "cell+wifi", "cell", "wifi" };
 
-	LOG_INF("Location requested (%s)", mode_str[mode]);
+	LOG_INF("Location requested (%s)",
+		(mode < ARRAY_SIZE(mode_str)) ? mode_str[mode] : "?");
 
-	/* Clear both so a skipped source isn't carried over from a previous fix. */
-	cell.valid = false;
-	ap_count = 0;
+	ctx->cell.valid = false;
+	ctx->ap_count = 0;
 
 	if (mode != LOCATION_MODE_WIFI) {
-		scan_cell();
+		scan_cell(ctx);
 	}
 	if (mode != LOCATION_MODE_CELL) {
-		scan_wifi();
+		scan_wifi(ctx);
 	}
 
-	ground_fix();
-}
-
-void location_trigger(enum location_mode mode)
-{
-	atomic_set(&requested_mode, mode);
-	k_sem_give(&fix_trigger);
+	ground_fix(ctx);
 }
 
 static void location_thread(void)
 {
-	/* On-boot: first fix shortly after the network is up (let the initial
-	 * Memfault sync settle so the Wi-Fi scan isn't starved by data traffic).
-	 */
-	enum location_mode mode = LOCATION_MODE_ALL;
+	int err;
+	static struct location_state_object location_state;
 
-	k_sem_take(&connected_sem, K_FOREVER);
-	k_sleep(K_SECONDS(CONFIG_APP_LOCATION_BOOT_DELAY_SECONDS));
+	smf_set_initial(SMF_CTX(&location_state), &states[STATE_DISCONNECTED]);
 
 	while (true) {
-		if (atomic_get(&connected)) {
-			do_fix(mode);
+		err = zbus_sub_wait_msg(&location, &location_state.chan,
+					location_state.msg_buf, K_FOREVER);
+		if (err) {
+			LOG_ERR("zbus_sub_wait_msg, error: %d", err);
+			return;
 		}
 
-		/* Triggered wake uses the requested mode; a periodic timeout is a full fix. */
-		mode = (k_sem_take(&fix_trigger, SAMPLE_INTERVAL) == 0)
-			       ? (enum location_mode)atomic_get(&requested_mode)
-			       : LOCATION_MODE_ALL;
+		err = smf_run_state(SMF_CTX(&location_state));
+		if (err) {
+			LOG_ERR("smf_run_state(), error: %d", err);
+			return;
+		}
 	}
 }
 
