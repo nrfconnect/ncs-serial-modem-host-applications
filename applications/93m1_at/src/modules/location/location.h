@@ -7,17 +7,21 @@
 #ifndef LOCATION_H_
 #define LOCATION_H_
 
+#include <zephyr/zbus/zbus.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/**
- * @brief Request an nRF Cloud location fix (AT%NRFCLOUDLOCATION).
- *
- * Blocks until the modem accepts the request; the resulting position is logged
- * asynchronously when the modem reports it. Called by the sync state machine.
- */
-void location_update(void);
+enum location_msg_type {
+	LOCATION_FIX_REQUEST,
+};
+
+struct location_msg {
+	enum location_msg_type type;
+};
+
+ZBUS_CHAN_DECLARE(location_chan);
 
 #ifdef __cplusplus
 }

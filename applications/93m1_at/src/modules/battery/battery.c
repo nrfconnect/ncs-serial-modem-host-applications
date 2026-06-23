@@ -4,14 +4,16 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
 
-#include <stdio.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/zbus/zbus.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/sensor/npm13xx_charger.h>
 #include <nrf_fuel_gauge.h>
 
-#include "modules/modem_at/modem_at.h"
+#include "app_common.h"
+#include "modules/cloud/cloud.h"
+#include "modules/network/network.h"
 #include "lp803448_model.h"
 #include "battery.h"
 
@@ -23,17 +25,39 @@ LOG_MODULE_REGISTER(battery, CONFIG_APP_BATTERY_LOG_LEVEL);
 #define CHG_STATUS_CC_MASK       BIT(3)
 #define CHG_STATUS_CV_MASK       BIT(4)
 
-static const struct device *const charger = DEVICE_DT_GET(DT_NODELABEL(npm1300_charger));
+ZBUS_CHAN_DEFINE(battery_chan,
+		 struct battery_msg,
+		 NULL,
+		 NULL,
+		 ZBUS_OBSERVERS_EMPTY,
+		 ZBUS_MSG_INIT(0));
 
-static bool gauge_ready;
-static int64_t ref_time;
-static int32_t prev_chg_status = -1;
+ZBUS_MSG_SUBSCRIBER_DEFINE(battery);
 
-static int read_sensors(float *voltage, float *current, float *temp, int32_t *chg_status,
-			bool *vbus)
+#define CHANNEL_LIST(X)				\
+	X(network_chan, struct network_msg)	\
+	X(battery_chan, struct battery_msg)
+
+#define MAX_MSG_SIZE MAX_MSG_SIZE_FROM_LIST(CHANNEL_LIST)
+
+#define ADD_OBSERVERS(_chan, _type) ZBUS_CHAN_ADD_OBS(_chan, battery, 0);
+
+CHANNEL_LIST(ADD_OBSERVERS)
+
+static int read_sensors(const struct device *charger, float *voltage, float *current,
+			float *temp, int32_t *chg_status, bool *vbus);
+static void update_charge_state(int32_t chg_status, int32_t *prev);
+static int fuel_gauge_setup(const struct device *charger);
+static void battery_sample_and_report(const struct device *charger, int64_t *ref_time,
+				      int32_t *prev_chg_status);
+static void battery_thread(void);
+
+static int read_sensors(const struct device *charger, float *voltage, float *current,
+			float *temp, int32_t *chg_status, bool *vbus)
 {
 	int err;
 	struct sensor_value val = {0};
+	struct sensor_value vbus_val;
 
 	err = sensor_sample_fetch(charger);
 	if (err) {
@@ -59,31 +83,31 @@ static int read_sensors(float *voltage, float *current, float *temp, int32_t *ch
 	/* Fuel gauge wants charge-positive; the sensor API is discharge-negative. */
 	*current = -sensor_value_to_float(&val);
 
-	err = sensor_channel_get(charger, (enum sensor_channel)SENSOR_CHAN_NPM13XX_CHARGER_STATUS,
-				 &val);
+	err = sensor_channel_get(charger,
+				 (enum sensor_channel)SENSOR_CHAN_NPM13XX_CHARGER_STATUS, &val);
 	if (err) {
 		return err;
 	}
 	*chg_status = val.val1;
 
-	struct sensor_value vbus_val;
-
-	err = sensor_attr_get(charger, (enum sensor_channel)SENSOR_CHAN_NPM13XX_CHARGER_VBUS_STATUS,
+	err = sensor_attr_get(charger,
+			      (enum sensor_channel)SENSOR_CHAN_NPM13XX_CHARGER_VBUS_STATUS,
 			      (enum sensor_attribute)SENSOR_ATTR_NPM13XX_CHARGER_VBUS_PRESENT,
 			      &vbus_val);
+	/* VBUS read is non-fatal: assume disconnected if it cannot be read. */
 	*vbus = (err == 0) && (vbus_val.val1 != 0);
 
 	return 0;
 }
 
-static void update_charge_state(int32_t chg_status)
+static void update_charge_state(int32_t chg_status, int32_t *prev)
 {
 	union nrf_fuel_gauge_ext_state_info_data ext;
 
-	if (chg_status == prev_chg_status) {
+	if (chg_status == *prev) {
 		return;
 	}
-	prev_chg_status = chg_status;
+	*prev = chg_status;
 
 	if (chg_status & CHG_STATUS_COMPLETE_MASK) {
 		ext.charge_state = NRF_FUEL_GAUGE_CHARGE_STATE_COMPLETE;
@@ -101,7 +125,7 @@ static void update_charge_state(int32_t chg_status)
 					      &ext);
 }
 
-static int fuel_gauge_setup(void)
+static int fuel_gauge_setup(const struct device *charger)
 {
 	int err;
 	int32_t chg_status;
@@ -109,7 +133,7 @@ static int fuel_gauge_setup(void)
 	struct nrf_fuel_gauge_init_parameters params = { .model = &battery_model };
 	float soc;
 
-	err = read_sensors(&params.v0, &params.i0, &params.t0, &chg_status, &vbus);
+	err = read_sensors(charger, &params.v0, &params.i0, &params.t0, &chg_status, &vbus);
 	if (err) {
 		return err;
 	}
@@ -124,8 +148,8 @@ static int fuel_gauge_setup(void)
 	return 0;
 }
 
-/* Sample the gauge and return state of charge in percent, or -1 on error. */
-static int sample_soc(void)
+static void battery_sample_and_report(const struct device *charger, int64_t *ref_time,
+				      int32_t *prev_chg_status)
 {
 	float voltage;
 	float current;
@@ -133,58 +157,73 @@ static int sample_soc(void)
 	float soc;
 	int32_t chg_status;
 	bool vbus;
+	int err;
 
-	if (read_sensors(&voltage, &current, &temp, &chg_status, &vbus)) {
-		return -1;
+	err = read_sensors(charger, &voltage, &current, &temp, &chg_status, &vbus);
+	if (err) {
+		LOG_WRN("read_sensors, error: %d", err);
+		return;
 	}
 
 	(void)nrf_fuel_gauge_ext_state_update(
 		vbus ? NRF_FUEL_GAUGE_EXT_STATE_INFO_VBUS_CONNECTED
 		     : NRF_FUEL_GAUGE_EXT_STATE_INFO_VBUS_DISCONNECTED, NULL);
-	update_charge_state(chg_status);
+	update_charge_state(chg_status, prev_chg_status);
 
-	float delta = (float)k_uptime_delta(&ref_time) / 1000.0f;
+	float delta = (float)k_uptime_delta(ref_time) / 1000.0f;
 
-	if (nrf_fuel_gauge_process(voltage, current, temp, delta, &soc, NULL)) {
-		return -1;
-	}
-
-	return (int)soc;
-}
-
-int battery_report(void)
-{
-	char cmd[64];
-	int soc;
-	int err;
-
-	if (!gauge_ready) {
-		if (!device_is_ready(charger)) {
-			LOG_ERR("Charger device not ready");
-			return -ENODEV;
-		}
-		if (fuel_gauge_setup()) {
-			LOG_ERR("Fuel gauge init failed");
-			return -EIO;
-		}
-		ref_time = k_uptime_get();
-		gauge_ready = true;
-	}
-
-	soc = sample_soc();
-	if (soc < 0) {
-		return -EIO;
-	}
-
-	(void)snprintf(cmd, sizeof(cmd),
-		       "AT%%NRFCLOUDMESSAGE={\"appId\":\"BATTERY\",\"data\":\"%d\"}", soc);
-
-	err = modem_at_run(cmd, NULL, 0, CONFIG_APP_BATTERY_AT_TIMEOUT_SECONDS);
+	err = nrf_fuel_gauge_process(voltage, current, temp, delta, &soc, NULL);
 	if (err) {
-		LOG_WRN("Battery cloud message failed: %d", err);
-		return err;
+		LOG_WRN("nrf_fuel_gauge_process, error: %d", err);
+		return;
 	}
 
-	LOG_INF("Battery %d%% sent to nRF Cloud", soc);
-	return 0;
+	struct cloud_msg msg = { .type = CLOUD_BATTERY_SAMPLE, .battery_percent = (int)soc };
+
+	err = zbus_chan_pub(&cloud_chan, &msg, PUB_TIMEOUT);
+	if (err) {
+		LOG_WRN("zbus_chan_pub cloud_chan, error: %d", err);
+	}
 }
+
+static void battery_thread(void)
+{
+	int err;
+	const struct zbus_channel *chan;
+	uint8_t msg_buf[MAX_MSG_SIZE];
+	int64_t ref_time;
+	int32_t prev_chg_status = -1;
+	bool connected = false;
+	const struct device *const charger = DEVICE_DT_GET(DT_NODELABEL(npm1300_charger));
+
+	if (!device_is_ready(charger)) {
+		LOG_ERR("Charger device not ready");
+		return;
+	}
+
+	err = fuel_gauge_setup(charger);
+	if (err) {
+		LOG_ERR("fuel_gauge_setup, error: %d", err);
+		return;
+	}
+	ref_time = k_uptime_get();
+
+	while (true) {
+		err = zbus_sub_wait_msg(&battery, &chan, msg_buf, K_FOREVER);
+		if (err) {
+			LOG_ERR("zbus_sub_wait_msg, error: %d", err);
+			return;
+		}
+
+		if (chan == &network_chan) {
+			const struct network_msg *msg = (const struct network_msg *)msg_buf;
+
+			connected = (msg->type == NETWORK_CONNECTED);
+		} else if (chan == &battery_chan && connected) {
+			battery_sample_and_report(charger, &ref_time, &prev_chg_status);
+		}
+	}
+}
+
+K_THREAD_DEFINE(battery_tid, CONFIG_APP_BATTERY_THREAD_STACK_SIZE, battery_thread,
+		NULL, NULL, NULL, K_LOWEST_APPLICATION_THREAD_PRIO, 0, 0);

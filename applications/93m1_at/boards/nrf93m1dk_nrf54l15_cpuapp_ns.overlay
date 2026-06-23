@@ -14,11 +14,10 @@
 		zephyr,console = &uart20;
 		zephyr,shell-uart = &uart20;
 		zephyr,entropy = &psa_rng;
-		zephyr,modem-uart = &uart30;
 	};
 };
 
-/* Zephyr modem UART <-> nRF93M1 AT interface */
+/* Cellular modem driver */
 &uart30 {
 	status = "okay";
 	current-speed = <115200>;

@@ -11,9 +11,7 @@
 #include <zephyr/smf.h>
 
 #include "app_common.h"
-#include "modules/modem_at/modem_at.h"
 #include "modules/network/network.h"
-#include "modules/cloud/cloud.h"
 #if defined(CONFIG_APP_LOCATION)
 #include "modules/location/location.h"
 #endif
@@ -58,29 +56,57 @@ struct app_object {
 	uint8_t msg_buf[MAX_MSG_SIZE];
 };
 
-static struct app_object app;
-static const struct smf_state states[];
+static void sync_timer_fn(struct k_work *work);
+static K_WORK_DELAYABLE_DEFINE(sync_timer, sync_timer_fn);
 
-/* Periodic sync trigger: publishes MAIN_SYNC; the state machine drives it. */
+static void request_module_updates(void);
+static enum smf_state_result disconnected_run(void *obj);
+static void connected_entry(void *obj);
+static enum smf_state_result connected_run(void *obj);
+static void connected_exit(void *obj);
+static void wdt_callback(int channel_id, void *user_data);
+
+static const struct smf_state states[] = {
+	[STATE_DISCONNECTED] = SMF_CREATE_STATE(NULL, disconnected_run, NULL, NULL, NULL),
+	[STATE_CONNECTED] = SMF_CREATE_STATE(connected_entry, connected_run, connected_exit,
+					     NULL, NULL),
+};
+
 static void sync_timer_fn(struct k_work *work)
 {
 	ARG_UNUSED(work);
-	struct main_msg msg = { .type = MAIN_SYNC };
 
-	(void)zbus_chan_pub(&main_chan, &msg, PUB_TIMEOUT);
+	struct main_msg msg = { .type = MAIN_SYNC };
+	int err;
+
+	err = zbus_chan_pub(&main_chan, &msg, PUB_TIMEOUT);
+	if (err) {
+		LOG_ERR("zbus_chan_pub main_chan, error: %d", err);
+	}
 }
 
-static K_WORK_DELAYABLE_DEFINE(sync_timer, sync_timer_fn);
-
-static void run_sync(void)
+static void request_module_updates(void)
 {
-	LOG_INF("Sync");
+	int err;
+
+	LOG_DBG("Requesting module updates");
 #if defined(CONFIG_APP_LOCATION)
-	location_update();
+	struct location_msg loc_msg = { .type = LOCATION_FIX_REQUEST };
+
+	err = zbus_chan_pub(&location_chan, &loc_msg, PUB_TIMEOUT);
+	if (err) {
+		LOG_ERR("zbus_chan_pub location_chan, error: %d", err);
+	}
 #endif
 #if defined(CONFIG_APP_BATTERY)
-	(void)battery_report();
+	struct battery_msg bat_msg = { .type = BATTERY_SAMPLE };
+
+	err = zbus_chan_pub(&battery_chan, &bat_msg, PUB_TIMEOUT);
+	if (err) {
+		LOG_ERR("zbus_chan_pub battery_chan, error: %d", err);
+	}
 #endif
+	ARG_UNUSED(err);
 }
 
 static enum smf_state_result disconnected_run(void *obj)
@@ -101,10 +127,14 @@ static enum smf_state_result disconnected_run(void *obj)
 static void connected_entry(void *obj)
 {
 	ARG_UNUSED(obj);
+	int err;
+
 	LOG_INF("Connected");
 
-	/* First sync shortly after connecting. */
-	(void)k_work_reschedule(&sync_timer, K_SECONDS(CONFIG_APP_SYNC_BOOT_DELAY_SECONDS));
+	err = k_work_reschedule(&sync_timer, K_SECONDS(CONFIG_APP_SYNC_BOOT_DELAY_SECONDS));
+	if (err < 0) {
+		LOG_ERR("k_work_reschedule sync_timer, error: %d", err);
+	}
 }
 
 static enum smf_state_result connected_run(void *obj)
@@ -121,8 +151,13 @@ static enum smf_state_result connected_run(void *obj)
 		const struct main_msg *msg = (const struct main_msg *)state->msg_buf;
 
 		if (msg->type == MAIN_SYNC) {
-			run_sync();
-			(void)k_work_reschedule(&sync_timer, K_SECONDS(CONFIG_APP_SYNC_INTERVAL));
+			int err;
+
+			request_module_updates();
+			err = k_work_reschedule(&sync_timer, K_SECONDS(CONFIG_APP_SYNC_INTERVAL));
+			if (err < 0) {
+				LOG_ERR("k_work_reschedule sync_timer, error: %d", err);
+			}
 		}
 	}
 
@@ -134,12 +169,6 @@ static void connected_exit(void *obj)
 	ARG_UNUSED(obj);
 	(void)k_work_cancel_delayable(&sync_timer);
 }
-
-static const struct smf_state states[] = {
-	[STATE_DISCONNECTED] = SMF_CREATE_STATE(NULL, disconnected_run, NULL, NULL, NULL),
-	[STATE_CONNECTED] = SMF_CREATE_STATE(connected_entry, connected_run, connected_exit,
-					     NULL, NULL),
-};
 
 static void wdt_callback(int channel_id, void *user_data)
 {
@@ -158,6 +187,7 @@ int main(void)
 	const uint32_t execution_time_ms =
 		(CONFIG_APP_MAIN_MSG_PROCESSING_TIMEOUT_SECONDS * MSEC_PER_SEC);
 	const k_timeout_t zbus_wait = K_MSEC(wdt_timeout_ms - execution_time_ms);
+	static struct app_object app;
 
 	task_wdt_id = task_wdt_add(wdt_timeout_ms, wdt_callback, (void *)k_current_get());
 	if (task_wdt_id < 0) {
@@ -165,12 +195,6 @@ int main(void)
 		SEND_FATAL_ERROR();
 		return -EFAULT;
 	}
-
-	if (modem_at_setup() < 0) {
-		SEND_FATAL_ERROR();
-		return -EFAULT;
-	}
-	(void)cloud_provision();
 
 	smf_set_initial(SMF_CTX(&app), &states[STATE_DISCONNECTED]);
 

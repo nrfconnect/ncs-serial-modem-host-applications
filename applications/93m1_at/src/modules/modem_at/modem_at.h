@@ -14,22 +14,12 @@ extern "C" {
 #endif
 
 /**
- * @brief Power-cycle the modem and bring up the AT transport.
- *
- * @retval 0 on success, negative errno otherwise.
- */
-int modem_at_setup(void);
-
-/**
- * @brief Whether modem_at_setup() has completed.
- */
-bool modem_at_is_ready(void);
-
-/**
- * @brief Run an AT command synchronously.
+ * @brief Run an AT command synchronously on the shared user pipe (DLCI 3).
  *
  * Blocks until OK/ERROR or timeout. Response lines are newline-joined into
  * @p resp. URC-matched lines are routed to subscribers, not collected here.
+ * Serialised internally, so the modem-at shell and application modules can
+ * share the single user pipe.
  *
  * @param req       AT command string (without trailing CR).
  * @param resp      Buffer for the response, or NULL to discard.
@@ -37,7 +27,8 @@ bool modem_at_is_ready(void);
  * @param timeout_s Seconds to wait before aborting.
  *
  * @retval 0        Modem replied OK.
- * @retval -EPERM   Transport not ready.
+ * @retval -EPERM   Pipe not ready (modem not attached yet).
+ * @retval -EBUSY   Another command is already running.
  * @retval -EIO     Modem replied ERROR or timed out.
  * @retval -EINVAL  Invalid request.
  */

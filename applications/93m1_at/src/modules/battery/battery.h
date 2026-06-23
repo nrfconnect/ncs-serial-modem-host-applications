@@ -7,19 +7,21 @@
 #ifndef BATTERY_H_
 #define BATTERY_H_
 
+#include <zephyr/zbus/zbus.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/**
- * @brief Sample the fuel gauge and report state of charge to nRF Cloud.
- *
- * Reads the nPM1300 fuel gauge and sends the state of charge as an
- * AT%NRFCLOUDMESSAGE (appId "BATTERY"). Called by the sync state machine.
- *
- * @retval 0 on success, negative errno otherwise.
- */
-int battery_report(void);
+enum battery_msg_type {
+	BATTERY_SAMPLE,
+};
+
+struct battery_msg {
+	enum battery_msg_type type;
+};
+
+ZBUS_CHAN_DECLARE(battery_chan);
 
 #ifdef __cplusplus
 }
