@@ -13,12 +13,77 @@ from utils.logger import get_logger
 
 logger = get_logger()
 
+_CONSOLE_TTY_MARKERS = ("ttyACM", "tty.usbmodem", "cu.usbmodem")
 
-def _hardware_vars(test_config: dict) -> tuple[str, str]:
+
+def _hardware_vars(test_config: dict) -> tuple[str, str, int | None]:
     hardware = test_config.get("hardware", {})
     segger_var = hardware.get("segger_sn_var", "CI_NRF54L15_SEGGER_SN")
     serial_port_var = hardware.get("serial_port_var", "CI_NRF54L15_SERIAL_PORT")
-    return segger_var, serial_port_var
+    console_vcom = hardware.get("console_vcom")
+    if console_vcom is not None:
+        console_vcom = int(console_vcom)
+    return segger_var, serial_port_var, console_vcom
+
+
+def _port_path(port: dict | str) -> str | None:
+    if isinstance(port, str):
+        return port
+    if not isinstance(port, dict):
+        return None
+    for key in ("path", "comPort", "port", "comName"):
+        if value := port.get(key):
+            return str(value)
+    return None
+
+
+def _select_console_port(ports: list, console_vcom: int | None) -> str | None:
+    typed_ports = [port for port in ports if isinstance(port, dict)]
+    if not typed_ports:
+        first = _port_path(ports[0])
+        return first
+
+    if console_vcom is not None:
+        for port in typed_ports:
+            if port.get("vcom") == console_vcom:
+                return _port_path(port)
+        if len(typed_ports) == 1:
+            return _port_path(typed_ports[0])
+
+    if len(typed_ports) == 1:
+        return _port_path(typed_ports[0])
+
+    # VCOM0 is often routed to uart30 on CI DUTs with the modem link; prefer the
+    # highest-index VCOM when multiple ports are exposed.
+    best = max(typed_ports, key=lambda port: port.get("vcom", -1))
+    return _port_path(best)
+
+
+def _parse_nrfutil_devices(stdout: str) -> list[dict]:
+    devices: list[dict] = []
+    for line in stdout.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+        data = payload.get("data")
+        if not isinstance(data, dict):
+            continue
+
+        if isinstance(data.get("devices"), list):
+            devices = data["devices"]
+            continue
+
+        if data.get("type") == "devices" and isinstance(data.get("data"), dict):
+            inner = data["data"].get("devices")
+            if isinstance(inner, list):
+                devices = inner
+
+    return devices
 
 
 def _match_by_serial_by_id(segger_sn: str) -> str | None:
@@ -34,11 +99,28 @@ def _match_by_serial_by_id(segger_sn: str) -> str | None:
     if not candidates:
         return None
 
-    logger.info("Resolved serial port via by-id: %s", candidates[0])
-    return str(candidates[0])
+    console_candidates: list[str] = []
+    for candidate in candidates:
+        try:
+            target = os.path.realpath(candidate)
+        except OSError:
+            continue
+        if any(marker in target for marker in _CONSOLE_TTY_MARKERS):
+            console_candidates.append(str(candidate))
+
+    if not console_candidates:
+        logger.warning(
+            "Found %d by-id paths for SEGGER SN %s, but none resolve to a console TTY",
+            len(candidates),
+            segger_sn,
+        )
+        return None
+
+    logger.info("Resolved serial port via by-id: %s", console_candidates[0])
+    return console_candidates[0]
 
 
-def _match_via_nrfutil(segger_sn: str) -> str | None:
+def _match_via_nrfutil(segger_sn: str, console_vcom: int | None) -> str | None:
     try:
         result = subprocess.run(
             ["nrfutil", "device", "list", "--json"],
@@ -50,14 +132,9 @@ def _match_via_nrfutil(segger_sn: str) -> str | None:
         logger.warning("nrfutil device list failed: %s", exc)
         return None
 
-    try:
-        payload = json.loads(result.stdout)
-    except json.JSONDecodeError:
-        logger.warning("Could not parse nrfutil device list JSON")
-        return None
-
-    devices = payload.get("devices", payload)
-    if not isinstance(devices, list):
+    devices = _parse_nrfutil_devices(result.stdout)
+    if not devices:
+        logger.warning("Could not parse nrfutil device list output")
         return None
 
     for device in devices:
@@ -73,23 +150,17 @@ def _match_via_nrfutil(segger_sn: str) -> str | None:
 
         for key in ("serialPorts", "serial_ports", "vcomPorts", "vcom_ports"):
             ports = device.get(key)
-            if not ports:
+            if not isinstance(ports, list) or not ports:
                 continue
-            if isinstance(ports, list) and ports:
-                first = ports[0]
-                if isinstance(first, dict):
-                    port = first.get("comPort") or first.get("port") or first.get("path")
-                else:
-                    port = first
-                if port:
-                    logger.info("Resolved serial port via nrfutil: %s", port)
-                    return str(port)
+            if port := _select_console_port(ports, console_vcom):
+                logger.info("Resolved serial port via nrfutil: %s", port)
+                return port
 
     return None
 
 
 def resolve_serial_port(test_config: dict) -> str:
-    segger_var, serial_port_var = _hardware_vars(test_config)
+    segger_var, serial_port_var, console_vcom = _hardware_vars(test_config)
 
     if explicit := os.environ.get(serial_port_var):
         if not Path(explicit).exists():
@@ -101,8 +172,11 @@ def resolve_serial_port(test_config: dict) -> str:
     except KeyError as exc:
         raise RuntimeError(f"{segger_var} is not set") from exc
 
-    for resolver in (_match_by_serial_by_id, _match_via_nrfutil):
-        if port := resolver(segger_sn):
+    for resolver in (
+        lambda: _match_via_nrfutil(segger_sn, console_vcom),
+        lambda: _match_by_serial_by_id(segger_sn),
+    ):
+        if port := resolver():
             return port
 
     raise RuntimeError(
