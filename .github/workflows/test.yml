@@ -8,6 +8,7 @@
 #
 # Prerequisites:
 # - Self-hosted Linux runner with USB access to the DK (container runs --privileged -v /dev:/dev)
+# - SEGGER J-Link is installed in the job container (see "Install SEGGER J-Link" step)
 # - nRF54L15 DK + nRF9151 Serial Modem wired and configured per applications/91m1/doc
 # - Self-signed CA certificate and private key stored in GitHub secrets
 # - nRF Cloud API key with permission to onboard/delete devices
@@ -82,6 +83,7 @@ jobs:
         include: ${{ fromJson(needs.plan.outputs.matrix) }}
     env:
       CMAKE_PREFIX_PATH: /opt/toolchains
+      NRFUTIL_HOME: /usr/local/share/nrfutil
       NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
       NRF_CLOUD_CA_CERT: ${{ secrets.NRF_CLOUD_CA_CERT }}
       NRF_CLOUD_CA_KEY: ${{ secrets.NRF_CLOUD_CA_KEY }}
@@ -110,6 +112,21 @@ jobs:
       - name: Initialize West workspace
         uses: ./serial-modem-host-applications/.github/actions/west-init
 
+      - name: Install SEGGER J-Link
+        run: |
+          set -eu
+          apt-get update && apt-get install --no-install-recommends -y wget
+          # nrfutil device 2.19.0 expects J-Link 9.24a at /opt/SEGGER/JLink.
+          jlink_deb=JLink_Linux_V924a_x86_64.deb
+          wget --post-data="accept_license_agreement=accepted&non_emb_ctr=confirmed" \
+            -O "$jlink_deb" "https://www.segger.com/downloads/jlink/$jlink_deb"
+          # The postinst script calls udevadm, which is unavailable in CI containers.
+          dpkg --unpack "./$jlink_deb"
+          rm -f /var/lib/dpkg/info/jlink.postinst
+          apt-get install -f -y
+          rm -f "$jlink_deb"
+          test -f /opt/SEGGER/JLink/libjlinkarm.so
+
       - name: Install nrfutil
         run: |
           set -eu
@@ -124,6 +141,8 @@ jobs:
             https://files.nordicsemi.com/artifactory/swtools/external/nrfutil/packages/nrfutil/nrfutil-x86_64-unknown-linux-gnu-8.1.1.tar.gz \
             -o "$work_dir/nrfutil-core.tar.gz"
           export NRFUTIL_BOOTSTRAP_TARBALL_PATH="$work_dir/nrfutil-core.tar.gz"
+          export NRFUTIL_HOME=/usr/local/share/nrfutil
+          mkdir -p "$NRFUTIL_HOME"
           nrfutil install device=2.19.0 --force
 
       - name: Run hardware test
