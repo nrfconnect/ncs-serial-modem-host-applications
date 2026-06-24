@@ -58,7 +58,7 @@ def delete_if_exists(device_id: str, expected_device_id: str) -> None:
 
     logger.info("Deleting only the configured DUT %s from nRF Cloud", validated)
     status = _request("DELETE", _device_url(validated), api_key=_api_key())
-    if status not in {200, 204}:
+    if status not in {200, 202, 204}:
         raise RuntimeError(f"Failed to delete device {validated}: HTTP {status}")
     logger.info("DUT %s deleted", validated)
 
