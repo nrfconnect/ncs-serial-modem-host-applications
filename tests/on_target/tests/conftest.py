@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from utils.flash_tools import west_build, west_flash
+from utils.flash_tools import nrfutil_reset, west_build, west_flash
 from utils.helpers import REPO_ROOT, SERIAL_LOG, load_test_config
 from utils.logger import get_logger
 from utils.serial_port import resolve_serial_port
@@ -52,10 +52,11 @@ def cloud_connect_dut(request: pytest.FixtureRequest, test_config: dict) -> type
     logger.info("Step 2/3 - Recover and flash firmware (clears all flash including TF-M storage)")
     west_flash(app_dir, segger_sn, recover=True)
 
-    logger.info("Step 3/3 - Start serial capture")
+    logger.info("Step 3/3 - Start serial capture and reset device")
     time.sleep(2)
     serial_port = resolve_serial_port(test_config)
     uart = Uart(serial_port, log_path=SERIAL_LOG)
+    nrfutil_reset(segger_sn)
 
     dut = types.SimpleNamespace(
         uart=uart,

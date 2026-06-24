@@ -50,6 +50,10 @@ class Uart:
             baudrate=self.baudrate,
             timeout=self.serial_timeout,
         ) as ser:
+            # nRF DK debuggers tri-state UART lines until the host asserts DTR.
+            ser.dtr = True
+            ser.rts = True
+
             if ser.in_waiting:
                 logger.warning(
                     "Serial port %s had %d buffered bytes; discarding before capture",

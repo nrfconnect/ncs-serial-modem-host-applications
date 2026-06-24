@@ -22,3 +22,9 @@ def west_flash(app_dir: Path, serial: str, *, recover: bool = False) -> None:
         command.append("--recover")
     logger.info("Flashing from %s: %s", app_dir, " ".join(command))
     subprocess.run(command, cwd=app_dir, check=True, env=os.environ.copy())
+
+
+def nrfutil_reset(serial: str) -> None:
+    command = ["nrfutil", "device", "reset", "--serial-number", serial]
+    logger.info("Resetting device %s: %s", serial, " ".join(command))
+    subprocess.run(command, check=True, env=os.environ.copy())

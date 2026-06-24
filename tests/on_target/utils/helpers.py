@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 from pathlib import Path
 
 REPO_ROOT = Path(os.environ["REPO_ROOT"])
@@ -63,3 +64,16 @@ def parse_device_id(serial_log: str) -> str:
     if not DUT_DEVICE_ID_RE.fullmatch(normalized):
         raise ValueError(f"Unexpected device ID format in serial log: {normalized!r}")
     return normalized
+
+
+def wait_for_device_id(uart, *, timeout: float = 120.0, poll_interval: float = 1.0) -> str:
+    """Block until a device ID appears in the captured serial log."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            return parse_device_id(uart.whole_log)
+        except ValueError:
+            time.sleep(poll_interval)
+    raise TimeoutError(
+        f"Timed out after {timeout:.0f}s waiting for device ID in serial log"
+    )
