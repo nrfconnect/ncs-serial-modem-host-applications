@@ -39,7 +39,7 @@ CHANNEL_LIST(ADD_OBSERVERS)
 static bool is_coordinate(const char *s);
 static const char *location_method_str(const char *method_num);
 static void on_location(char **argv, uint16_t argc, void *user_data);
-static void location_request(void);
+static int location_request(void);
 static void location_thread(void);
 
 /* A fix line starts with a numeric latitude; anything else is a status URC. */
@@ -68,21 +68,30 @@ static void on_location(char **argv, uint16_t argc, void *user_data)
 			argv[1], argv[2], argv[3], location_method_str(argv[4]));
 	} else if (argc >= 2) {
 		LOG_DBG("NRFCLOUDLOCATION status: %s", argv[1]);
+	} else {
+		LOG_WRN("NRFCLOUDLOCATION URC with unexpected format");
 	}
 }
 
-static void location_request(void)
+static int location_request(void)
 {
 	char cmd[40];
 	int err;
+	int ret;
 
-	(void)snprintk(cmd, sizeof(cmd), "AT%%NRFCLOUDLOCATION=%d,1",
-		       CONFIG_APP_LOCATION_METHOD);
+	ret = snprintk(cmd, sizeof(cmd), "AT%%NRFCLOUDLOCATION=%d,1", CONFIG_APP_LOCATION_METHOD);
+	if (ret < 0 || ret >= (int)sizeof(cmd)) {
+		LOG_ERR("snprintk, error: %d", ret);
+		return -EINVAL;
+	}
 
 	err = modem_at_run(cmd, NULL, 0, CONFIG_APP_LOCATION_AT_TIMEOUT_SECONDS);
 	if (err) {
-		LOG_WRN("%s failed: %d", cmd, err);
+		LOG_ERR("modem_at_run, error: %d", err);
+		return -ENETUNREACH;
 	}
+
+	return 0;
 }
 
 static void location_thread(void)
@@ -95,13 +104,14 @@ static void location_thread(void)
 	err = modem_at_urc_subscribe("%NRFCLOUDLOCATION: ", on_location, NULL);
 	if (err) {
 		LOG_ERR("Failed to subscribe to %%NRFCLOUDLOCATION URC: %d", err);
+		FATAL_ERROR();
 	}
 
 	while (true) {
 		err = zbus_sub_wait_msg(&location, &chan, msg_buf, K_FOREVER);
 		if (err) {
 			LOG_ERR("zbus_sub_wait_msg, error: %d", err);
-			return;
+			FATAL_ERROR();
 		}
 
 		if (chan == &network_chan) {
@@ -109,7 +119,16 @@ static void location_thread(void)
 
 			connected = (msg->type == NETWORK_CONNECTED);
 		} else if (chan == &location_chan && connected) {
-			location_request();
+			err = location_request();
+			if (err == -ENETUNREACH) {
+				LOG_WRN("Failed to request location, network is down?");
+			} else if (err) {
+				LOG_ERR("location_request, error: %d", err);
+				FATAL_ERROR();
+			} else {
+			}
+		} else {
+			LOG_WRN("Unhandled message in location thread");
 		}
 	}
 }

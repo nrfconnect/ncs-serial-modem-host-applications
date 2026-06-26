@@ -129,7 +129,7 @@ static void request_fota_poll(void)
 
 	if (err) {
 		LOG_ERR("zbus_chan_pub fota_chan, error: %d", err);
-		SEND_FATAL_ERROR();
+		FATAL_ERROR();
 	}
 }
 #endif /* CONFIG_APP_FOTA */
@@ -139,7 +139,7 @@ static void memfault_wdt_callback(int channel_id, void *user_data)
 	LOG_ERR("Memfault watchdog expired, channel: %d, thread: %s",
 		channel_id, k_thread_name_get((k_tid_t)user_data));
 
-	SEND_FATAL_ERROR_WATCHDOG_TIMEOUT();
+	FATAL_ERROR_WATCHDOG_TIMEOUT();
 }
 
 static void memfault_module_thread(void)
@@ -157,14 +157,14 @@ static void memfault_module_thread(void)
 	err = settings_subsys_init();
 	if (err) {
 		LOG_ERR("settings_subsys_init, error: %d", err);
-		SEND_FATAL_ERROR();
+		FATAL_ERROR();
 	}
 
 	task_wdt_id = task_wdt_add(wdt_timeout_ms, memfault_wdt_callback,
 				   (void *)k_current_get());
 	if (task_wdt_id < 0) {
 		LOG_ERR("Failed to add task to watchdog: %d", task_wdt_id);
-		SEND_FATAL_ERROR();
+		FATAL_ERROR();
 		return;
 	}
 
@@ -172,7 +172,7 @@ static void memfault_module_thread(void)
 		err = task_wdt_feed(task_wdt_id);
 		if (err) {
 			LOG_ERR("task_wdt_feed, error: %d", err);
-			SEND_FATAL_ERROR();
+			FATAL_ERROR();
 			return;
 		}
 
@@ -181,7 +181,7 @@ static void memfault_module_thread(void)
 			continue;
 		} else if (err) {
 			LOG_ERR("zbus_sub_wait_msg, error: %d", err);
-			SEND_FATAL_ERROR();
+			FATAL_ERROR();
 			return;
 		}
 

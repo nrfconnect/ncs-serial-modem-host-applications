@@ -9,6 +9,8 @@
 #include <zephyr/init.h>
 #include <zephyr/kernel.h>
 
+#include "app_common.h"
+
 #define MODEM_NODE DT_ALIAS(modem)
 
 #if DT_NODE_HAS_PROP(MODEM_NODE, mdm_reset_gpios)
@@ -22,11 +24,13 @@ static int modem_reset_on_host_boot(void)
 	int err;
 
 	if (!gpio_is_ready_dt(&reset)) {
+		FATAL_ERROR();
 		return -ENODEV;
 	}
 
 	err = gpio_pin_configure_dt(&reset, GPIO_OUTPUT_INACTIVE);
 	if (err != 0) {
+		FATAL_ERROR();
 		return err;
 	}
 

@@ -145,7 +145,7 @@ static void publish_fota_event(enum fota_msg_type type)
 	err = zbus_chan_pub(&fota_chan, &evt, PUB_TIMEOUT);
 	if (err) {
 		LOG_ERR("zbus_chan_pub fota_chan, error: %d", err);
-		SEND_FATAL_ERROR();
+		FATAL_ERROR();
 	}
 }
 
@@ -157,7 +157,7 @@ static void publish_priv_fota(enum priv_fota_msg_type type)
 	err = zbus_chan_pub(&priv_fota_chan, &msg, PUB_TIMEOUT);
 	if (err) {
 		LOG_ERR("zbus_chan_pub priv_fota_chan, error: %d", err);
-		SEND_FATAL_ERROR();
+		FATAL_ERROR();
 	}
 }
 
@@ -178,7 +178,7 @@ static void fota_wdt_callback(int channel_id, void *user_data)
 	LOG_ERR("Watchdog expired, Channel: %d, Thread: %s",
 		channel_id, k_thread_name_get((k_tid_t)user_data));
 
-	SEND_FATAL_ERROR_WATCHDOG_TIMEOUT();
+	FATAL_ERROR_WATCHDOG_TIMEOUT();
 }
 
 static void state_running_entry(void *obj)
@@ -396,7 +396,7 @@ static void state_canceling_entry(void *obj)
 	err = fota_download_cancel();
 	if (err) {
 		LOG_ERR("fota_download_cancel, error: %d", err);
-		SEND_FATAL_ERROR();
+		FATAL_ERROR();
 	}
 }
 
@@ -435,7 +435,7 @@ static void fota_module_thread(void)
 	task_wdt_id = task_wdt_add(wdt_timeout_ms, fota_wdt_callback, (void *)k_current_get());
 	if (task_wdt_id < 0) {
 		LOG_ERR("Failed to add task to watchdog: %d", task_wdt_id);
-		SEND_FATAL_ERROR();
+		FATAL_ERROR();
 		return;
 	}
 
@@ -445,7 +445,7 @@ static void fota_module_thread(void)
 		err = task_wdt_feed(task_wdt_id);
 		if (err) {
 			LOG_ERR("task_wdt_feed, error: %d", err);
-			SEND_FATAL_ERROR();
+			FATAL_ERROR();
 			return;
 		}
 
@@ -454,14 +454,14 @@ static void fota_module_thread(void)
 			continue;
 		} else if (err) {
 			LOG_ERR("zbus_sub_wait_msg, error: %d", err);
-			SEND_FATAL_ERROR();
+			FATAL_ERROR();
 			return;
 		}
 
 		err = smf_run_state(SMF_CTX(&fota_state));
 		if (err) {
 			LOG_ERR("smf_run_state(), error: %d", err);
-			SEND_FATAL_ERROR();
+			FATAL_ERROR();
 			return;
 		}
 	}

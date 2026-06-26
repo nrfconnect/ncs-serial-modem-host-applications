@@ -98,6 +98,7 @@ static int read_sensors(const struct device *charger, float *voltage, float *cur
 static void update_charge_state(int32_t chg_status, int32_t *prev)
 {
 	union nrf_fuel_gauge_ext_state_info_data ext;
+	int err;
 
 	if (chg_status == *prev) {
 		return;
@@ -116,8 +117,11 @@ static void update_charge_state(int32_t chg_status, int32_t *prev)
 		ext.charge_state = NRF_FUEL_GAUGE_CHARGE_STATE_IDLE;
 	}
 
-	(void)nrf_fuel_gauge_ext_state_update(NRF_FUEL_GAUGE_EXT_STATE_INFO_CHARGE_STATE_CHANGE,
+	err = nrf_fuel_gauge_ext_state_update(NRF_FUEL_GAUGE_EXT_STATE_INFO_CHARGE_STATE_CHANGE,
 					      &ext);
+	if (err) {
+		LOG_WRN("nrf_fuel_gauge_ext_state_update, error: %d", err);
+	}
 }
 
 static int fuel_gauge_setup(const struct device *charger)
@@ -127,6 +131,7 @@ static int fuel_gauge_setup(const struct device *charger)
 	bool vbus;
 	struct nrf_fuel_gauge_init_parameters params = { .model = &battery_model };
 	struct sensor_value desired;
+	float soc;
 
 	err = read_sensors(charger, &params.v0, &params.i0, &params.t0, &chg_status, &vbus);
 	if (err) {
@@ -139,10 +144,10 @@ static int fuel_gauge_setup(const struct device *charger)
 		return err;
 	}
 
-	/* Seed an initial SoC so soc_get() is valid before the first loop process(). */
-	float soc;
-
-	(void)nrf_fuel_gauge_process(params.v0, params.i0, params.t0, 0.0f, &soc, NULL);
+	err = nrf_fuel_gauge_process(params.v0, params.i0, params.t0, 0.0f, &soc, NULL);
+	if (err) {
+		return err;
+	}
 
 	/* Seed charge-current limits for time-to-full prediction. */
 	if (sensor_channel_get(charger, SENSOR_CHAN_GAUGE_DESIRED_CHARGING_CURRENT,
@@ -150,11 +155,17 @@ static int fuel_gauge_setup(const struct device *charger)
 		float limit = sensor_value_to_float(&desired);
 		union nrf_fuel_gauge_ext_state_info_data ext = { .charge_current_limit = limit };
 
-		(void)nrf_fuel_gauge_ext_state_update(
+		err = nrf_fuel_gauge_ext_state_update(
 			NRF_FUEL_GAUGE_EXT_STATE_INFO_CHARGE_CURRENT_LIMIT, &ext);
+		if (err) {
+			return err;
+		}
 		ext.charge_term_current = limit / 10.0f;
-		(void)nrf_fuel_gauge_ext_state_update(NRF_FUEL_GAUGE_EXT_STATE_INFO_TERM_CURRENT,
+		err = nrf_fuel_gauge_ext_state_update(NRF_FUEL_GAUGE_EXT_STATE_INFO_TERM_CURRENT,
 						      &ext);
+		if (err) {
+			return err;
+		}
 	}
 
 	return 0;
@@ -176,20 +187,23 @@ static void battery_sample(const struct device *charger, int64_t *ref_time,
 
 	err = read_sensors(charger, &voltage, &current, &temp, &chg_status, &vbus);
 	if (err) {
-		LOG_WRN("read_sensors, error: %d", err);
+		LOG_ERR("read_sensors, error: %d", err);
 		return;
 	}
 
-	(void)nrf_fuel_gauge_ext_state_update(
+	err = nrf_fuel_gauge_ext_state_update(
 		vbus ? NRF_FUEL_GAUGE_EXT_STATE_INFO_VBUS_CONNECTED
 		     : NRF_FUEL_GAUGE_EXT_STATE_INFO_VBUS_DISCONNECTED, NULL);
+	if (err) {
+		LOG_ERR("nrf_fuel_gauge_ext_state_update, error: %d", err);
+	}
 	update_charge_state(chg_status, prev_chg_status);
 
 	float delta = (float)k_uptime_delta(ref_time) / 1000.0f;
 
 	err = nrf_fuel_gauge_process(voltage, current, temp, delta, &soc, NULL);
 	if (err) {
-		LOG_WRN("nrf_fuel_gauge_process, error: %d", err);
+		LOG_ERR("nrf_fuel_gauge_process, error: %d", err);
 		return;
 	}
 
@@ -208,13 +222,13 @@ static void battery_thread(void)
 
 	if (!device_is_ready(charger)) {
 		LOG_ERR("Charger device not ready");
-		return;
+		FATAL_ERROR();
 	}
 
 	err = fuel_gauge_setup(charger);
 	if (err) {
 		LOG_ERR("fuel_gauge_setup, error: %d", err);
-		return;
+		FATAL_ERROR();
 	}
 	ref_time = k_uptime_get();
 
@@ -222,7 +236,7 @@ static void battery_thread(void)
 		err = zbus_sub_wait_msg(&battery, &chan, msg_buf, K_FOREVER);
 		if (err) {
 			LOG_ERR("zbus_sub_wait_msg, error: %d", err);
-			return;
+			FATAL_ERROR();
 		}
 
 		battery_sample(charger, &ref_time, &prev_chg_status);

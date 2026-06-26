@@ -82,7 +82,7 @@ static void publish_cloud_msg(enum cloud_msg_type type, const char *payload,
 	err = zbus_chan_pub(&cloud_chan, &msg, PUB_TIMEOUT);
 	if (err) {
 		LOG_ERR("zbus_chan_pub, error: %d", err);
-		SEND_FATAL_ERROR();
+		FATAL_ERROR();
 	}
 }
 
@@ -337,7 +337,7 @@ static void cloud_wdt_callback(int channel_id, void *user_data)
 	LOG_ERR("Cloud watchdog expired, channel: %d, thread: %s",
 		channel_id, k_thread_name_get((k_tid_t)user_data));
 
-	SEND_FATAL_ERROR_WATCHDOG_TIMEOUT();
+	FATAL_ERROR_WATCHDOG_TIMEOUT();
 }
 
 static void cloud_module(void)
@@ -353,20 +353,20 @@ static void cloud_module(void)
 	err = settings_subsys_init();
 	if (err) {
 		LOG_ERR("settings_subsys_init, error: %d", err);
-		SEND_FATAL_ERROR();
+		FATAL_ERROR();
 	}
 
 	err = nrf_cloud_coap_init();
 	if (err) {
 		LOG_ERR("nrf_cloud_coap_init, error: %d", err);
-		SEND_FATAL_ERROR();
+		FATAL_ERROR();
 	}
 
 	task_wdt_id = task_wdt_add(wdt_timeout_ms, cloud_wdt_callback,
 				   (void *)k_current_get());
 	if (task_wdt_id < 0) {
 		LOG_ERR("Failed to add task to watchdog: %d", task_wdt_id);
-		SEND_FATAL_ERROR();
+		FATAL_ERROR();
 	}
 
 	smf_set_initial(SMF_CTX(&cloud_state), &states[STATE_DISCONNECTED]);
@@ -375,7 +375,7 @@ static void cloud_module(void)
 		err = task_wdt_feed(task_wdt_id);
 		if (err) {
 			LOG_ERR("task_wdt_feed, error: %d", err);
-			SEND_FATAL_ERROR();
+			FATAL_ERROR();
 		}
 
 		err = zbus_sub_wait_msg(&cloud, &cloud_state.chan,
@@ -384,13 +384,13 @@ static void cloud_module(void)
 			continue;
 		} else if (err) {
 			LOG_ERR("zbus_sub_wait_msg, error: %d", err);
-			SEND_FATAL_ERROR();
+			FATAL_ERROR();
 		}
 
 		err = smf_run_state(SMF_CTX(&cloud_state));
 		if (err) {
 			LOG_ERR("smf_run_state(), error: %d", err);
-			SEND_FATAL_ERROR();
+			FATAL_ERROR();
 		}
 	}
 }

@@ -68,8 +68,7 @@ static void publish_network_status(enum network_msg_type type)
 	err = zbus_chan_pub(&network_chan, &msg, PUB_TIMEOUT);
 	if (err) {
 		LOG_ERR("zbus_chan_pub, error: %d", err);
-
-		SEND_FATAL_ERROR();
+		FATAL_ERROR();
 	}
 }
 
@@ -102,7 +101,7 @@ static void connectivity_event_handler(struct net_mgmt_event_callback *cb, uint6
 
 	if (event == NET_EVENT_CONN_IF_FATAL_ERROR) {
 		LOG_ERR("NET_EVENT_CONN_IF_FATAL_ERROR");
-		SEND_FATAL_ERROR();
+		FATAL_ERROR();
 	}
 }
 
@@ -125,13 +124,13 @@ static enum smf_state_result disconnected_run(void *obj)
 		err = conn_mgr_all_if_up(true);
 		if (err) {
 			LOG_ERR("conn_mgr_all_if_up, error: %d", err);
-			SEND_FATAL_ERROR();
+			FATAL_ERROR();
 		}
 
 		err = conn_mgr_all_if_connect(true);
 		if (err) {
 			LOG_ERR("conn_mgr_all_if_connect, error: %d", err);
-			SEND_FATAL_ERROR();
+			FATAL_ERROR();
 		}
 
 		break;
@@ -163,7 +162,7 @@ static enum smf_state_result connected_run(void *obj)
 		err = conn_mgr_all_if_down(true);
 		if (err) {
 			LOG_ERR("conn_mgr_all_if_down, error: %d", err);
-			SEND_FATAL_ERROR();
+			FATAL_ERROR();
 		}
 
 		break;
@@ -182,7 +181,7 @@ static void network_wdt_callback(int channel_id, void *user_data)
 	LOG_ERR("Network watchdog expired, channel: %d, thread: %s",
 		channel_id, k_thread_name_get((k_tid_t)user_data));
 
-	SEND_FATAL_ERROR_WATCHDOG_TIMEOUT();
+	FATAL_ERROR_WATCHDOG_TIMEOUT();
 }
 
 static void network_module(void)
@@ -207,7 +206,7 @@ static void network_module(void)
 	task_wdt_id = task_wdt_add(wdt_timeout_ms, network_wdt_callback, (void *)k_current_get());
 	if (task_wdt_id < 0) {
 		LOG_ERR("Failed to add task to watchdog: %d", task_wdt_id);
-		SEND_FATAL_ERROR();
+		FATAL_ERROR();
 	}
 
 	smf_set_initial(SMF_CTX(&network_state), &states[STATE_DISCONNECTED]);
@@ -218,7 +217,7 @@ static void network_module(void)
 	err = zbus_chan_pub(&network_chan, &connect_msg, PUB_TIMEOUT);
 	if (err) {
 		LOG_ERR("zbus_chan_pub, error: %d", err);
-		SEND_FATAL_ERROR();
+		FATAL_ERROR();
 	}
 #endif
 
@@ -226,7 +225,7 @@ static void network_module(void)
 		err = task_wdt_feed(task_wdt_id);
 		if (err) {
 			LOG_ERR("task_wdt_feed, error: %d", err);
-			SEND_FATAL_ERROR();
+			FATAL_ERROR();
 		}
 
 		err = zbus_sub_wait_msg(&network, &network_state.chan,
@@ -235,13 +234,13 @@ static void network_module(void)
 			continue;
 		} else if (err) {
 			LOG_ERR("zbus_sub_wait_msg, error: %d", err);
-			SEND_FATAL_ERROR();
+			FATAL_ERROR();
 		}
 
 		err = smf_run_state(SMF_CTX(&network_state));
 		if (err) {
 			LOG_ERR("smf_run_state(), error: %d", err);
-			SEND_FATAL_ERROR();
+			FATAL_ERROR();
 		}
 	}
 }

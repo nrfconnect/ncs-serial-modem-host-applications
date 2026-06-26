@@ -12,6 +12,7 @@
 #include <zephyr/modem/at/user_pipe.h>
 #include <zephyr/modem/chat.h>
 
+#include "app_common.h"
 #include "modem_at.h"
 
 LOG_MODULE_REGISTER(modem_at, CONFIG_APP_MODEM_AT_LOG_LEVEL);
@@ -126,9 +127,18 @@ static void on_error_line(struct modem_chat *c, char **argv, uint16_t argc, void
 		return;
 	}
 
-	at_ctx.collect_len = snprintk(at_ctx.collect_buf, at_ctx.collect_size,
-				      "%s%s", argv[0],
-				      (argc > 1 && argv[1] != NULL) ? argv[1] : "");
+	int ret = snprintk(at_ctx.collect_buf, at_ctx.collect_size,
+			   "%s%s", argv[0],
+			   (argc > 1 && argv[1] != NULL) ? argv[1] : "");
+
+	if (ret < 0) {
+		at_ctx.collect_len = 0;
+		at_ctx.collect_buf[0] = '\0';
+	} else if ((size_t)ret >= at_ctx.collect_size) {
+		at_ctx.collect_len = at_ctx.collect_size - 1;
+	} else {
+		at_ctx.collect_len = (size_t)ret;
+	}
 }
 
 static void init_script_chat(void)
@@ -184,7 +194,7 @@ int modem_at_run(const char *req, char *resp, size_t resp_size, uint32_t timeout
 	}
 
 	ret = snprintk((char *)at_ctx.request_buf, sizeof(at_ctx.request_buf), "%s", req);
-	if (ret >= (int)sizeof(at_ctx.request_buf)) {
+	if (ret < 0 || ret >= (int)sizeof(at_ctx.request_buf)) {
 		ret = -EINVAL;
 		goto release;
 	}
@@ -211,6 +221,7 @@ release:
 
 static int modem_at_init(void)
 {
+	int err;
 	const struct modem_chat_config chat_config = {
 		.receive_buf = at_ctx.chat_receive_buf,
 		.receive_buf_size = sizeof(at_ctx.chat_receive_buf),
@@ -227,7 +238,13 @@ static int modem_at_init(void)
 	k_mutex_init(&at_ctx.run_lock);
 	k_mutex_init(&at_ctx.urc_lock);
 
-	modem_chat_init(&at_ctx.chat, &chat_config);
+	err = modem_chat_init(&at_ctx.chat, &chat_config);
+	if (err) {
+		LOG_ERR("modem_chat_init, error: %d", err);
+		FATAL_ERROR();
+		return err;
+	}
+
 	init_script_chat();
 
 	modem_at_user_pipe_init(&at_ctx.chat);
