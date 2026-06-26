@@ -14,6 +14,12 @@ menuconfig APP_CLOUD
 
 if APP_CLOUD
 
+config APP_CLOUD_PAYLOAD_BUFFER
+	int "Payload buffer size"
+	default 64
+	help
+	  Size of buffer used to construct JSON payload sent to cloud.
+
 config APP_CLOUD_THREAD_STACK_SIZE
 	int "Thread stack size"
 	default 2048

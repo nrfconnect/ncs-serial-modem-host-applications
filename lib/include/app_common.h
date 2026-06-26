@@ -22,14 +22,14 @@ extern "C" {
 	LOG_PANIC(); \
 	ARG_UNUSED(is_watchdog_timeout); \
 	k_sleep(K_SECONDS(10)); \
-	__ASSERT(false, "SEND_FATAL_ERROR() macro called"); \
+	__ASSERT(false, "FATAL_ERROR() macro called"); \
 } while (0)
 
 /** @brief Macro used to handle fatal errors. */
-#define SEND_FATAL_ERROR() FATAL_ERROR_HANDLE(0)
+#define FATAL_ERROR() FATAL_ERROR_HANDLE(0)
 
 /** @brief Macro used to handle watchdog timeouts. */
-#define SEND_FATAL_ERROR_WATCHDOG_TIMEOUT() FATAL_ERROR_HANDLE(1)
+#define FATAL_ERROR_WATCHDOG_TIMEOUT() FATAL_ERROR_HANDLE(1)
 
 /* Helper macro to create union member from channel and type */
 #define UNION_MEMBER(_chan, _type) _type _chan##_data_type;

@@ -11,6 +11,7 @@
 #include <zephyr/modem/at/user_pipe.h>
 #include <zephyr/modem/chat.h>
 
+#include "app_common.h"
 #include "modem_at.h"
 
 LOG_MODULE_REGISTER(modem_at, CONFIG_APP_MODEM_AT_LOG_LEVEL);
@@ -114,8 +115,8 @@ int modem_at_run(const char *req, char *resp, size_t resp_size, uint32_t timeout
 		resp[0] = '\0';
 	}
 
-	if (snprintf(at_ctx.request_buf, sizeof(at_ctx.request_buf), "%s", req) >=
-	    (int)sizeof(at_ctx.request_buf)) {
+	ret = snprintk(at_ctx.request_buf, sizeof(at_ctx.request_buf), "%s", req);
+	if (ret < 0 || ret >= (int)sizeof(at_ctx.request_buf)) {
 		ret = -EINVAL;
 		goto release;
 	}
@@ -142,6 +143,7 @@ release:
 
 static int modem_at_init(void)
 {
+	int err;
 	const struct modem_chat_config chat_config = {
 		.receive_buf = at_ctx.chat_receive_buf,
 		.receive_buf_size = sizeof(at_ctx.chat_receive_buf),
@@ -155,7 +157,13 @@ static int modem_at_init(void)
 
 	k_mutex_init(&at_ctx.run_lock);
 
-	modem_chat_init(&at_ctx.chat, &chat_config);
+	err = modem_chat_init(&at_ctx.chat, &chat_config);
+	if (err) {
+		LOG_ERR("modem_chat_init, error: %d", err);
+		FATAL_ERROR();
+		return err;
+	}
+
 	init_script_chat();
 
 	at_ctx.script.name = "at_script";

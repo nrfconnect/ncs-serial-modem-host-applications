@@ -34,24 +34,30 @@ ZBUS_MSG_SUBSCRIBER_DEFINE(cloud);
 
 CHANNEL_LIST(ADD_OBSERVERS)
 
-static void cloud_send_battery(int percent);
-static void cloud_thread(void);
+/* Helper functions */
 
-static void cloud_send_battery(int percent)
+static int cloud_send_battery(int percent)
 {
-	char cmd[64];
+	char cmd[CONFIG_APP_CLOUD_PAYLOAD_BUFFER];
+	int len = sizeof(cmd);
 	int err;
 
-	(void)snprintk(cmd, sizeof(cmd),
+	err = snprintk(cmd, len,
 		       "AT%%NRFCLOUDMESSAGE={\"appId\":\"BATTERY\",\"data\":\"%d\"}", percent);
+	if ((err < 0) || (err >= len)) {
+		LOG_ERR("snprintk, error: %d", err);
+		return -EINVAL;
+	}
 
 	err = modem_at_run(cmd, NULL, 0, CONFIG_APP_CLOUD_AT_TIMEOUT_SECONDS);
 	if (err) {
-		LOG_WRN("Battery cloud message failed: %d", err);
-		return;
+		LOG_ERR("modem_at_run, error: %d", err);
+		return -ENETUNREACH;
 	}
 
 	LOG_DBG("Battery %d%% sent to nRF Cloud", percent);
+
+	return 0;
 }
 
 static void cloud_thread(void)
@@ -65,7 +71,7 @@ static void cloud_thread(void)
 		err = zbus_sub_wait_msg(&cloud, &chan, msg_buf, K_FOREVER);
 		if (err) {
 			LOG_ERR("zbus_sub_wait_msg, error: %d", err);
-			return;
+			FATAL_ERROR();
 		}
 
 		if (chan == &network_chan) {
@@ -75,13 +81,18 @@ static void cloud_thread(void)
 		} else if (chan == &cloud_chan && connected) {
 			const struct cloud_msg *msg = (const struct cloud_msg *)msg_buf;
 
-			switch (msg->type) {
-			case CLOUD_BATTERY_SAMPLE:
-				cloud_send_battery(msg->battery_percent);
-				break;
-			default:
-				break;
+			if (msg->type == CLOUD_BATTERY_SAMPLE) {
+				err = cloud_send_battery(msg->battery_percent);
+				if (err == -ENETUNREACH) {
+					LOG_WRN("Failed to sent battery data, network is down?");
+				} else if (err) {
+					LOG_ERR("cloud_send_battery, error: %d", err);
+					FATAL_ERROR();
+				} else {
+				}
 			}
+		} else {
+			LOG_WRN("Unhandled message in cloud thread");
 		}
 	}
 }

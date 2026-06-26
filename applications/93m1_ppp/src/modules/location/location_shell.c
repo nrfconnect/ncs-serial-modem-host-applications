@@ -11,17 +11,32 @@
 #include "app_common.h"
 #include "location.h"
 
+static int publish_location_fix(const struct shell *sh, enum location_mode mode)
+{
+	struct location_msg msg = { .type = LOCATION_FIX_REQUEST, .mode = mode };
+	int err;
+
+	err = zbus_chan_pub(&location_chan, &msg, PUB_TIMEOUT);
+	if (err) {
+		shell_error(sh, "zbus_chan_pub location_chan, error: %d", err);
+		return err;
+	}
+
+	return 0;
+}
+
 static int cmd_location_fix(const struct shell *sh, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
 
-	struct location_msg msg = { .type = LOCATION_FIX_REQUEST, .mode = LOCATION_MODE_ALL };
+	int err = publish_location_fix(sh, LOCATION_MODE_ALL);
 
-	(void)zbus_chan_pub(&location_chan, &msg, PUB_TIMEOUT);
-	shell_print(sh, "Location fix requested (cell + wifi)");
+	if (!err) {
+		shell_print(sh, "Location fix requested (cell + wifi)");
+	}
 
-	return 0;
+	return err;
 }
 
 static int cmd_location_cell(const struct shell *sh, size_t argc, char **argv)
@@ -29,12 +44,13 @@ static int cmd_location_cell(const struct shell *sh, size_t argc, char **argv)
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
 
-	struct location_msg msg = { .type = LOCATION_FIX_REQUEST, .mode = LOCATION_MODE_CELL };
+	int err = publish_location_fix(sh, LOCATION_MODE_CELL);
 
-	(void)zbus_chan_pub(&location_chan, &msg, PUB_TIMEOUT);
-	shell_print(sh, "Location fix requested (cell only)");
+	if (!err) {
+		shell_print(sh, "Location fix requested (cell only)");
+	}
 
-	return 0;
+	return err;
 }
 
 static int cmd_location_wifi(const struct shell *sh, size_t argc, char **argv)
@@ -42,12 +58,13 @@ static int cmd_location_wifi(const struct shell *sh, size_t argc, char **argv)
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
 
-	struct location_msg msg = { .type = LOCATION_FIX_REQUEST, .mode = LOCATION_MODE_WIFI };
+	int err = publish_location_fix(sh, LOCATION_MODE_WIFI);
 
-	(void)zbus_chan_pub(&location_chan, &msg, PUB_TIMEOUT);
-	shell_print(sh, "Location fix requested (wifi only)");
+	if (!err) {
+		shell_print(sh, "Location fix requested (wifi only)");
+	}
 
-	return 0;
+	return err;
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(location_cmds,

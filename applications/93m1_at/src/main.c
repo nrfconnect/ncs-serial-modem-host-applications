@@ -82,6 +82,7 @@ static void sync_timer_fn(struct k_work *work)
 	err = zbus_chan_pub(&main_chan, &msg, PUB_TIMEOUT);
 	if (err) {
 		LOG_ERR("zbus_chan_pub main_chan, error: %d", err);
+		FATAL_ERROR();
 	}
 }
 
@@ -96,6 +97,7 @@ static void request_module_updates(void)
 	err = zbus_chan_pub(&location_chan, &loc_msg, PUB_TIMEOUT);
 	if (err) {
 		LOG_ERR("zbus_chan_pub location_chan, error: %d", err);
+		FATAL_ERROR();
 	}
 #endif
 #if defined(CONFIG_APP_BATTERY)
@@ -104,9 +106,11 @@ static void request_module_updates(void)
 	err = zbus_chan_pub(&battery_chan, &bat_msg, PUB_TIMEOUT);
 	if (err) {
 		LOG_ERR("zbus_chan_pub battery_chan, error: %d", err);
+		FATAL_ERROR();
 	}
 #endif
-	ARG_UNUSED(err);
+
+	(void)err;
 }
 
 static enum smf_state_result disconnected_run(void *obj)
@@ -134,6 +138,7 @@ static void connected_entry(void *obj)
 	err = k_work_reschedule(&sync_timer, K_SECONDS(CONFIG_APP_SYNC_BOOT_DELAY_SECONDS));
 	if (err < 0) {
 		LOG_ERR("k_work_reschedule sync_timer, error: %d", err);
+		FATAL_ERROR();
 	}
 }
 
@@ -157,8 +162,11 @@ static enum smf_state_result connected_run(void *obj)
 			err = k_work_reschedule(&sync_timer, K_SECONDS(CONFIG_APP_SYNC_INTERVAL));
 			if (err < 0) {
 				LOG_ERR("k_work_reschedule sync_timer, error: %d", err);
+				FATAL_ERROR();
 			}
 		}
+	} else {
+		LOG_WRN("Unhandled message in connected state.");
 	}
 
 	return SMF_EVENT_HANDLED;
@@ -175,7 +183,7 @@ static void wdt_callback(int channel_id, void *user_data)
 	LOG_ERR("Main watchdog expired, channel: %d, thread: %s",
 		channel_id, k_thread_name_get((k_tid_t)user_data));
 
-	SEND_FATAL_ERROR_WATCHDOG_TIMEOUT();
+	FATAL_ERROR_WATCHDOG_TIMEOUT();
 }
 
 int main(void)
@@ -192,7 +200,7 @@ int main(void)
 	task_wdt_id = task_wdt_add(wdt_timeout_ms, wdt_callback, (void *)k_current_get());
 	if (task_wdt_id < 0) {
 		LOG_ERR("task_wdt_add, error: %d", task_wdt_id);
-		SEND_FATAL_ERROR();
+		FATAL_ERROR();
 		return -EFAULT;
 	}
 
@@ -202,23 +210,25 @@ int main(void)
 		err = task_wdt_feed(task_wdt_id);
 		if (err) {
 			LOG_ERR("task_wdt_feed, error: %d", err);
-			SEND_FATAL_ERROR();
+			FATAL_ERROR();
 			return -EFAULT;
 		}
 
 		err = zbus_sub_wait_msg(&main_subscriber, &app.chan, app.msg_buf, zbus_wait);
 		if (err == -ENOMSG) {
 			continue;
-		} else if (err) {
+		}
+
+		if (err) {
 			LOG_ERR("zbus_sub_wait_msg, error: %d", err);
-			SEND_FATAL_ERROR();
+			FATAL_ERROR();
 			return -EFAULT;
 		}
 
 		err = smf_run_state(SMF_CTX(&app));
 		if (err) {
 			LOG_ERR("smf_run_state, error: %d", err);
-			SEND_FATAL_ERROR();
+			FATAL_ERROR();
 			return -EFAULT;
 		}
 	}

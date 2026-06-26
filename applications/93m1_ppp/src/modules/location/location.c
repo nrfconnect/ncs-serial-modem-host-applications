@@ -370,13 +370,13 @@ static void location_thread(void)
 					location_state.msg_buf, K_FOREVER);
 		if (err) {
 			LOG_ERR("zbus_sub_wait_msg, error: %d", err);
-			return;
+			FATAL_ERROR();
 		}
 
 		err = smf_run_state(SMF_CTX(&location_state));
 		if (err) {
 			LOG_ERR("smf_run_state(), error: %d", err);
-			return;
+			FATAL_ERROR();
 		}
 	}
 }

@@ -140,7 +140,7 @@ static void send_demo_cloud_message(void)
 	err = zbus_chan_pub(&cloud_chan, &msg, PUB_TIMEOUT);
 	if (err) {
 		LOG_ERR("zbus_chan_pub cloud_chan, error: %d", err);
-		SEND_FATAL_ERROR();
+		FATAL_ERROR();
 	}
 }
 
@@ -154,7 +154,7 @@ static void perform_cloud_synchronization(void)
 	err = zbus_chan_pub(&fota_chan, &fota_msg, PUB_TIMEOUT);
 	if (err) {
 		LOG_ERR("zbus_chan_pub fota_chan, error: %d", err);
-		SEND_FATAL_ERROR();
+		FATAL_ERROR();
 	}
 }
 
@@ -168,7 +168,7 @@ static void cloud_sync_schedule(struct main_state *state)
 		K_SECONDS(CONFIG_APP_MAIN_CLOUD_SYNCHRONIZATION_PERIOD_SECONDS));
 	if (err < 0) {
 		LOG_ERR("k_work_schedule_for_queue, error: %d", err);
-		SEND_FATAL_ERROR();
+		FATAL_ERROR();
 	}
 }
 
@@ -187,7 +187,7 @@ static void cloud_sync_delayed_work_handler(struct k_work *work)
 	err = zbus_chan_pub(&main_sync_chan, &msg, PUB_TIMEOUT);
 	if (err) {
 		LOG_ERR("zbus_chan_pub main_sync_chan, error: %d", err);
-		SEND_FATAL_ERROR();
+		FATAL_ERROR();
 	}
 
 	cloud_sync_schedule(state);
@@ -234,7 +234,7 @@ static enum smf_state_result running_run(void *obj)
 				err = zbus_chan_pub(&fota_chan, &fota_msg, PUB_TIMEOUT);
 				if (err) {
 					LOG_ERR("zbus_chan_pub fota_chan, error: %d", err);
-					SEND_FATAL_ERROR();
+					FATAL_ERROR();
 				}
 			}
 			break;
@@ -358,7 +358,7 @@ static void main_wdt_callback(int channel_id, void *user_data)
 	LOG_ERR("Main watchdog expired, channel: %d, thread: %s",
 		channel_id, k_thread_name_get((k_tid_t)user_data));
 
-	SEND_FATAL_ERROR_WATCHDOG_TIMEOUT();
+	FATAL_ERROR_WATCHDOG_TIMEOUT();
 }
 
 int main(void)
@@ -385,7 +385,7 @@ int main(void)
 	task_wdt_id = task_wdt_add(wdt_timeout_ms, main_wdt_callback, (void *)k_current_get());
 	if (task_wdt_id < 0) {
 		LOG_ERR("Failed to add task to watchdog: %d", task_wdt_id);
-		SEND_FATAL_ERROR();
+		FATAL_ERROR();
 		return -EFAULT;
 	}
 
@@ -395,7 +395,7 @@ int main(void)
 		err = task_wdt_feed(task_wdt_id);
 		if (err) {
 			LOG_ERR("task_wdt_feed, error: %d", err);
-			SEND_FATAL_ERROR();
+			FATAL_ERROR();
 			return -EFAULT;
 		}
 
@@ -405,14 +405,14 @@ int main(void)
 			continue;
 		} else if (err) {
 			LOG_ERR("zbus_sub_wait_msg, error: %d", err);
-			SEND_FATAL_ERROR();
+			FATAL_ERROR();
 			return -EFAULT;
 		}
 
 		err = smf_run_state(SMF_CTX(&main_state));
 		if (err) {
 			LOG_ERR("smf_run_state(), error: %d", err);
-			SEND_FATAL_ERROR();
+			FATAL_ERROR();
 			return -EFAULT;
 		}
 	}
