@@ -16,7 +16,7 @@ if APP_CLOUD
 
 config APP_CLOUD_PAYLOAD_BUFFER
 	int "Payload buffer size"
-	default 64
+	default 96
 	help
 	  Size of buffer used to construct JSON payload sent to cloud.
 

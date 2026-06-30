@@ -43,7 +43,8 @@ static int cloud_send_battery(int percent)
 	int err;
 
 	err = snprintk(cmd, len,
-		       "AT%%NRFCLOUDMESSAGE={\"appId\":\"BATTERY\",\"data\":\"%d\"}", percent);
+		       "AT%%NRFCLOUDMESSAGE="
+		       "{\"appId\":\"BATTERY\",\"messageType\":\"DATA\",\"data\":\"%d\"}", percent);
 	if ((err < 0) || (err >= len)) {
 		LOG_ERR("snprintk, error: %d", err);
 		return -EINVAL;
