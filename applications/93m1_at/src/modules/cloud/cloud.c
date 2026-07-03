@@ -56,7 +56,7 @@ static int cloud_send_battery(int percent)
 		return -ENETUNREACH;
 	}
 
-	LOG_DBG("Battery %d%% sent to nRF Cloud", percent);
+	LOG_INF("Battery percentage reported: %d%%", percent);
 
 	return 0;
 }
