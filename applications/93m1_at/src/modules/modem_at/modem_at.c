@@ -42,6 +42,7 @@ struct modem_at_ctx {
 static struct modem_at_ctx at_ctx;
 
 static void on_urc(struct modem_chat *c, char **argv, uint16_t argc, void *user_data);
+static void on_coap(struct modem_chat *c, char **argv, uint16_t argc, void *user_data);
 static void collect_line(struct modem_chat *c, char **argv, uint16_t argc, void *user_data);
 static void on_error_line(struct modem_chat *c, char **argv, uint16_t argc, void *user_data);
 static void init_script_chat(void);
@@ -49,7 +50,8 @@ static int modem_at_init(void);
 
 /* URCs that arrive asynchronously on the user pipe are routed to subscribers. */
 MODEM_CHAT_MATCHES_DEFINE(unsol_matches,
-	MODEM_CHAT_MATCH("%NRFCLOUDLOCATION: ", ",", on_urc));
+	MODEM_CHAT_MATCH("%NRFCLOUDLOCATION: ", ",", on_urc),
+	MODEM_CHAT_MATCH("%COAP: ", ",", on_coap));
 
 MODEM_CHAT_MATCHES_DEFINE(script_abort_matches,
 	MODEM_CHAT_MATCH("ERROR", "", NULL),
@@ -74,6 +76,29 @@ static void on_urc(struct modem_chat *c, char **argv, uint16_t argc, void *user_
 		}
 	}
 	k_mutex_unlock(&at_ctx.urc_lock);
+}
+
+static void on_coap(struct modem_chat *c, char **argv, uint16_t argc, void *user_data)
+{
+	ARG_UNUSED(c);
+	ARG_UNUSED(user_data);
+
+	if (argc < 2 || argv[1] == NULL) {
+		return;
+	}
+
+	if (strcmp(argv[1], "RESPONSE") == 0 && argc >= 3 && argv[2] != NULL) {
+		if (strcmp(argv[2], "4.01") == 0) {
+			LOG_WRN("CoAP response: 4.01 Unauthorized "
+				"(device may not be onboarded to nRF Cloud)");
+		} else {
+			LOG_DBG("CoAP response: %s", argv[2]);
+		}
+	} else if (strcmp(argv[1], "DATA") == 0) {
+		LOG_DBG("CoAP data received");
+	} else {
+
+	}
 }
 
 int modem_at_urc_subscribe(const char *prefix, modem_at_urc_cb cb, void *user_data)
