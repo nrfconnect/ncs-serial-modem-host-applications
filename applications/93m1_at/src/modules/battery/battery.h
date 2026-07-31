@@ -23,6 +23,17 @@ struct battery_msg {
 
 ZBUS_CHAN_DECLARE(battery_chan);
 
+/**
+ * @brief Get the state of charge from the most recent sample.
+ *
+ * @param percent Populated with the state of charge in percent on success.
+ *
+ * @retval 0        Valid value written to @p percent.
+ * @retval -EINVAL  @p percent is NULL.
+ * @retval -ENODATA No valid sample available.
+ */
+int battery_percent_get(int *percent);
+
 #ifdef __cplusplus
 }
 #endif

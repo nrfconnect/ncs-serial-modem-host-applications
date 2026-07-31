@@ -17,6 +17,7 @@
 #endif
 #if defined(CONFIG_APP_BATTERY)
 #include "modules/battery/battery.h"
+#include "modules/cloud/cloud.h"
 #endif
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_MAIN_LOG_LEVEL);
@@ -56,10 +57,15 @@ struct app_object {
 	uint8_t msg_buf[MAX_MSG_SIZE];
 };
 
-static void sync_timer_fn(struct k_work *work);
-static K_WORK_DELAYABLE_DEFINE(sync_timer, sync_timer_fn);
+static void telemetry_timer_fn(struct k_work *work);
+static K_WORK_DELAYABLE_DEFINE(telemetry_timer, telemetry_timer_fn);
 
-static void request_module_updates(void);
+#if defined(CONFIG_APP_BATTERY)
+static void sample_timer_fn(struct k_work *work);
+static K_WORK_DELAYABLE_DEFINE(sample_timer, sample_timer_fn);
+#endif
+
+static void report_telemetry(void);
 static enum smf_state_result disconnected_run(void *obj);
 static void connected_entry(void *obj);
 static enum smf_state_result connected_run(void *obj);
@@ -72,7 +78,7 @@ static const struct smf_state states[] = {
 					     NULL, NULL),
 };
 
-static void sync_timer_fn(struct k_work *work)
+static void telemetry_timer_fn(struct k_work *work)
 {
 	ARG_UNUSED(work);
 
@@ -86,11 +92,33 @@ static void sync_timer_fn(struct k_work *work)
 	}
 }
 
-static void request_module_updates(void)
+#if defined(CONFIG_APP_BATTERY)
+static void sample_timer_fn(struct k_work *work)
+{
+	ARG_UNUSED(work);
+
+	struct battery_msg msg = { .type = BATTERY_SAMPLE };
+	int err;
+
+	err = zbus_chan_pub(&battery_chan, &msg, PUB_TIMEOUT);
+	if (err) {
+		LOG_ERR("zbus_chan_pub battery_chan, error: %d", err);
+		FATAL_ERROR();
+	}
+
+	err = k_work_reschedule(&sample_timer, K_SECONDS(CONFIG_APP_BATTERY_SAMPLE_INTERVAL));
+	if (err < 0) {
+		LOG_ERR("k_work_reschedule sample_timer, error: %d", err);
+		FATAL_ERROR();
+	}
+}
+#endif
+
+static void report_telemetry(void)
 {
 	int err;
 
-	LOG_DBG("Requesting module updates");
+	LOG_DBG("Reporting telemetry");
 #if defined(CONFIG_APP_LOCATION)
 	struct location_msg loc_msg = { .type = LOCATION_FIX_REQUEST };
 
@@ -101,12 +129,17 @@ static void request_module_updates(void)
 	}
 #endif
 #if defined(CONFIG_APP_BATTERY)
-	struct battery_msg bat_msg = { .type = BATTERY_SAMPLE };
+	struct cloud_msg cloud_msg = { .type = CLOUD_BATTERY_SAMPLE };
 
-	err = zbus_chan_pub(&battery_chan, &bat_msg, PUB_TIMEOUT);
+	err = battery_percent_get(&cloud_msg.battery_percent);
 	if (err) {
-		LOG_ERR("zbus_chan_pub battery_chan, error: %d", err);
-		FATAL_ERROR();
+		LOG_WRN("battery_percent_get, error: %d", err);
+	} else {
+		err = zbus_chan_pub(&cloud_chan, &cloud_msg, PUB_TIMEOUT);
+		if (err) {
+			LOG_ERR("zbus_chan_pub cloud_chan, error: %d", err);
+			FATAL_ERROR();
+		}
 	}
 #endif
 
@@ -135,9 +168,9 @@ static void connected_entry(void *obj)
 
 	LOG_INF("Connected");
 
-	err = k_work_reschedule(&sync_timer, K_SECONDS(CONFIG_APP_SYNC_BOOT_DELAY_SECONDS));
+	err = k_work_reschedule(&telemetry_timer, K_SECONDS(CONFIG_APP_SYNC_BOOT_DELAY_SECONDS));
 	if (err < 0) {
-		LOG_ERR("k_work_reschedule sync_timer, error: %d", err);
+		LOG_ERR("k_work_reschedule telemetry_timer, error: %d", err);
 		FATAL_ERROR();
 	}
 }
@@ -158,10 +191,11 @@ static enum smf_state_result connected_run(void *obj)
 		if (msg->type == MAIN_SYNC) {
 			int err;
 
-			request_module_updates();
-			err = k_work_reschedule(&sync_timer, K_SECONDS(CONFIG_APP_SYNC_INTERVAL));
+			report_telemetry();
+			err = k_work_reschedule(&telemetry_timer,
+						K_SECONDS(CONFIG_APP_SYNC_INTERVAL));
 			if (err < 0) {
-				LOG_ERR("k_work_reschedule sync_timer, error: %d", err);
+				LOG_ERR("k_work_reschedule telemetry_timer, error: %d", err);
 				FATAL_ERROR();
 			}
 		}
@@ -175,7 +209,7 @@ static enum smf_state_result connected_run(void *obj)
 static void connected_exit(void *obj)
 {
 	ARG_UNUSED(obj);
-	(void)k_work_cancel_delayable(&sync_timer);
+	(void)k_work_cancel_delayable(&telemetry_timer);
 }
 
 static void wdt_callback(int channel_id, void *user_data)
@@ -203,6 +237,15 @@ int main(void)
 		FATAL_ERROR();
 		return -EFAULT;
 	}
+
+#if defined(CONFIG_APP_BATTERY)
+	err = k_work_reschedule(&sample_timer, K_NO_WAIT);
+	if (err < 0) {
+		LOG_ERR("k_work_reschedule sample_timer, error: %d", err);
+		FATAL_ERROR();
+		return -EFAULT;
+	}
+#endif
 
 	smf_set_initial(SMF_CTX(&app), &states[STATE_DISCONNECTED]);
 

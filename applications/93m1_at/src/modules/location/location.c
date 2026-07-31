@@ -11,7 +11,6 @@
 
 #include "app_common.h"
 #include "modules/modem_at/modem_at.h"
-#include "modules/network/network.h"
 #include "location.h"
 
 LOG_MODULE_REGISTER(location, CONFIG_APP_LOCATION_LOG_LEVEL);
@@ -26,7 +25,6 @@ ZBUS_CHAN_DEFINE(location_chan,
 ZBUS_MSG_SUBSCRIBER_DEFINE(location);
 
 #define CHANNEL_LIST(X)				\
-	X(network_chan, struct network_msg)	\
 	X(location_chan, struct location_msg)
 
 #define MAX_MSG_SIZE MAX_MSG_SIZE_FROM_LIST(CHANNEL_LIST)
@@ -99,7 +97,6 @@ static void location_thread(void)
 	int err;
 	const struct zbus_channel *chan;
 	uint8_t msg_buf[MAX_MSG_SIZE];
-	bool connected = false;
 
 	err = modem_at_urc_subscribe("%NRFCLOUDLOCATION: ", on_location, NULL);
 	if (err) {
@@ -114,18 +111,18 @@ static void location_thread(void)
 			FATAL_ERROR();
 		}
 
-		if (chan == &network_chan) {
-			const struct network_msg *msg = (const struct network_msg *)msg_buf;
+		if (chan == &location_chan) {
+			const struct location_msg *msg = (const struct location_msg *)msg_buf;
 
-			connected = (msg->type == NETWORK_CONNECTED);
-		} else if (chan == &location_chan && connected) {
-			err = location_request();
-			if (err == -ENETUNREACH) {
-				LOG_WRN("Failed to request location, network is down?");
-			} else if (err) {
-				LOG_ERR("location_request, error: %d", err);
-				FATAL_ERROR();
-			} else {
+			if (msg->type == LOCATION_FIX_REQUEST) {
+				err = location_request();
+				if (err == -ENETUNREACH) {
+					LOG_WRN("Failed to request location, network is down?");
+				} else if (err) {
+					LOG_ERR("location_request, error: %d", err);
+					FATAL_ERROR();
+				} else {
+				}
 			}
 		} else {
 			LOG_WRN("Unhandled message in location thread");
