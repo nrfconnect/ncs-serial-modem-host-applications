@@ -18,6 +18,13 @@ config APP_BATTERY_THREAD_STACK_SIZE
 	int "Battery thread stack size (bytes)"
 	default 2048
 
+config APP_BATTERY_SAMPLE_INTERVAL
+	int "Battery sampling interval (seconds)"
+	default 60
+	help
+	  How often the fuel gauge is fed a new sample. Runs regardless of network
+	  connectivity.
+
 module = APP_BATTERY
 module-str = battery
 source "subsys/logging/Kconfig.template.log_config"

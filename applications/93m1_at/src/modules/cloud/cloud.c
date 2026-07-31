@@ -10,7 +10,6 @@
 
 #include "app_common.h"
 #include "modules/modem_at/modem_at.h"
-#include "modules/network/network.h"
 #include "cloud.h"
 
 LOG_MODULE_REGISTER(cloud, CONFIG_APP_CLOUD_LOG_LEVEL);
@@ -25,7 +24,6 @@ ZBUS_CHAN_DEFINE(cloud_chan,
 ZBUS_MSG_SUBSCRIBER_DEFINE(cloud);
 
 #define CHANNEL_LIST(X)				\
-	X(network_chan, struct network_msg)	\
 	X(cloud_chan, struct cloud_msg)
 
 #define MAX_MSG_SIZE MAX_MSG_SIZE_FROM_LIST(CHANNEL_LIST)
@@ -66,7 +64,6 @@ static void cloud_thread(void)
 	int err;
 	const struct zbus_channel *chan;
 	uint8_t msg_buf[MAX_MSG_SIZE];
-	bool connected = false;
 
 	while (true) {
 		err = zbus_sub_wait_msg(&cloud, &chan, msg_buf, K_FOREVER);
@@ -75,11 +72,7 @@ static void cloud_thread(void)
 			FATAL_ERROR();
 		}
 
-		if (chan == &network_chan) {
-			const struct network_msg *msg = (const struct network_msg *)msg_buf;
-
-			connected = (msg->type == NETWORK_CONNECTED);
-		} else if (chan == &cloud_chan && connected) {
+		if (chan == &cloud_chan) {
 			const struct cloud_msg *msg = (const struct cloud_msg *)msg_buf;
 
 			if (msg->type == CLOUD_BATTERY_SAMPLE) {
