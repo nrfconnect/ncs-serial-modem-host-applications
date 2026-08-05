@@ -1,9 +1,9 @@
 tests:
-  - id: 91m1-cloud-connect-nrf54l15
+  - id: 91m1_ppp-cloud-connect-nrf54l15
     enabled: true
     type: cloud_connect
     pytest_dir: tests/on_target/tests/test_cloud/
-    app: 91m1
+    app: 91m1_ppp
     board: nrf54l15dk/nrf54l15/cpuapp/ns
     hardware:
       segger_sn_var: CI_NRF54L15_SEGGER_SN
@@ -17,11 +17,11 @@ tests:
       ca_cert_var: NRF_CLOUD_CA_CERT
       ca_key_var: NRF_CLOUD_CA_KEY
 
-  - id: 91m1-application-fota-nrf54l15
+  - id: 91m1_ppp-application-fota-nrf54l15
     enabled: false
     type: fota
     pytest_dir: tests/on_target/tests/test_fota/
-    app: 91m1
+    app: 91m1_ppp
     board: nrf54l15dk/nrf54l15/cpuapp/ns
     hardware:
       segger_sn_var: CI_NRF54L15_SEGGER_SN

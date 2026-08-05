@@ -1,6 +1,6 @@
 # nRF91M1 Host Application Documentation
 
-End-to-end guide for the [91m1](../) host application on nRF54L15. Complete these steps in order to wire up the hardware, build and flash firmware, and connect the device to nRF Cloud over CoAP.
+End-to-end guide for the [91m1_ppp](../) host application on nRF54L15. Complete these steps in order to wire up the hardware, build and flash firmware, and connect the device to nRF Cloud over CoAP.
 
 The application connects to nRF Cloud over **CoAP/DTLS** from the host MCU (nRF54L15). Cellular data goes through the nRF91M1 Serial Modem via PPP; credentials are stored on the host using the TLS credentials shell and TF-M Protected Storage. Until onboarding is complete, `nrf_cloud_coap_connect()` will fail even if credentials are installed locally.
 
@@ -8,10 +8,10 @@ The application connects to nRF Cloud over **CoAP/DTLS** from the host MCU (nRF5
 
 1. **Wire up the development boards** — Connect the nRF54L15 DK (host) to the nRF9151 DK (Serial Modem). Configure both DKs in the Board Configurator and flash Serial Modem firmware with PPP and CMUX enabled on the nRF9151. The host application is tested with Serial Modem commit [`e23c2bde`](https://github.com/nrfconnect/ncs-serial-modem/commit/e23c2bde08a83e8a2908f78ee19f2b2ff5c6e46e). See [Hardware setup](hardware-setup.md) for wiring, pin assignments, and [how to flash Serial Modem on the nRF91](https://docs.nordicsemi.com/bundle/addon-serial_modem-latest/page/gsg_guide.html#building_and_running).
 
-2. **Build and flash 91m1 on the nRF54L15 DK**
+2. **Build and flash 91m1_ppp on the nRF54L15 DK**
 
    ```shell
-   cd applications/91m1
+   cd applications/91m1_ppp
    west build -b nrf54l15dk/nrf54l15/cpuapp/ns -p
    west flash --recover
    ```

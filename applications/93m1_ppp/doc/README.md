@@ -70,4 +70,4 @@ Wait for the cellular link, then for the connection and first upload:
 
 Heartbeats and metrics appear in the linked Memfault project. Location and FOTA use the same CoAP session.
 
-See the [91m1 README](../../91m1/doc/README.md) for credential and troubleshooting detail, which applies here too.
+See the [91m1_ppp README](../../91m1_ppp/doc/README.md) for credential and troubleshooting detail, which applies here too.

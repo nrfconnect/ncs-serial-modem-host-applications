@@ -57,7 +57,7 @@ jobs:
       - name: Build with build wrapper
         working-directory: serial-modem-host-applications/applications
         run: |
-          cd 91m1
+          cd 91m1_ppp
           build-wrapper-linux-x86-64 --out-dir ../../${{ env.BUILD_WRAPPER_OUT_DIR }} \
             west build -b nrf54l15dk/nrf54l15/cpuapp/ns -p
 
