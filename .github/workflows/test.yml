@@ -2,6 +2,7 @@
 #
 # Triggers:
 # - push to main: runs every enabled test in .github/test/tests.yml
+# - schedule (03:00 UTC nightly): same as push to main
 # - workflow_dispatch: pick branch (GitHub branch dropdown) and test (all or one id)
 #
 # When adding tests, update workflow_dispatch options below and .github/test/tests.yml.
@@ -27,6 +28,8 @@ on:
   push:
     branches:
       - main
+  schedule:
+    - cron: '0 3 * * *'
   workflow_dispatch:
     inputs:
       test:
