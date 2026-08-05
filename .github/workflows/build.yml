@@ -38,7 +38,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - app: 91m1
+          - app: 91m1_ppp
             board: nrf54l15dk/nrf54l15/cpuapp/ns
           - app: 93m1_ppp
             board: nrf93m1dk/nrf54l15/cpuapp/ns

@@ -11,7 +11,7 @@ set(NRF91SM_DRIVER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/drivers/nrf91-sm)
 list(APPEND EXTRA_ZEPHYR_MODULES ${NRF91SM_DRIVER_DIR})
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
-project("Serial Modem Host - 91m1")
+project("Serial Modem Host - 91m1 PPP")
 
 # Memfault CoAP includes unused nRF91 modem headers. Provide stubs on host MCU builds.
 if(CONFIG_MEMFAULT_USE_NRF_CLOUD_COAP AND NOT CONFIG_NRF_MODEM_LIB)

@@ -10,7 +10,7 @@
 # Prerequisites:
 # - Self-hosted Linux runner with USB access to the DK (container runs --privileged -v /dev:/dev)
 # - SEGGER J-Link is installed in the job container (see "Install SEGGER J-Link" step)
-# - nRF54L15 DK + nRF9151 Serial Modem wired and configured per applications/91m1/doc
+# - nRF54L15 DK + nRF9151 Serial Modem wired and configured per applications/91m1_ppp/doc
 # - Self-signed CA certificate and private key stored in GitHub secrets
 # - nRF Cloud API key with permission to onboard/delete devices
 #
@@ -39,8 +39,8 @@ on:
         default: all
         options:
           - all
-          - 91m1-cloud-connect-nrf54l15
-          - 91m1-application-fota-nrf54l15
+          - 91m1_ppp-cloud-connect-nrf54l15
+          - 91m1_ppp-application-fota-nrf54l15
 
 permissions:
   contents: read

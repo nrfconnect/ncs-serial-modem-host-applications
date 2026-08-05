@@ -1,6 +1,6 @@
 # Application behavior
 
-General runtime behavior of the [91m1](../) host application. For hardware wiring, build, and cloud provisioning, see the [main guide](README.md).
+General runtime behavior of the [91m1_ppp](../) host application. For hardware wiring, build, and cloud provisioning, see the [main guide](README.md).
 
 ## Overview
 

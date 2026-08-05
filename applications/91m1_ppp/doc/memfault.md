@@ -2,7 +2,7 @@
 
 [Memfault](https://memfault.com/) is a device observability platform that complements on-device debugging. It collects crash coredumps, reboot events, stack/heap metrics, and logs from deployed devices so you can diagnose issues without physical access — especially useful for sporadic faults or problems that only appear on real networks.
 
-The 91m1 application forwards Memfault data through the existing **nRF Cloud CoAP** connection (same DTLS session and JWT as cloud messaging). No separate Memfault credentials or HTTP upload path is required.
+The 91m1_ppp application forwards Memfault data through the existing **nRF Cloud CoAP** connection (same DTLS session and JWT as cloud messaging). No separate Memfault credentials or HTTP upload path is required.
 
 ## Prerequisites
 
@@ -15,7 +15,7 @@ Complete [Getting started](README.md) first — the device must be onboarded to 
 2. **Upload the firmware symbol file** — Memfault needs the build's `zephyr.elf` to decode crash addresses into function names and line numbers. Upload it **once per firmware build**, before or as soon as devices start reporting data:
 
    - In the Memfault UI: **Software → Symbol Files → Upload Symbol File**
-   - Select `build/zephyr/zephyr.elf` from your west build directory (the default output when building from `applications/91m1`).
+   - Select `build/zephyr/zephyr.elf` from your west build directory (the default output when building from `applications/91m1_ppp`).
 
    Alternatively, upload from the command line with the [Memfault CLI](https://docs.memfault.com/docs/ci/install-memfault-cli):
 

@@ -7,7 +7,7 @@ Host-side firmware for Nordic Smart Modem modules. This repository is built on [
 
 Supported product targets:
 
-* **91m1**: PPP host application for the [nRF91M1](https://www.nordicsemi.com/Products/nRF91M1) Smart Modem
+* **91m1_ppp**: PPP host application for the [nRF91M1](https://www.nordicsemi.com/Products/nRF91M1) Smart Modem
 * **93m1_ppp**: PPP host application for the [nRF93M1](https://www.nordicsemi.com/Products/nRF93-Series) Smart Modem
 * **93m1_at**: AT host application for the [nRF93M1](https://www.nordicsemi.com/Products/nRF93-Series) Smart Modem
 
@@ -20,7 +20,7 @@ Supported product targets:
 | [`west.yml`](west.yml) | West manifest, pins NCS to `v3.4-branch` |
 | [`zephyr/module.yml`](zephyr/module.yml) | Registers this repo as a Zephyr module |
 | [`lib/include/`](lib/include/) | Shared headers (`app_common.h`) |
-| [`applications/91m1/`](applications/91m1/) | nRF91M1 host application |
+| [`applications/91m1_ppp/`](applications/91m1_ppp/) | nRF91M1 host application |
 | [`applications/93m1_ppp/`](applications/93m1_ppp/) | nRF93M1 PPP host application |
 | [`applications/93m1_at/`](applications/93m1_at/) | nRF93M1 AT host application |
 
@@ -66,7 +66,7 @@ Follow the application documentation for hardware setup, build, flash, and (wher
 
 | Application | Documentation | Cloud connectivity |
 |-------------|---------------|---------------------|
-| **91m1** | [applications/91m1/doc/](applications/91m1/doc/README.md) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP just carries IP to the nRF91M1 modem |
+| **91m1_ppp** | [applications/91m1_ppp/doc/](applications/91m1_ppp/doc/README.md) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP just carries IP to the nRF91M1 modem |
 | **93m1_ppp** | [applications/93m1_ppp/doc/](applications/93m1_ppp/doc/README.md) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP just carries IP to the nRF93M1 modem |
 | **93m1_at** | [applications/93m1_at/doc/](applications/93m1_at/doc/README.md) | Modem terminates the connection itself with its built-in AT client. Host just sends AT commands |
 
