@@ -9,6 +9,7 @@
 #include <zephyr/zbus/zbus.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/sensor/npm13xx_charger.h>
+#include <zephyr/task_wdt/task_wdt.h>
 #include <nrf_fuel_gauge.h>
 
 #include "app_common.h"
@@ -16,6 +17,10 @@
 #include "battery.h"
 
 LOG_MODULE_REGISTER(battery, CONFIG_APP_BATTERY_LOG_LEVEL);
+
+BUILD_ASSERT(CONFIG_APP_BATTERY_WATCHDOG_TIMEOUT_SECONDS >
+	     CONFIG_APP_BATTERY_MSG_PROCESSING_TIMEOUT_SECONDS,
+	     "Watchdog timeout must exceed the maximum message processing time");
 
 /* nPM1300 BCHGCHARGESTATUS bits */
 #define CHG_STATUS_COMPLETE_MASK BIT(1)
@@ -219,14 +224,28 @@ int battery_percent_get(int *percent)
 	return 0;
 }
 
+static void battery_wdt_callback(int channel_id, void *user_data)
+{
+	LOG_ERR("Battery watchdog expired, channel: %d, thread: %s",
+		channel_id, k_thread_name_get((k_tid_t)user_data));
+
+	FATAL_ERROR_WATCHDOG_TIMEOUT();
+}
+
 static void battery_thread(void)
 {
 	int err;
+	int task_wdt_id;
 	const struct zbus_channel *chan;
 	uint8_t msg_buf[MAX_MSG_SIZE];
 	int64_t ref_time;
 	int32_t prev_chg_status = -1;
 	const struct device *const charger = DEVICE_DT_GET(DT_NODELABEL(npm1300_charger));
+	const uint32_t wdt_timeout_ms =
+		(CONFIG_APP_BATTERY_WATCHDOG_TIMEOUT_SECONDS * MSEC_PER_SEC);
+	const uint32_t execution_time_ms =
+		(CONFIG_APP_BATTERY_MSG_PROCESSING_TIMEOUT_SECONDS * MSEC_PER_SEC);
+	const k_timeout_t zbus_wait = K_MSEC(wdt_timeout_ms - execution_time_ms);
 
 	if (!device_is_ready(charger)) {
 		LOG_ERR("Charger device not ready");
@@ -241,8 +260,23 @@ static void battery_thread(void)
 
 	ref_time = k_uptime_get();
 
+	task_wdt_id = task_wdt_add(wdt_timeout_ms, battery_wdt_callback, (void *)k_current_get());
+	if (task_wdt_id < 0) {
+		LOG_ERR("task_wdt_add, error: %d", task_wdt_id);
+		FATAL_ERROR();
+	}
+
 	while (true) {
-		err = zbus_sub_wait_msg(&battery, &chan, msg_buf, K_FOREVER);
+		err = task_wdt_feed(task_wdt_id);
+		if (err) {
+			LOG_ERR("task_wdt_feed, error: %d", err);
+			FATAL_ERROR();
+		}
+
+		err = zbus_sub_wait_msg(&battery, &chan, msg_buf, zbus_wait);
+		if (err == -ENOMSG) {
+			continue;
+		}
 		if (err) {
 			LOG_ERR("zbus_sub_wait_msg, error: %d", err);
 			FATAL_ERROR();

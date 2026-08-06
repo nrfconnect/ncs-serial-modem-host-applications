@@ -37,3 +37,8 @@
 &mx25r64 {
 	status = "disabled";
 };
+
+/* Hardware fallback for CONFIG_TASK_WDT_HW_FALLBACK */
+&wdt31 {
+	status = "okay";
+};
