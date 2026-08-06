@@ -39,6 +39,16 @@ config APP_MODEM_AT_TIMEOUT_SECONDS
 	int "Default AT command timeout (seconds)"
 	default 30
 
+config APP_MODEM_AT_PIPE_WAIT_TIMEOUT_SECONDS
+	int "Max time to wait for the AT pipe if another module is using it"
+	default 60
+	help
+	  modem_at_run() shares one AT pipe across modules. This bounds how long a
+	  call will wait for another module's in-progress command to finish before
+	  giving up. Should be at least as long as the slowest AT command timeout
+	  among the modules sharing the pipe, so a caller does not give up on a
+	  still-legitimate exchange.
+
 config APP_MODEM_AT_URC_SUBSCRIBERS
 	int "Maximum URC subscribers"
 	default 4

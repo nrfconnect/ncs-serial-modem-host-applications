@@ -203,7 +203,13 @@ int modem_at_run(const char *req, char *resp, size_t resp_size, uint32_t timeout
 		return -EINVAL;
 	}
 
-	k_mutex_lock(&at_ctx.run_lock, K_FOREVER);
+	ret = k_mutex_lock(&at_ctx.run_lock,
+			   K_SECONDS(CONFIG_APP_MODEM_AT_PIPE_WAIT_TIMEOUT_SECONDS));
+	if (ret) {
+		LOG_WRN("Timed out waiting for AT pipe after %us",
+			CONFIG_APP_MODEM_AT_PIPE_WAIT_TIMEOUT_SECONDS);
+		return ret;
+	}
 
 	ret = modem_at_user_pipe_claim();
 	if (ret < 0) {

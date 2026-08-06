@@ -19,8 +19,9 @@ BUILD_ASSERT(CONFIG_APP_CLOUD_WATCHDOG_TIMEOUT_SECONDS >
 	     CONFIG_APP_CLOUD_MSG_PROCESSING_TIMEOUT_SECONDS,
 	     "Watchdog timeout must exceed the maximum message processing time");
 BUILD_ASSERT(CONFIG_APP_CLOUD_MSG_PROCESSING_TIMEOUT_SECONDS >
-	     CONFIG_APP_CLOUD_AT_TIMEOUT_SECONDS,
-	     "Message processing timeout must exceed the AT command timeout");
+	     (CONFIG_APP_MODEM_AT_PIPE_WAIT_TIMEOUT_SECONDS +
+	      CONFIG_APP_CLOUD_AT_TIMEOUT_SECONDS),
+	     "Message processing timeout must exceed the AT pipe wait plus the AT command timeout");
 
 ZBUS_CHAN_DEFINE(cloud_chan,
 		 struct cloud_msg,
