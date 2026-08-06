@@ -30,11 +30,15 @@ config APP_CLOUD_AT_TIMEOUT_SECONDS
 
 config APP_CLOUD_WATCHDOG_TIMEOUT_SECONDS
 	int "Watchdog timeout"
-	default 60
+	default 120
 
 config APP_CLOUD_MSG_PROCESSING_TIMEOUT_SECONDS
 	int "Maximum message processing time"
-	default 40
+	default 100
+	help
+	  modem_at_run() shares one AT pipe with other modules. This value must
+	  exceed CONFIG_APP_MODEM_AT_PIPE_WAIT_TIMEOUT_SECONDS plus
+	  CONFIG_APP_CLOUD_AT_TIMEOUT_SECONDS to cover that combined worst case.
 
 module = APP_CLOUD
 module-str = cloud
