@@ -13,6 +13,7 @@
 #include <zephyr/zbus/zbus.h>
 
 #include "app_common.h"
+#include "modules/modem_at/modem_at.h"
 #include "network.h"
 
 LOG_MODULE_REGISTER(network, CONFIG_APP_NETWORK_LOG_LEVEL);
@@ -52,6 +53,7 @@ static enum smf_state_result disconnected_run(void *obj);
 static void connected_entry(void *obj);
 static enum smf_state_result connected_run(void *obj);
 static void network_wdt_callback(int channel_id, void *user_data);
+static int configure_psm(void);
 
 static const struct smf_state states[] = {
 	[STATE_DISCONNECTED] = SMF_CREATE_STATE(disconnected_entry,
@@ -146,9 +148,16 @@ static enum smf_state_result disconnected_run(void *obj)
 
 static void connected_entry(void *obj)
 {
+	int err;
+
 	ARG_UNUSED(obj);
 
 	LOG_DBG("Network module connected");
+
+	err = configure_psm();
+	if (err) {
+		LOG_ERR("configure_psm, error: %d", err);
+	}
 }
 
 static enum smf_state_result connected_run(void *obj)
@@ -182,6 +191,11 @@ static void network_wdt_callback(int channel_id, void *user_data)
 		channel_id, k_thread_name_get((k_tid_t)user_data));
 
 	FATAL_ERROR_WATCHDOG_TIMEOUT();
+}
+
+static int configure_psm(void)
+{
+	return modem_at_run("AT+CPSMS=1,,,\"00100001\",\"00001010\"", NULL, 0, 10);
 }
 
 static void network_module(void)

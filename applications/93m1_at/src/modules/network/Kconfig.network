@@ -8,6 +8,7 @@ menuconfig APP_NETWORK
 	bool "Network module"
 	default y
 	depends on NET_CONNECTION_MANAGER
+	depends on APP_MODEM_AT
 	help
 	  Drives connectivity through conn_mgr / net_mgmt. The cellular modem driver
 	  brings the PPP link up automatically; this module only reflects L4 state and
