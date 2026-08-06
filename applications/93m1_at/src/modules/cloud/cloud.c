@@ -7,12 +7,20 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/zbus/zbus.h>
+#include <zephyr/task_wdt/task_wdt.h>
 
 #include "app_common.h"
 #include "modules/modem_at/modem_at.h"
 #include "cloud.h"
 
 LOG_MODULE_REGISTER(cloud, CONFIG_APP_CLOUD_LOG_LEVEL);
+
+BUILD_ASSERT(CONFIG_APP_CLOUD_WATCHDOG_TIMEOUT_SECONDS >
+	     CONFIG_APP_CLOUD_MSG_PROCESSING_TIMEOUT_SECONDS,
+	     "Watchdog timeout must exceed the maximum message processing time");
+BUILD_ASSERT(CONFIG_APP_CLOUD_MSG_PROCESSING_TIMEOUT_SECONDS >
+	     CONFIG_APP_CLOUD_AT_TIMEOUT_SECONDS,
+	     "Message processing timeout must exceed the AT command timeout");
 
 ZBUS_CHAN_DEFINE(cloud_chan,
 		 struct cloud_msg,
@@ -59,14 +67,43 @@ static int cloud_send_battery(int percent)
 	return 0;
 }
 
+static void cloud_wdt_callback(int channel_id, void *user_data)
+{
+	LOG_ERR("Cloud watchdog expired, channel: %d, thread: %s",
+		channel_id, k_thread_name_get((k_tid_t)user_data));
+
+	FATAL_ERROR_WATCHDOG_TIMEOUT();
+}
+
 static void cloud_thread(void)
 {
 	int err;
+	int task_wdt_id;
 	const struct zbus_channel *chan;
 	uint8_t msg_buf[MAX_MSG_SIZE];
+	const uint32_t wdt_timeout_ms =
+		(CONFIG_APP_CLOUD_WATCHDOG_TIMEOUT_SECONDS * MSEC_PER_SEC);
+	const uint32_t execution_time_ms =
+		(CONFIG_APP_CLOUD_MSG_PROCESSING_TIMEOUT_SECONDS * MSEC_PER_SEC);
+	const k_timeout_t zbus_wait = K_MSEC(wdt_timeout_ms - execution_time_ms);
+
+	task_wdt_id = task_wdt_add(wdt_timeout_ms, cloud_wdt_callback, (void *)k_current_get());
+	if (task_wdt_id < 0) {
+		LOG_ERR("task_wdt_add, error: %d", task_wdt_id);
+		FATAL_ERROR();
+	}
 
 	while (true) {
-		err = zbus_sub_wait_msg(&cloud, &chan, msg_buf, K_FOREVER);
+		err = task_wdt_feed(task_wdt_id);
+		if (err) {
+			LOG_ERR("task_wdt_feed, error: %d", err);
+			FATAL_ERROR();
+		}
+
+		err = zbus_sub_wait_msg(&cloud, &chan, msg_buf, zbus_wait);
+		if (err == -ENOMSG) {
+			continue;
+		}
 		if (err) {
 			LOG_ERR("zbus_sub_wait_msg, error: %d", err);
 			FATAL_ERROR();
