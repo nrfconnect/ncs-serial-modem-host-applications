@@ -20,7 +20,12 @@
 #   CI_NRF54L15_SERIAL_PORT=<optional explicit /dev/tty... path; auto-resolved if unset>
 #
 # GitHub secrets:
-#   NRF_CLOUD_API_KEY, NRF_CLOUD_CA_CERT, NRF_CLOUD_CA_KEY
+#   NRF_CLOUD_API_KEY, NRF_CLOUD_CA_CERT, NRF_CLOUD_CA_KEY, MEMFAULT_ORG_TOKEN
+#
+# GitHub variables (Memfault, linked nRF Cloud project):
+#   MEMFAULT_ORG, MEMFAULT_PROJECT
+#   MEMFAULT_COHORT (optional fallback; FOTA tests define a dedicated cohort in tests.yml)
+#   MEMFAULT_FLEET_SAMPLING_CONFIGURATION (optional fleet sampling config ID for dev mode)
 
 name: Test
 
@@ -93,6 +98,11 @@ jobs:
       CI_NRF54L15_SEGGER_SN: ${{ vars.CI_NRF54L15_SEGGER_SN }}
       CI_NRF54L15_SERIAL_PORT: ${{ vars.CI_NRF54L15_SERIAL_PORT }}
       CI_NRF54L15_DEVICE_ID: ${{ vars.CI_NRF54L15_DEVICE_ID }}
+      MEMFAULT_ORG_TOKEN: ${{ secrets.MEMFAULT_ORG_TOKEN }}
+      MEMFAULT_ORG: ${{ vars.MEMFAULT_ORG }}
+      MEMFAULT_PROJECT: ${{ vars.MEMFAULT_PROJECT }}
+      MEMFAULT_COHORT: ${{ vars.MEMFAULT_COHORT }}
+      MEMFAULT_FLEET_SAMPLING_CONFIGURATION: ${{ vars.MEMFAULT_FLEET_SAMPLING_CONFIGURATION }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -162,7 +172,7 @@ jobs:
             -v
 
       - name: Upload serial log
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: hardware-serial-log-${{ matrix.id }}-${{ github.run_id }}

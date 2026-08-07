@@ -30,6 +30,7 @@ class Uart:
         self.log_path = log_path
         self.log = ""
         self.whole_log = ""
+        self._log_lock = threading.Lock()
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._reader, daemon=True)
         self._watchdog = threading.Timer(timeout, self._timeout_stop)
@@ -37,12 +38,17 @@ class Uart:
         self._watchdog.start()
 
     def _append_line(self, line: str) -> None:
-        self.log = self.log + "\n" + line
-        self.whole_log = self.whole_log + "\n" + line
+        with self._log_lock:
+            self.log = self.log + "\n" + line
+            self.whole_log = self.whole_log + "\n" + line
         if self.log_path is not None:
             with self.log_path.open("a", encoding="utf-8", errors="replace") as log_file:
                 log_file.write(line + "\n")
                 log_file.flush()
+
+    def snapshot_log(self) -> str:
+        with self._log_lock:
+            return self.whole_log
 
     def _reader(self) -> None:
         with serial.Serial(
@@ -96,14 +102,41 @@ class Uart:
         """Block until *needle* appears in the captured log."""
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
-            if needle in self.whole_log:
-                for line in self.whole_log.splitlines():
+            captured = self.snapshot_log()
+            if needle in captured:
+                for line in captured.splitlines():
                     if needle in line:
                         return line
                 return needle
             time.sleep(poll_interval)
         raise TimeoutError(
             f"Timed out after {timeout:.0f}s waiting for serial log line containing {needle!r}"
+        )
+
+    def wait_for_substring_after(
+        self,
+        needle: str,
+        *,
+        after: str,
+        timeout: float = 900.0,
+        poll_interval: float = 1.0,
+    ) -> str:
+        """Block until *needle* appears in the log after the first *after* marker."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            captured = self.snapshot_log()
+            marker_index = captured.find(after)
+            if marker_index >= 0:
+                tail = captured[marker_index + len(after):]
+                if needle in tail:
+                    for line in tail.splitlines():
+                        if needle in line:
+                            return line
+                    return needle
+            time.sleep(poll_interval)
+        raise TimeoutError(
+            f"Timed out after {timeout:.0f}s waiting for serial log line containing "
+            f"{needle!r} after {after!r}"
         )
 
     def stop(self) -> None:

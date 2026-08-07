@@ -10,10 +10,35 @@ from utils.logger import get_logger
 logger = get_logger()
 
 
-def west_build(app_dir: Path, board: str) -> None:
-    command = ["west", "build", "-b", board, "-p", "--"]
+def memfault_fw_version_cmake_arg(version: str) -> str:
+    return f'-DCONFIG_MEMFAULT_NCS_FW_VERSION="{version}"'
+
+
+def west_build(
+    app_dir: Path,
+    board: str,
+    *,
+    cmake_args: list[str] | None = None,
+    pristine: bool = True,
+) -> None:
+    command = ["west", "build", "-b", board]
+    if pristine:
+        command.append("-p")
+    command.append("--")
+
+    if cmake_args:
+        command.extend(cmake_args)
+
     logger.info("Building in %s: %s", app_dir, " ".join(command))
     subprocess.run(command, cwd=app_dir, check=True)
+
+
+def elf_image_path(app_dir: Path, app_name: str) -> Path:
+    return app_dir / "build" / app_name / "zephyr" / "zephyr.elf"
+
+
+def signed_image_path(app_dir: Path, app_name: str) -> Path:
+    return app_dir / "build" / app_name / "zephyr" / "zephyr.signed.bin"
 
 
 def west_flash(app_dir: Path, serial: str, *, recover: bool = False) -> None:

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from utils.flash_tools import nrfutil_reset, west_build, west_flash
+from utils.flash_tools import memfault_fw_version_cmake_arg, nrfutil_reset, west_build, west_flash
 from utils.helpers import REPO_ROOT, SERIAL_LOG, load_test_config
 from utils.logger import get_logger
 from utils.serial_port import resolve_serial_port
@@ -48,6 +48,46 @@ def cloud_connect_dut(request: pytest.FixtureRequest, test_config: dict) -> type
 
     logger.info("Step 1/3 - Build firmware")
     west_build(app_dir, board)
+
+    logger.info("Step 2/3 - Recover and flash firmware (clears all flash including TF-M storage)")
+    west_flash(app_dir, segger_sn, recover=True)
+
+    logger.info("Step 3/3 - Start serial capture and reset device")
+    time.sleep(2)
+    serial_port = resolve_serial_port(test_config)
+    uart = Uart(serial_port, log_path=SERIAL_LOG)
+    nrfutil_reset(segger_sn)
+
+    dut = types.SimpleNamespace(
+        uart=uart,
+        segger_sn=segger_sn,
+        serial_port=serial_port,
+        app_dir=app_dir,
+        board=board,
+        serial_log=SERIAL_LOG,
+    )
+
+    yield dut
+
+    dut.uart.stop()
+    request.node.user_properties.append(("serial_log", str(SERIAL_LOG)))
+
+
+@pytest.fixture(scope="function")
+def fota_dut(request: pytest.FixtureRequest, test_config: dict) -> types.SimpleNamespace:
+    """Prepare device with baseline FOTA firmware for application FOTA test."""
+    segger_sn, board, app_dir = _hardware_context(test_config)
+    _prepare_serial_log()
+
+    memfault = test_config.get("memfault", {})
+    baseline_version = memfault.get("baseline_version", "0.1.0")
+
+    logger.info("Step 1/3 - Build baseline FOTA firmware %s", baseline_version)
+    west_build(
+        app_dir,
+        board,
+        cmake_args=[memfault_fw_version_cmake_arg(baseline_version)],
+    )
 
     logger.info("Step 2/3 - Recover and flash firmware (clears all flash including TF-M storage)")
     west_flash(app_dir, segger_sn, recover=True)
