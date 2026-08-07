@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from utils.flash_tools import nrfutil_reset
 from utils.helpers import (
     assert_dut_device_id,
     load_expected_device_id,
@@ -54,6 +55,7 @@ def test_cloud_connect_after_provisioning(
         onboard(str(onboard_csv))
     finally:
         dut.uart = Uart(dut.serial_port, log_path=dut.serial_log)
+        nrfutil_reset(dut.segger_sn)
 
     logger.info("Phase 5/5 - Wait for nRF Cloud connection in serial log")
     dut.uart.wait_for_substring(CLOUD_CONNECTED_LOG, timeout=900)
