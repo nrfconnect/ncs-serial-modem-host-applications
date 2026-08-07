@@ -70,10 +70,18 @@ def wait_for_device_id(uart, *, timeout: float = 120.0, poll_interval: float = 1
     """Block until a device ID appears in the captured serial log."""
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        try:
-            return parse_device_id(uart.whole_log)
-        except ValueError:
-            time.sleep(poll_interval)
+        for source in (uart.snapshot_log(),):
+            try:
+                return parse_device_id(source)
+            except ValueError:
+                pass
+        log_path = getattr(uart, "log_path", None)
+        if log_path is not None and log_path.is_file():
+            try:
+                return parse_device_id(log_path.read_text(encoding="utf-8"))
+            except ValueError:
+                pass
+        time.sleep(poll_interval)
     raise TimeoutError(
         f"Timed out after {timeout:.0f}s waiting for device ID in serial log"
     )

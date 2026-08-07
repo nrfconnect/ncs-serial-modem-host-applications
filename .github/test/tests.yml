@@ -16,9 +16,14 @@ tests:
       api_key_var: NRF_CLOUD_API_KEY
       ca_cert_var: NRF_CLOUD_CA_CERT
       ca_key_var: NRF_CLOUD_CA_KEY
+    memfault:
+      org_token_var: MEMFAULT_ORG_TOKEN
+      org_var: MEMFAULT_ORG
+      project_var: MEMFAULT_PROJECT
+      fleet_sampling_configuration_var: MEMFAULT_FLEET_SAMPLING_CONFIGURATION
 
   - id: 91m1_ppp-application-fota-nrf54l15
-    enabled: false
+    enabled: true
     type: fota
     pytest_dir: tests/on_target/tests/test_fota/
     app: 91m1_ppp
@@ -28,3 +33,16 @@ tests:
       serial_port_var: CI_NRF54L15_SERIAL_PORT
       console_vcom: 1
       device_id_var: CI_NRF54L15_DEVICE_ID
+    nrf_cloud:
+      api_key_var: NRF_CLOUD_API_KEY
+      ca_cert_var: NRF_CLOUD_CA_CERT
+      ca_key_var: NRF_CLOUD_CA_KEY
+    memfault:
+      org_token_var: MEMFAULT_ORG_TOKEN
+      org_var: MEMFAULT_ORG
+      project_var: MEMFAULT_PROJECT
+      fleet_sampling_configuration_var: MEMFAULT_FLEET_SAMPLING_CONFIGURATION
+      cohort: ci-91m1-fota-nrf54l15
+      cohort_name: CI 91m1 FOTA nRF54L15
+      baseline_version: "1.0"
+      update_version: "1.1"
