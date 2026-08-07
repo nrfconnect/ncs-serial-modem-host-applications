@@ -125,6 +125,7 @@ CoAP authentication uses a JWT signed with the installed private key. Only the *
 | `Failed to parse certificate` err `-0x2180` | Shell-provisioned credentials are PEM. Enable `CONFIG_MBEDTLS_PEM_PARSE_C=y` (see `nrf/samples/wifi/nrf_cloud/prj.conf`). Reinstall credentials if a prior install truncated them |
 | `Failed to parse certificate` err `-0xffffffff` | mbedTLS returned `1`: one cert in the CA chain or device cert failed to parse. Enable `CONFIG_MBEDTLS_RSA_C`, `CONFIG_MBEDTLS_ECP_C`, and `CONFIG_PSA_WANT_ALG_ECDH` (see `nrf/samples/wifi/nrf_cloud/prj.conf`) |
 | `RAM overflowed` with cloud enabled | Trim TLS buffers (`MBEDTLS_SSL_IN/OUT_CONTENT_LEN=1024`), disable `CONFIG_NET_IPV6`, and reduce `NET_PKT/BUF` counts before dropping DTLS |
+| FOTA download `Failed to create socket, errno 12` while cloud is connected | The CoAP cloud session and the FOTA CoAP downloader each need a DTLS context. Ensure `CONFIG_NET_SOCKETS_TLS_MAX_CONTEXTS` is at least **2** and increase `CONFIG_MBEDTLS_HEAP_SIZE` if needed (see `93m1_ppp/prj.conf`) |
 | Boot loop (~6 s) | Usually a hard fault from stack overflow. Increase `CONFIG_APP_CLOUD_THREAD_STACK_SIZE` (default 10240) if cloud connect faults; keep `CONFIG_MODEM_DEDICATED_WORKQUEUE=y`. To capture the fault, temporarily set `CONFIG_RESET_ON_FATAL_ERROR=n` and check for `fatal_error: Resetting system` or stack traces |
 | `device_credentials_installer` cannot connect | Confirm the shell prompt (`uart:~$`) is visible on the selected serial port |
 

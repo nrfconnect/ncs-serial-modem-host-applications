@@ -11,6 +11,8 @@
 #include <zephyr/task_wdt/task_wdt.h>
 #include <zephyr/smf.h>
 #include <zephyr/sys/reboot.h>
+#include <memfault/metrics/metrics.h>
+#include <memfault/ports/zephyr/http.h>
 
 #include "app_common.h"
 #include "modules/network/network.h"
@@ -144,12 +146,31 @@ static void send_demo_cloud_message(void)
 	}
 }
 
+static bool post_memfault_data(void)
+{
+	int err;
+
+	memfault_metrics_heartbeat_debug_trigger();
+
+	err = memfault_zephyr_port_post_data();
+	if (err) {
+		LOG_WRN("memfault_zephyr_port_post_data, error: %d", err);
+		return false;
+	}
+
+	LOG_INF("Memfault data posted");
+	return true;
+}
+
 static void perform_cloud_synchronization(void)
+{
+	send_demo_cloud_message();
+}
+
+static void request_fota_poll(void)
 {
 	struct fota_msg fota_msg = { .type = FOTA_POLL_REQUEST };
 	int err;
-
-	send_demo_cloud_message();
 
 	err = zbus_chan_pub(&fota_chan, &fota_msg, PUB_TIMEOUT);
 	if (err) {
@@ -205,6 +226,7 @@ static void running_entry(void *obj)
 static enum smf_state_result running_run(void *obj)
 {
 	struct main_state *state_object = obj;
+	int err;
 
 	if (state_object->chan == &main_sync_chan) {
 		const struct main_sync_msg *msg =
@@ -212,6 +234,7 @@ static enum smf_state_result running_run(void *obj)
 
 		if (msg->type == MAIN_CLOUD_SYNCHRONIZATION) {
 			perform_cloud_synchronization();
+			request_fota_poll();
 		}
 
 		return SMF_EVENT_HANDLED;
@@ -227,16 +250,6 @@ static enum smf_state_result running_run(void *obj)
 			break;
 		case NETWORK_DISCONNECTED:
 			LOG_INF("Network disconnected");
-			{
-				struct fota_msg fota_msg = { .type = FOTA_NETWORK_DISCONNECTED };
-				int err;
-
-				err = zbus_chan_pub(&fota_chan, &fota_msg, PUB_TIMEOUT);
-				if (err) {
-					LOG_ERR("zbus_chan_pub fota_chan, error: %d", err);
-					FATAL_ERROR();
-				}
-			}
 			break;
 		default:
 			break;
@@ -249,10 +262,7 @@ static enum smf_state_result running_run(void *obj)
 		const struct fota_msg *msg = (const struct fota_msg *)state_object->msg_buf;
 
 		switch (msg->type) {
-		case FOTA_NETWORK_DISCONNECT_NEEDED:
-			LOG_INF("FOTA network disconnect needed");
-			break;
-		case FOTA_SUCCESS:
+		case FOTA_REQUEST_REBOOT:
 			LOG_INF("FOTA successful, rebooting to apply the update");
 			LOG_PANIC();
 			sys_reboot(SYS_REBOOT_COLD);
@@ -269,6 +279,8 @@ static enum smf_state_result running_run(void *obj)
 
 		return SMF_EVENT_HANDLED;
 	}
+
+	(void)err;
 
 	return SMF_EVENT_PROPAGATE;
 }
@@ -315,7 +327,9 @@ static void cloud_connected_entry(void *obj)
 
 	LOG_DBG("cloud_connected_entry");
 
+	post_memfault_data();
 	perform_cloud_synchronization();
+	request_fota_poll();
 	cloud_sync_schedule(state_object);
 }
 

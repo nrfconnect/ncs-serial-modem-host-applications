@@ -26,16 +26,10 @@ enum fota_msg_type {
 	/* A FOTA download has started. */
 	FOTA_STARTING,
 
-	/* The module needs the network to be disconnected before it can
-	 * continue. The application is expected to disconnect the network and
-	 * reply with FOTA_NETWORK_DISCONNECTED when it is done.
+	/* The FOTA module requires the application to reboot the device to
+	 * continue or finalize the update.
 	 */
-	FOTA_NETWORK_DISCONNECT_NEEDED,
-
-	/* The FOTA sequence completed successfully and the device is
-	 * ready to reboot in order to apply the image.
-	 */
-	FOTA_SUCCESS,
+	FOTA_REQUEST_REBOOT,
 
 	/* The FOTA sequence was aborted (download failed, timed out,
 	 * canceled, rejected, or no update was available).
@@ -49,11 +43,6 @@ enum fota_msg_type {
 
 	/* Cancel the FOTA download. */
 	FOTA_DOWNLOAD_CANCEL,
-
-	/* Reply to FOTA_NETWORK_DISCONNECT_NEEDED indicating that the
-	 * network has been disconnected and the FOTA module may continue.
-	 */
-	FOTA_NETWORK_DISCONNECTED,
 };
 
 struct fota_msg {
