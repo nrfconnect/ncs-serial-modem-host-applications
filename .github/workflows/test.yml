@@ -171,6 +171,15 @@ jobs:
             --self-contained-html \
             -v
 
+      - name: Upload DuT firmware artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dut-firmware-${{ matrix.app }}-${{ matrix.id }}-${{ github.run_id }}
+          path: serial-modem-host-applications/applications/${{ matrix.app }}/build/
+          retention-days: 7
+          if-no-files-found: ignore
+
       - name: Upload serial log
         if: always()
         uses: actions/upload-artifact@v4
