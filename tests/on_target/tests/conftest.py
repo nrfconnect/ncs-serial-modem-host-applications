@@ -10,8 +10,13 @@ from pathlib import Path
 
 import pytest
 
-from utils.app_version import memfault_software_version, write_app_version
-from utils.flash_tools import nrfutil_reset, should_skip_build, west_build, west_flash
+from utils.app_version import memfault_software_version, resolve_fota_versions, write_app_version
+from utils.flash_tools import (
+    flash_baseline_firmware,
+    nrfutil_reset,
+    should_use_prebuilt_firmware,
+    west_build,
+)
 from utils.memfault_ota import read_build_metadata
 from utils.helpers import REPO_ROOT, SERIAL_LOG, load_test_config
 from utils.logger import get_logger
@@ -48,33 +53,37 @@ def fota_dut(request: pytest.FixtureRequest, test_config: dict) -> types.SimpleN
     segger_sn, board, app_dir = _hardware_context(test_config)
     _prepare_serial_log()
 
-    memfault = test_config.get("memfault", {})
-    baseline_semver = memfault.get("baseline_version", "0.1.0")
-    expected_baseline = memfault_software_version(baseline_semver)
     app_name = test_config["app"]
+    prebuilt_metadata = None
+    if should_use_prebuilt_firmware(app_dir, app_name):
+        prebuilt_metadata = read_build_metadata(app_dir, app_name)
 
-    if should_skip_build(app_dir, app_name):
-        metadata = read_build_metadata(app_dir, app_name)
-        if metadata["software_version"] == expected_baseline:
-            logger.info(
-                "Step 1/3 - Using prebuilt CI baseline firmware %s",
-                expected_baseline,
+    baseline_semver, update_semver = resolve_fota_versions(
+        test_config=test_config,
+        prebuilt_metadata=prebuilt_metadata,
+    )
+    expected_baseline = memfault_software_version(baseline_semver)
+
+    if should_use_prebuilt_firmware(app_dir, app_name):
+        metadata = prebuilt_metadata or read_build_metadata(app_dir, app_name)
+        if metadata["software_version"] != expected_baseline:
+            raise RuntimeError(
+                "Prebuilt firmware version "
+                f"{metadata['software_version']!r} != expected baseline "
+                f"{expected_baseline!r}. Ensure Build and Test use the same "
+                "FIRMWARE_VERSION."
             )
-        else:
-            logger.info(
-                "Step 1/3 - Prebuilt firmware version %s != baseline %s; rebuilding",
-                metadata["software_version"],
-                expected_baseline,
-            )
-            write_app_version(app_dir, baseline_semver)
-            west_build(app_dir, board)
+        logger.info(
+            "Step 1/3 - Using prebuilt CI baseline firmware %s (merged.hex)",
+            expected_baseline,
+        )
     else:
         logger.info("Step 1/3 - Build baseline FOTA firmware %s", baseline_semver)
         write_app_version(app_dir, baseline_semver)
         west_build(app_dir, board)
 
     logger.info("Step 2/3 - Recover and flash firmware (clears all flash including TF-M storage)")
-    west_flash(app_dir, segger_sn, recover=True)
+    flash_baseline_firmware(app_dir, app_name, segger_sn, recover=True)
 
     logger.info("Step 3/3 - Start serial capture and reset device")
     time.sleep(2)
@@ -89,6 +98,8 @@ def fota_dut(request: pytest.FixtureRequest, test_config: dict) -> types.SimpleN
         app_dir=app_dir,
         board=board,
         serial_log=SERIAL_LOG,
+        baseline_version=baseline_semver,
+        update_version=update_semver,
     )
 
     yield dut

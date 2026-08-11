@@ -41,6 +41,11 @@ on:
         required: false
         type: boolean
         default: false
+      firmware_version:
+        description: Release semver embedded in prebuilt firmware (passed to FOTA tests)
+        required: false
+        type: string
+        default: ""
   workflow_dispatch:
     inputs:
       test:
@@ -56,6 +61,11 @@ on:
         required: false
         type: boolean
         default: false
+      firmware_version:
+        description: Release semver for prebuilt firmware (optional; FOTA tests derive update as patch+1)
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -103,6 +113,7 @@ jobs:
       CMAKE_PREFIX_PATH: /opt/toolchains
       NRFUTIL_HOME: /usr/local/share/nrfutil
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
+      FIRMWARE_VERSION: ${{ inputs.firmware_version }}
       NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
       NRF_CLOUD_CA_CERT: ${{ secrets.NRF_CLOUD_CA_CERT }}
       NRF_CLOUD_CA_KEY: ${{ secrets.NRF_CLOUD_CA_KEY }}

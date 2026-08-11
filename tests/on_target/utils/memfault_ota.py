@@ -112,8 +112,6 @@ def load_memfault_env(test_config: dict) -> dict[str, str]:
         **env,
         "cohort": cohort,
         "cohort_name": memfault.get("cohort_name", cohort),
-        "baseline_version": memfault.get("baseline_version", "0.1.0"),
-        "update_version": memfault.get("update_version", "0.1.1"),
     }
 
 
