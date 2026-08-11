@@ -58,7 +58,9 @@ jobs:
             copy_release_file "${root}/merged.hex" "${prefix}.merged.hex"
             copy_release_file "${zephyr}/zephyr.elf" "${prefix}.elf"
             copy_release_file "${zephyr}/.config" "${prefix}.config"
-            copy_release_file "${zephyr}/zephyr.signed.bin" "${prefix}.signed.bin"
+            if [ "$app" != "93m1_at" ]; then
+              copy_release_file "${zephyr}/zephyr.signed.bin" "${prefix}.signed.bin"
+            fi
           done
 
           ls -la release-assets/
