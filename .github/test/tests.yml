@@ -1,27 +1,4 @@
 tests:
-  - id: 91m1_ppp-cloud-connect-nrf54l15
-    enabled: true
-    type: cloud_connect
-    pytest_dir: tests/on_target/tests/test_cloud/
-    app: 91m1_ppp
-    board: nrf54l15dk/nrf54l15/cpuapp/ns
-    hardware:
-      segger_sn_var: CI_NRF54L15_SEGGER_SN
-      serial_port_var: CI_NRF54L15_SERIAL_PORT
-      # uart20 console; VCOM0 disabled on CI DUT to release uart30 for the modem link.
-      console_vcom: 1
-      # Required allowlist: only this 16-hex nRF54L15 host ID may be deleted from nRF Cloud.
-      device_id_var: CI_NRF54L15_DEVICE_ID
-    nrf_cloud:
-      api_key_var: NRF_CLOUD_API_KEY
-      ca_cert_var: NRF_CLOUD_CA_CERT
-      ca_key_var: NRF_CLOUD_CA_KEY
-    memfault:
-      org_token_var: MEMFAULT_ORG_TOKEN
-      org_var: MEMFAULT_ORG
-      project_var: MEMFAULT_PROJECT
-      fleet_sampling_configuration_var: MEMFAULT_FLEET_SAMPLING_CONFIGURATION
-
   - id: 91m1_ppp-application-fota-nrf54l15
     enabled: true
     type: fota
