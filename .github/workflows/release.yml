@@ -58,24 +58,3 @@ jobs:
           name: v${{ inputs.version }}
           generate_release_notes: true
           files: release-assets/*
-
-      - name: Update VERSION files in repository
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          python3 scripts/ci/write_version.py "$VERSION" applications
-
-      - name: Commit VERSION bump
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          set -eu
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add applications/*/VERSION
-          if git diff --staged --quiet; then
-            echo "VERSION files already match v${VERSION}"
-            exit 0
-          fi
-          git commit -m "ci: release: bump VERSION to v${VERSION} [skip ci]"
-          git push

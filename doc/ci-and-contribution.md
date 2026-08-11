@@ -24,7 +24,7 @@ Releases are tagged `vX.Y.Z` and include signed firmware binaries (`.signed.bin`
 | `BREAKING CHANGE` or `type!:` | Major |
 | `chore:`, `docs:`, `ci:`, etc. | No release |
 
-Firmware built for a release embeds that version via each application's [`VERSION`](../applications/91m1_ppp/VERSION) file. The CI build step writes `VERSION` from the resolved semver before compiling; Memfault reads it through NCS (`CONFIG_MEMFAULT_NCS_FW_VERSION_STATIC` defaults to `APP_VERSION_TWEAK_STRING`). On release, the workflow commits the updated `VERSION` files back to `main`.
+Firmware built for a release embeds that version via each application's [`VERSION`](../applications/91m1_ppp/VERSION) file. The CI build step overwrites `VERSION` from the resolved semver before compiling (without committing the change); Memfault reads it through NCS (`CONFIG_MEMFAULT_NCS_FW_VERSION_STATIC` defaults to `APP_VERSION_TWEAK_STRING`). The `VERSION` files checked into the repository are for local development only.
 
 FOTA hardware tests use the same mechanism: baseline and update images are built after writing `VERSION` with the semver values from [`.github/test/tests.yml`](../.github/test/tests.yml).
 
