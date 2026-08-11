@@ -3,7 +3,6 @@ name: Markdown link check
 
 on:
   workflow_call:
-    secrets: inherit
   workflow_dispatch:
   pull_request:
     paths:

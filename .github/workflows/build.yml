@@ -7,7 +7,6 @@ on:
         description: Semver written to each application VERSION file before building
         required: false
         type: string
-    secrets: inherit
   workflow_dispatch:
     inputs:
       firmware_version:
