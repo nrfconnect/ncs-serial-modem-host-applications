@@ -50,6 +50,7 @@ jobs:
     with:
       test: all
       use_prebuilt_firmware: true
+      firmware_version: ${{ needs.version.outputs.version }}
     secrets: inherit
 
   release:

@@ -106,7 +106,7 @@ def test_application_fota_via_cloud_sync(
     memfault_env = load_memfault_env(test_config)
     expected_device_id = load_expected_device_id(test_config)
     app_name = test_config["app"]
-    update_semver = memfault_env["update_version"]
+    update_semver = dut.update_version
     baseline_metadata = read_build_metadata(dut.app_dir, app_name)
     release_deployed = False
     release_override_set = False

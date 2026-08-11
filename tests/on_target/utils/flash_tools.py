@@ -9,6 +9,12 @@ from utils.logger import get_logger
 
 logger = get_logger()
 
+MERGED_HEX_PROGRAM_OPTIONS = (
+    "chip_erase_mode=ERASE_NONE,"
+    "ext_mem_erase_mode=ERASE_RANGES_TOUCHED_BY_FIRMWARE,"
+    "verify=VERIFY_READ"
+)
+
 
 def west_build(
     app_dir: Path,
@@ -37,12 +43,17 @@ def signed_image_path(app_dir: Path, app_name: str) -> Path:
     return app_dir / "build" / app_name / "zephyr" / "zephyr.signed.bin"
 
 
-def should_skip_build(app_dir: Path, app_name: str) -> bool:
-    """Return True when CI prebuilt firmware is present and ready to flash."""
+def merged_hex_path(app_dir: Path) -> Path:
+    return app_dir / "build" / "merged.hex"
+
+
+def should_use_prebuilt_firmware(app_dir: Path, app_name: str) -> bool:
+    """Return True when CI prebuilt firmware is complete enough to flash."""
     if os.environ.get("CI_USE_PREBUILT_FIRMWARE") != "1":
         return False
     return (
-        signed_image_path(app_dir, app_name).is_file()
+        merged_hex_path(app_dir).is_file()
+        and signed_image_path(app_dir, app_name).is_file()
         and elf_image_path(app_dir, app_name).is_file()
     )
 
@@ -53,6 +64,55 @@ def west_flash(app_dir: Path, serial: str, *, recover: bool = False) -> None:
         command.append("--recover")
     logger.info("Flashing from %s: %s", app_dir, " ".join(command))
     subprocess.run(command, cwd=app_dir, check=True, env=os.environ.copy())
+
+
+def flash_merged_hex(merged_hex: Path, serial: str, *, recover: bool = True) -> None:
+    """Flash a sysbuild merged.hex image with nrfutil."""
+    if not merged_hex.is_file():
+        raise FileNotFoundError(f"merged.hex not found: {merged_hex}")
+
+    if recover:
+        recover_cmd = ["nrfutil", "device", "recover", "--serial-number", serial]
+        logger.info("Recovering device %s: %s", serial, " ".join(recover_cmd))
+        subprocess.run(recover_cmd, check=True, env=os.environ.copy())
+
+    program_cmd = [
+        "nrfutil",
+        "device",
+        "program",
+        "--firmware",
+        str(merged_hex),
+        "--serial-number",
+        serial,
+        "--options",
+        MERGED_HEX_PROGRAM_OPTIONS,
+    ]
+    logger.info("Flashing merged.hex to %s: %s", serial, " ".join(program_cmd))
+    subprocess.run(program_cmd, check=True, env=os.environ.copy())
+    nrfutil_reset(serial)
+
+
+def flash_baseline_firmware(
+    app_dir: Path,
+    app_name: str,
+    serial: str,
+    *,
+    recover: bool = True,
+) -> None:
+    """Flash baseline firmware, using merged.hex in CI and west flash locally."""
+    if should_use_prebuilt_firmware(app_dir, app_name):
+        flash_merged_hex(merged_hex_path(app_dir), serial, recover=recover)
+        return
+
+    if os.environ.get("CI_USE_PREBUILT_FIRMWARE") == "1":
+        raise RuntimeError(
+            "CI_USE_PREBUILT_FIRMWARE=1 but the downloaded Build artifact is incomplete. "
+            f"Expected {merged_hex_path(app_dir)}, "
+            f"{signed_image_path(app_dir, app_name)}, and "
+            f"{elf_image_path(app_dir, app_name)}."
+        )
+
+    west_flash(app_dir, serial, recover=recover)
 
 
 def nrfutil_reset(serial: str) -> None:
