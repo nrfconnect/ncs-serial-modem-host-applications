@@ -34,15 +34,6 @@ def memfault_software_version(semver: str) -> str:
     return f"{semver}+0"
 
 
-def memfault_ota_query_version(semver: str) -> str:
-    """Version string the device sends in Memfault OTA URL query parameters."""
-    match = _SEMVER.match(semver)
-    if not match:
-        raise ValueError(f"Invalid semver: {semver!r} (expected MAJOR.MINOR.PATCH)")
-    major, minor, _patch = match.groups()
-    return f"{major}.{minor}"
-
-
 def parse_memfault_software_version(software_version: str) -> str:
     """Convert a Memfault software version string to MAJOR.MINOR.PATCH."""
     semver = software_version.split("+", 1)[0]

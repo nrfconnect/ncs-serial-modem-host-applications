@@ -45,7 +45,7 @@ jobs:
     secrets: inherit
 
   test:
-    needs: build
+    needs: [version, build]
     uses: ./.github/workflows/test.yml
     with:
       test: all
