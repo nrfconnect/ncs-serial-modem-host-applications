@@ -30,7 +30,7 @@ from utils.memfault_ota import (
 )
 from utils.nrf_cloud_device import delete_if_exists, onboard
 from utils.nrf_cloud_provision import install_device_credentials
-from utils.app_version import memfault_ota_query_version, write_app_version
+from utils.app_version import write_app_version
 from utils.flash_tools import (
     elf_image_path,
     nrfutil_reset,
@@ -52,6 +52,7 @@ FOTA_START_TIMEOUT = 60.0
 # ~540 KiB OTA over cellular PPP typically needs 4-5 minutes on CI hardware.
 FOTA_DOWNLOAD_TIMEOUT = 360.0
 POST_REBOOT_CONNECT_TIMEOUT = 120.0
+MEMFAULT_CLOUD_VERSION_TIMEOUT = 120.0
 
 # Memfault deploy + nRF Cloud auto-forwarding can lag behind the CLI returning.
 MEMFAULT_RELEASE_DEPLOY_TIMEOUT = 60.0
@@ -76,6 +77,21 @@ def _log_fota_timeout_diagnostics(uart: Uart, needle: str) -> None:
         logger.error("Last %d serial log lines before timeout:", len(tail))
         for line in tail:
             logger.error("%s", line)
+
+
+def _assert_no_fota_redownload(uart: Uart) -> None:
+    """Fail if a second FOTA download starts after the post-update reboot."""
+    captured = uart.snapshot_log()
+    reboot_index = captured.find(FOTA_REBOOT_LOG)
+    if reboot_index < 0:
+        return
+
+    tail = captured[reboot_index + len(FOTA_REBOOT_LOG) :]
+    if FOTA_DOWNLOAD_STARTING_LOG in tail:
+        raise AssertionError(
+            f"Serial log contains {FOTA_REBOOT_LOG!r} followed by another "
+            f"{FOTA_DOWNLOAD_STARTING_LOG!r}; release override may still be active"
+        )
 
 
 def _wait_for_fota_log_after_cloud_connect(
@@ -197,30 +213,25 @@ def test_application_fota_via_cloud_sync(
             timeout=FOTA_DOWNLOAD_TIMEOUT,
         )
 
+        logger.info(
+            "Clearing Memfault release override before post-update verification"
+        )
+        clear_device_release_override(memfault_env, device_id)
+        release_override_set = False
+
         logger.info("Phase 9/9 - Verify post-update cloud connect and firmware version")
         dut.uart.wait_for_substring_after(
             CLOUD_CONNECTED_LOG,
             after=FOTA_REBOOT_LOG,
             timeout=POST_REBOOT_CONNECT_TIMEOUT,
         )
-        dut.uart.wait_for_substring_after(
-            f"current_version={memfault_ota_query_version(update_semver)}",
-            after=FOTA_REBOOT_LOG,
-            timeout=POST_REBOOT_CONNECT_TIMEOUT,
+        _assert_no_fota_redownload(dut.uart)
+        wait_for_device_version(
+            memfault_env,
+            device_id,
+            update_version,
+            timeout=MEMFAULT_CLOUD_VERSION_TIMEOUT,
         )
-        try:
-            wait_for_device_version(
-                memfault_env,
-                device_id,
-                update_version,
-                timeout=60.0,
-            )
-        except TimeoutError:
-            logger.warning(
-                "Memfault cloud device record did not report software_version %r; "
-                "continuing because the device serial log already confirmed the update",
-                update_version,
-            )
     finally:
         if device_id is not None:
             try:
