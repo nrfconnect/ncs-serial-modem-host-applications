@@ -30,7 +30,7 @@ def load_expected_device_id(test_config: dict) -> str:
     except KeyError as exc:
         raise RuntimeError(
             f"{device_id_var} must be set to the DUT device ID allowlist "
-            "before running cloud connect tests"
+            "before running hardware tests"
         ) from exc
 
     normalized = device_id.strip().upper()
