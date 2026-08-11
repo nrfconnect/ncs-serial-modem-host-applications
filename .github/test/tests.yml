@@ -44,5 +44,5 @@ tests:
       fleet_sampling_configuration_var: MEMFAULT_FLEET_SAMPLING_CONFIGURATION
       cohort: ci-91m1-fota-nrf54l15
       cohort_name: CI 91m1 FOTA nRF54L15
-      baseline_version: "1.0"
-      update_version: "1.1"
+      baseline_version: "1.0.0"
+      update_version: "1.1.0"

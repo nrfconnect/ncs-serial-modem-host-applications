@@ -1,9 +1,8 @@
 # On-target hardware tests on self-hosted runners.
 #
 # Triggers:
-# - push to main: runs every enabled test in .github/test/tests.yml
-# - schedule (03:00 UTC nightly): same as push to main
-# - workflow_dispatch: pick branch (GitHub branch dropdown) and test (all or one id)
+# - workflow_call: invoked by ci.yml (prebuilt firmware) or manually from other workflows
+# - workflow_dispatch: pick branch and test (all or one id from .github/test/tests.yml)
 #
 # When adding tests, update workflow_dispatch options below and .github/test/tests.yml.
 #
@@ -30,11 +29,19 @@
 name: Test
 
 on:
-  push:
-    branches:
-      - main
-  schedule:
-    - cron: '0 3 * * *'
+  workflow_call:
+    inputs:
+      test:
+        description: Test id to run, or all for every enabled test
+        required: false
+        type: string
+        default: all
+      use_prebuilt_firmware:
+        description: Flash firmware downloaded from the Build workflow instead of rebuilding
+        required: false
+        type: boolean
+        default: false
+    secrets: inherit
   workflow_dispatch:
     inputs:
       test:
@@ -46,12 +53,17 @@ on:
           - all
           - 91m1_ppp-cloud-connect-nrf54l15
           - 91m1_ppp-application-fota-nrf54l15
+      use_prebuilt_firmware:
+        description: Download firmware artifacts from a prior Build run in this workflow
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: hardware-test-${{ github.ref }}
+  group: hardware-test-${{ github.ref }}-${{ github.run_id }}
   cancel-in-progress: false
 
 jobs:
@@ -71,7 +83,7 @@ jobs:
         id: resolve
         working-directory: serial-modem-host-applications
         env:
-          TEST_FILTER: ${{ github.event_name == 'workflow_dispatch' && inputs.test || 'all' }}
+          TEST_FILTER: ${{ inputs.test || 'all' }}
         run: |
           pip install --quiet -r tests/on_target/requirements.txt
           PYTHONPATH=tests/on_target python3 -m ci.catalog matrix --filter "$TEST_FILTER"
@@ -92,6 +104,7 @@ jobs:
     env:
       CMAKE_PREFIX_PATH: /opt/toolchains
       NRFUTIL_HOME: /usr/local/share/nrfutil
+      CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
       NRF_CLOUD_CA_CERT: ${{ secrets.NRF_CLOUD_CA_CERT }}
       NRF_CLOUD_CA_KEY: ${{ secrets.NRF_CLOUD_CA_KEY }}
@@ -121,6 +134,13 @@ jobs:
             echo "$TEST_JSON"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
+
+      - name: Download prebuilt firmware
+        if: inputs.use_prebuilt_firmware
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware-${{ matrix.app }}
+          path: serial-modem-host-applications/applications/${{ matrix.app }}/build
 
       - name: Initialize West workspace
         uses: ./serial-modem-host-applications/.github/actions/west-init
@@ -172,7 +192,7 @@ jobs:
             -v
 
       - name: Upload DuT firmware artifacts
-        if: always()
+        if: always() && inputs.use_prebuilt_firmware != true
         uses: actions/upload-artifact@v4
         with:
           name: dut-firmware-${{ matrix.app }}-${{ matrix.id }}-${{ github.run_id }}

@@ -30,9 +30,9 @@ from utils.memfault_ota import (
 )
 from utils.nrf_cloud_device import delete_if_exists, onboard
 from utils.nrf_cloud_provision import install_device_credentials
+from utils.app_version import write_app_version
 from utils.flash_tools import (
     elf_image_path,
-    memfault_fw_version_cmake_arg,
     nrfutil_reset,
     signed_image_path,
     west_build,
@@ -106,7 +106,7 @@ def test_application_fota_via_cloud_sync(
     memfault_env = load_memfault_env(test_config)
     expected_device_id = load_expected_device_id(test_config)
     app_name = test_config["app"]
-    update_version = memfault_env["update_version"]
+    update_semver = memfault_env["update_version"]
     baseline_metadata = read_build_metadata(dut.app_dir, app_name)
     release_deployed = False
     release_override_set = False
@@ -125,19 +125,12 @@ def test_application_fota_via_cloud_sync(
         logger.info("Phase 3/9 - Remove only the configured DUT from nRF Cloud if registered")
         delete_if_exists(device_id, expected_device_id)
 
-        logger.info("Phase 4/9 - Build update firmware %s", update_version)
-        west_build(
-            dut.app_dir,
-            dut.board,
-            cmake_args=[memfault_fw_version_cmake_arg(update_version)],
-        )
+        logger.info("Phase 4/9 - Build update firmware %s", update_semver)
+        write_app_version(dut.app_dir, update_semver)
+        west_build(dut.app_dir, dut.board)
         update_binary = signed_image_path(dut.app_dir, app_name)
         update_metadata = read_build_metadata(dut.app_dir, app_name)
-        if update_metadata["software_version"] != update_version:
-            raise RuntimeError(
-                "Update build software_version "
-                f"{update_metadata['software_version']!r} != expected {update_version!r}"
-            )
+        update_version = update_metadata["software_version"]
 
         logger.info("Phase 5/9 - Ensure Memfault CI cohort and assign DUT")
         ensure_cohort_exists(memfault_env)

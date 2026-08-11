@@ -1,7 +1,6 @@
 # Serial Modem Host Applications
 
-[![On-commit](https://img.shields.io/github/actions/workflow/status/nrfconnect/ncs-serial-modem-host-applications/test.yml?event=push&branch=main&label=on-commit)](https://github.com/nrfconnect/ncs-serial-modem-host-applications/actions/workflows/test.yml?query=branch%3Amain+event%3Apush)
-[![Nightly](https://img.shields.io/github/actions/workflow/status/nrfconnect/ncs-serial-modem-host-applications/test.yml?event=schedule&branch=main&label=nightly)](https://github.com/nrfconnect/ncs-serial-modem-host-applications/actions/workflows/test.yml?query=branch%3Amain+event%3Aschedule)
+[![CI](https://img.shields.io/github/actions/workflow/status/nrfconnect/ncs-serial-modem-host-applications/ci.yml?event=push&branch=main&label=ci)](https://github.com/nrfconnect/ncs-serial-modem-host-applications/actions/workflows/ci.yml?query=branch%3Amain+event%3Apush)
 
 Host-side firmware for Nordic Smart Modem modules. This repository is built on [nRF Connect SDK](https://www.nordicsemi.com/Products/Development-software/nRF-Connect-SDK) (NCS) and follows the modular **zbus + SMF** architecture used by the [Asset Tracker Template](https://github.com/nrfconnect/Asset-Tracker-Template).
 
@@ -71,6 +70,10 @@ Follow the application documentation for hardware setup, build, flash, and (wher
 | **93m1_at** | [applications/93m1_at/doc/](applications/93m1_at/doc/README.md) | Modem terminates the connection itself with its built-in AT client. Host just sends AT commands |
 
 ---
+
+## Contributing
+
+See [CI and contribution](doc/ci-and-contribution.md) for continuous integration, releases, and commit message guidelines.
 
 ## License
 

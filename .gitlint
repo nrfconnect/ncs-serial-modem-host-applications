@@ -13,7 +13,7 @@ debug = false
 
 # Set the extra-path where gitlint will search for user defined rules
 # See http://jorisroovers.github.io/gitlint/user_defined_rules for details
-extra-path=../zephyr/scripts/gitlint
+extra-path=scripts/gitlint
 
 [title-max-length-no-revert]
 line-length=75
@@ -24,8 +24,8 @@ min-line-count=1
 [body-max-line-count]
 max-line-count=200
 
-[title-starts-with-subsystem]
-regex = ^(?!subsys:)(([^:]+):)(\s([^:]+):)*\s(.+)$
+[title-conventional-semver-zephyr]
+regex = ^(feat|fix|docs|style|refactor|perf|test|build|ci|chore)(!)?: (?!subsys:)(([^:]+):)(\s([^:]+):)*\s(.+)$
 
 [title-must-not-contain-word]
 # Comma-separated list of words that should not occur in the title. Matching is case
