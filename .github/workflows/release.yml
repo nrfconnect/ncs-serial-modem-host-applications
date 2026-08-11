@@ -30,7 +30,7 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           pattern: firmware-*
-          merge-multiple: true
+          merge-multiple: false
           path: firmware
 
       - name: Prepare release assets
@@ -39,20 +39,32 @@ jobs:
         run: |
           set -eu
           mkdir -p release-assets
+
+          copy_release_file() {
+            local src="$1"
+            local dest="$2"
+            if [ -f "$src" ]; then
+              cp "$src" "$dest"
+            else
+              echo "::warning title=Missing release asset::${src}"
+            fi
+          }
+
           for app in 91m1_ppp 93m1_ppp 93m1_at; do
-            signed="firmware/${app}/zephyr/zephyr.signed.bin"
-            elf="firmware/${app}/zephyr/zephyr.elf"
-            if [ -f "$signed" ]; then
-              cp "$signed" "release-assets/${app}-v${VERSION}.signed.bin"
-            fi
-            if [ -f "$elf" ]; then
-              cp "$elf" "release-assets/${app}-v${VERSION}.elf"
-            fi
+            root="firmware/firmware-${app}"
+            zephyr="${root}/${app}/zephyr"
+            prefix="release-assets/${app}-v${VERSION}"
+
+            copy_release_file "${root}/merged.hex" "${prefix}.merged.hex"
+            copy_release_file "${zephyr}/zephyr.elf" "${prefix}.elf"
+            copy_release_file "${zephyr}/.config" "${prefix}.config"
+            copy_release_file "${zephyr}/zephyr.signed.bin" "${prefix}.signed.bin"
           done
+
           ls -la release-assets/
 
       - name: Create release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ inputs.version }}
           name: v${{ inputs.version }}
