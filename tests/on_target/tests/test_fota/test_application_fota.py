@@ -30,7 +30,7 @@ from utils.memfault_ota import (
 )
 from utils.nrf_cloud_device import delete_if_exists, onboard
 from utils.nrf_cloud_provision import install_device_credentials
-from utils.app_version import write_app_version
+from utils.app_version import memfault_ota_query_version, write_app_version
 from utils.flash_tools import (
     elf_image_path,
     nrfutil_reset,
@@ -204,7 +204,7 @@ def test_application_fota_via_cloud_sync(
             timeout=POST_REBOOT_CONNECT_TIMEOUT,
         )
         dut.uart.wait_for_substring_after(
-            f"current_version={update_version}",
+            f"current_version={memfault_ota_query_version(update_semver)}",
             after=FOTA_REBOOT_LOG,
             timeout=POST_REBOOT_CONNECT_TIMEOUT,
         )
