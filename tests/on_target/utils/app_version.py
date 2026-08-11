@@ -31,3 +31,12 @@ def memfault_software_version(semver: str) -> str:
     if not _SEMVER.match(semver):
         raise ValueError(f"Invalid semver: {semver!r} (expected MAJOR.MINOR.PATCH)")
     return f"{semver}+0"
+
+
+def memfault_ota_query_version(semver: str) -> str:
+    """Version string the device sends in Memfault OTA URL query parameters."""
+    match = _SEMVER.match(semver)
+    if not match:
+        raise ValueError(f"Invalid semver: {semver!r} (expected MAJOR.MINOR.PATCH)")
+    major, minor, _patch = match.groups()
+    return f"{major}.{minor}"

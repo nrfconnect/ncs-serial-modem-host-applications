@@ -76,7 +76,7 @@ jobs:
         run: west build -b ${{ matrix.board }} -p
 
       - name: Upload firmware artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: firmware-${{ matrix.app }}
           path: serial-modem-host-applications/applications/${{ matrix.app }}/build/

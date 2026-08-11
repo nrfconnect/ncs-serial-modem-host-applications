@@ -31,12 +31,11 @@ jobs:
           fetch-depth: 0
 
       - id: semver
-        uses: PaulHatch/semantic-version@v5.4.0
+        uses: PaulHatch/semantic-version@v6.0.2
         with:
           tag_prefix: v
           major_pattern: BREAKING CHANGE
           minor_pattern: feat
-          patch_pattern: fix
 
   build:
     needs: version
