@@ -10,7 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from utils.flash_tools import memfault_fw_version_cmake_arg, nrfutil_reset, west_build, west_flash
+from utils.app_version import memfault_software_version, write_app_version
+from utils.flash_tools import nrfutil_reset, should_skip_build, west_build, west_flash
+from utils.memfault_ota import read_build_metadata
 from utils.helpers import REPO_ROOT, SERIAL_LOG, load_test_config
 from utils.logger import get_logger
 from utils.serial_port import resolve_serial_port
@@ -46,8 +48,12 @@ def cloud_connect_dut(request: pytest.FixtureRequest, test_config: dict) -> type
     segger_sn, board, app_dir = _hardware_context(test_config)
     _prepare_serial_log()
 
-    logger.info("Step 1/3 - Build firmware")
-    west_build(app_dir, board)
+    app_name = test_config["app"]
+    if should_skip_build(app_dir, app_name):
+        logger.info("Step 1/3 - Using prebuilt CI firmware")
+    else:
+        logger.info("Step 1/3 - Build firmware")
+        west_build(app_dir, board)
 
     logger.info("Step 2/3 - Recover and flash firmware (clears all flash including TF-M storage)")
     west_flash(app_dir, segger_sn, recover=True)
@@ -80,14 +86,29 @@ def fota_dut(request: pytest.FixtureRequest, test_config: dict) -> types.SimpleN
     _prepare_serial_log()
 
     memfault = test_config.get("memfault", {})
-    baseline_version = memfault.get("baseline_version", "0.1.0")
+    baseline_semver = memfault.get("baseline_version", "0.1.0")
+    expected_baseline = memfault_software_version(baseline_semver)
+    app_name = test_config["app"]
 
-    logger.info("Step 1/3 - Build baseline FOTA firmware %s", baseline_version)
-    west_build(
-        app_dir,
-        board,
-        cmake_args=[memfault_fw_version_cmake_arg(baseline_version)],
-    )
+    if should_skip_build(app_dir, app_name):
+        metadata = read_build_metadata(app_dir, app_name)
+        if metadata["software_version"] == expected_baseline:
+            logger.info(
+                "Step 1/3 - Using prebuilt CI baseline firmware %s",
+                expected_baseline,
+            )
+        else:
+            logger.info(
+                "Step 1/3 - Prebuilt firmware version %s != baseline %s; rebuilding",
+                metadata["software_version"],
+                expected_baseline,
+            )
+            write_app_version(app_dir, baseline_semver)
+            west_build(app_dir, board)
+    else:
+        logger.info("Step 1/3 - Build baseline FOTA firmware %s", baseline_semver)
+        write_app_version(app_dir, baseline_semver)
+        west_build(app_dir, board)
 
     logger.info("Step 2/3 - Recover and flash firmware (clears all flash including TF-M storage)")
     west_flash(app_dir, segger_sn, recover=True)

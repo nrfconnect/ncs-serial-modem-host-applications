@@ -1,9 +1,19 @@
 name: Build
 
 on:
-  push:
-    branches:
-      - main
+  workflow_call:
+    inputs:
+      firmware_version:
+        description: Semver written to each application VERSION file before building
+        required: false
+        type: string
+    secrets: inherit
+  workflow_dispatch:
+    inputs:
+      firmware_version:
+        description: Semver written to each application VERSION file before building
+        required: false
+        type: string
   pull_request:
 
 permissions:
@@ -51,9 +61,24 @@ jobs:
         with:
           path: serial-modem-host-applications
 
+      - name: Set application VERSION files
+        if: inputs.firmware_version != ''
+        working-directory: serial-modem-host-applications
+        run: |
+          python3 scripts/ci/write_version.py \
+            "${{ inputs.firmware_version }}" \
+            applications
+
       - name: Initialize West workspace
         uses: ./serial-modem-host-applications/.github/actions/west-init
 
       - name: Build application
         working-directory: serial-modem-host-applications/applications/${{ matrix.app }}
         run: west build -b ${{ matrix.board }} -p
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.app }}
+          path: serial-modem-host-applications/applications/${{ matrix.app }}/build/
+          retention-days: 14

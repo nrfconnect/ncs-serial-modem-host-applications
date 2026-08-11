@@ -10,10 +10,6 @@ from utils.logger import get_logger
 logger = get_logger()
 
 
-def memfault_fw_version_cmake_arg(version: str) -> str:
-    return f'-DCONFIG_MEMFAULT_NCS_FW_VERSION="{version}"'
-
-
 def west_build(
     app_dir: Path,
     board: str,
@@ -39,6 +35,16 @@ def elf_image_path(app_dir: Path, app_name: str) -> Path:
 
 def signed_image_path(app_dir: Path, app_name: str) -> Path:
     return app_dir / "build" / app_name / "zephyr" / "zephyr.signed.bin"
+
+
+def should_skip_build(app_dir: Path, app_name: str) -> bool:
+    """Return True when CI prebuilt firmware is present and ready to flash."""
+    if os.environ.get("CI_USE_PREBUILT_FIRMWARE") != "1":
+        return False
+    return (
+        signed_image_path(app_dir, app_name).is_file()
+        and elf_image_path(app_dir, app_name).is_file()
+    )
 
 
 def west_flash(app_dir: Path, serial: str, *, recover: bool = False) -> None:

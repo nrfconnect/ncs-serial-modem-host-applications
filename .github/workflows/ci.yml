@@ -1,0 +1,105 @@
+# Push-to-main CI orchestrator.
+#
+# Flow: resolve semver → build firmware → hardware test (prebuilt) → release on bump.
+# Also runs SonarCloud and Markdown link check in parallel (path-filtered).
+#
+# Individual workflows remain independently triggerable via workflow_dispatch.
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: ci-main-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      sonar: ${{ steps.filter.outputs.sonar }}
+      markdown: ${{ steps.filter.outputs.markdown }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            sonar:
+              - '**/*.c'
+              - '**/*.h'
+              - .github/workflows/sonarcloud.yml
+              - .github/workflows/ci.yml
+              - sonar-project.properties
+              - west.yml
+              - '**/CMakeLists.txt'
+              - '**/Kconfig*'
+              - '**/prj.conf'
+            markdown:
+              - '**.md'
+
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.semver.outputs.version }}
+      is_bump: ${{ steps.semver.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - id: semver
+        uses: PaulHatch/semantic-version@v5.4.0
+        with:
+          tag_prefix: v
+          major_pattern: BREAKING CHANGE
+          minor_pattern: feat
+          patch_pattern: fix
+
+  build:
+    needs: version
+    uses: ./.github/workflows/build.yml
+    with:
+      firmware_version: ${{ needs.version.outputs.version }}
+    secrets: inherit
+
+  sonarcloud:
+    needs: changes
+    if: needs.changes.outputs.sonar == 'true'
+    uses: ./.github/workflows/sonarcloud.yml
+    secrets: inherit
+
+  linkcheck:
+    needs: changes
+    if: needs.changes.outputs.markdown == 'true'
+    uses: ./.github/workflows/markdown-link-checker.yml
+    secrets: inherit
+
+  test:
+    needs: build
+    uses: ./.github/workflows/test.yml
+    with:
+      test: all
+      use_prebuilt_firmware: true
+    secrets: inherit
+
+  release:
+    needs: [version, build, test, sonarcloud, linkcheck]
+    if: >-
+      always() &&
+      needs.version.outputs.is_bump == 'true' &&
+      needs.build.result == 'success' &&
+      needs.test.result == 'success' &&
+      (needs.sonarcloud.result == 'success' || needs.sonarcloud.result == 'skipped') &&
+      (needs.linkcheck.result == 'success' || needs.linkcheck.result == 'skipped')
+    uses: ./.github/workflows/release.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+    secrets: inherit
