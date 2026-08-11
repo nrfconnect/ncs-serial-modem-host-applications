@@ -7,12 +7,11 @@ Pushes to `main` run the [CI workflow](../.github/workflows/ci.yml):
 1. Resolve the next semver from commit history since the last tag
 2. Build all applications and upload firmware artifacts
 3. Run on-target hardware tests against the prebuilt firmware
-4. Run SonarCloud and Markdown link checks in parallel (when relevant paths change)
-5. Create a GitHub Release when commits warrant a version bump (`feat`, `fix`, or `BREAKING CHANGE`)
+4. Create a GitHub Release when commits warrant a version bump (`feat`, `fix`, or `BREAKING CHANGE`)
 
-Individual workflows (`Build`, `Test`, `Sonarcloud`, `Markdown link check`, `Release`) can also be triggered manually from the Actions tab.
+Individual workflows (`Build`, `Test`, `Release`) can also be triggered manually from the Actions tab.
 
-Pull requests run build, compliance, SonarCloud, and Markdown link checks independently. Releases are created only from pushes to `main`.
+Pull requests run build, compliance, SonarCloud, and Markdown link checks. Releases are created only from pushes to `main`.
 
 ## Releases
 

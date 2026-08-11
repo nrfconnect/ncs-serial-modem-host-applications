@@ -1,8 +1,8 @@
 # Push-to-main CI orchestrator.
 #
 # Flow: resolve semver → build firmware → hardware test (prebuilt) → release on bump.
-# Also runs SonarCloud and Markdown link check in parallel (path-filtered).
 #
+# SonarCloud and Markdown link checks run on pull requests only.
 # Individual workflows remain independently triggerable via workflow_dispatch.
 
 name: CI
@@ -14,37 +14,12 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 concurrency:
   group: ci-main-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      sonar: ${{ steps.filter.outputs.sonar }}
-      markdown: ${{ steps.filter.outputs.markdown }}
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            sonar:
-              - '**/*.c'
-              - '**/*.h'
-              - .github/workflows/sonarcloud.yml
-              - .github/workflows/ci.yml
-              - sonar-project.properties
-              - west.yml
-              - '**/CMakeLists.txt'
-              - '**/Kconfig*'
-              - '**/prj.conf'
-            markdown:
-              - '**.md'
-
   version:
     runs-on: ubuntu-latest
     outputs:
@@ -70,18 +45,6 @@ jobs:
       firmware_version: ${{ needs.version.outputs.version }}
     secrets: inherit
 
-  sonarcloud:
-    needs: changes
-    if: needs.changes.outputs.sonar == 'true'
-    uses: ./.github/workflows/sonarcloud.yml
-    secrets: inherit
-
-  linkcheck:
-    needs: changes
-    if: needs.changes.outputs.markdown == 'true'
-    uses: ./.github/workflows/markdown-link-checker.yml
-    secrets: inherit
-
   test:
     needs: build
     uses: ./.github/workflows/test.yml
@@ -91,14 +54,11 @@ jobs:
     secrets: inherit
 
   release:
-    needs: [version, build, test, sonarcloud, linkcheck]
+    needs: [version, build, test]
     if: >-
-      always() &&
       needs.version.outputs.is_bump == 'true' &&
       needs.build.result == 'success' &&
-      needs.test.result == 'success' &&
-      (needs.sonarcloud.result == 'success' || needs.sonarcloud.result == 'skipped') &&
-      (needs.linkcheck.result == 'success' || needs.linkcheck.result == 'skipped')
+      needs.test.result == 'success'
     uses: ./.github/workflows/release.yml
     with:
       version: ${{ needs.version.outputs.version }}
