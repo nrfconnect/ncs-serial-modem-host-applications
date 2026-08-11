@@ -214,10 +214,13 @@ def test_application_fota_via_cloud_sync(
         )
 
         logger.info(
-            "Clearing Memfault release override before post-update verification"
+            "Clearing Memfault release override and deactivating cohort release "
+            "before post-update verification"
         )
         clear_device_release_override(memfault_env, device_id)
         release_override_set = False
+        deactivate_release(env=memfault_env, software_version=update_version)
+        release_deployed = False
 
         logger.info("Phase 9/9 - Verify post-update cloud connect and firmware version")
         dut.uart.wait_for_substring_after(
