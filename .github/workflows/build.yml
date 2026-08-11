@@ -80,4 +80,5 @@ jobs:
         with:
           name: firmware-${{ matrix.app }}
           path: serial-modem-host-applications/applications/${{ matrix.app }}/build/
+          include-hidden-files: true
           retention-days: 14
