@@ -38,7 +38,12 @@ def normalize_memfault_software_version(software_version: str) -> str:
     """Return the canonical Memfault software version for comparisons.
 
     Memfault device records often omit a zero tweak suffix (``0.0.5`` vs ``0.0.5+0``).
+    The REST API may also store ``+`` as a space (``0.0.5 0``) after query decoding.
     """
+    space_tweak_match = re.match(r"^(\d+\.\d+\.\d+) 0$", software_version)
+    if space_tweak_match:
+        return space_tweak_match.group(1)
+
     base, sep, tweak = software_version.partition("+")
     if sep and tweak == "0":
         return base
