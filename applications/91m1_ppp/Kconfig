@@ -19,5 +19,14 @@ config MEMFAULT_USE_NRF_CLOUD_COAP
 endmenu
 
 menu "Zephyr Kernel"
+
+# Keep Memfault-reported software_version aligned with the application VERSION file
+# and the MCUboot image header (see Memfault NCS integration guide).
+config MEMFAULT_NCS_FW_VERSION
+	default "$(APP_VERSION_TWEAK_STRING)"
+
+config MCUBOOT_IMGTOOL_SIGN_VERSION
+	default MEMFAULT_NCS_FW_VERSION
+
 source "Kconfig.zephyr"
 endmenu
