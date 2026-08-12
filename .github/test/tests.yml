@@ -5,6 +5,7 @@ tests:
     pytest_dir: tests/on_target/tests/test_fota/
     app: 91m1_ppp
     board: nrf54l15dk/nrf54l15/cpuapp/ns
+    board_type: nrf54l15
     hardware:
       segger_sn_var: CI_NRF54L15_SEGGER_SN
       serial_port_var: CI_NRF54L15_SERIAL_PORT

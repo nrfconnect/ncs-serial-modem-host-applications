@@ -49,10 +49,13 @@ jobs:
         include:
           - app: 91m1_ppp
             board: nrf54l15dk/nrf54l15/cpuapp/ns
+            board_type: nrf54l15
           - app: 93m1_ppp
             board: nrf93m1dk/nrf54l15/cpuapp/ns
+            board_type: nrf93m1
           - app: 93m1_at
             board: nrf93m1dk/nrf54l15/cpuapp/ns
+            board_type: nrf93m1
     name: Build ${{ matrix.app }} (${{ matrix.board }})
     steps:
       - name: Checkout
@@ -78,7 +81,7 @@ jobs:
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v7
         with:
-          name: firmware-${{ matrix.app }}
+          name: firmware-${{ matrix.app }}-${{ matrix.board_type }}
           path: serial-modem-host-applications/applications/${{ matrix.app }}/build/
           include-hidden-files: true
           retention-days: 14
