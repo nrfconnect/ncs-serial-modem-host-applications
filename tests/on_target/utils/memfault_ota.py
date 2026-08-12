@@ -706,7 +706,12 @@ def ensure_device_in_cohort(
 
 def _extract_software_version(payload: dict) -> str | None:
     device = _device_from_payload(payload)
-    for key in ("software_version", "softwareVersion", "current_version"):
+    for key in (
+        "last_seen_software_version",
+        "software_version",
+        "softwareVersion",
+        "current_version",
+    ):
         value = device.get(key)
         if isinstance(value, dict):
             version = value.get("version")
