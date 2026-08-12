@@ -32,7 +32,7 @@ target_sources(app PRIVATE
 )
 
 target_sources_ifdef(CONFIG_SHELL app PRIVATE src/modules/network/network_shell.c)
-target_sources_ifdef(CONFIG_APP_MEMFAULT app PRIVATE src/modules/memfault/memfault.c)
+target_sources_ifdef(CONFIG_APP_CLOUD app PRIVATE src/modules/cloud/cloud.c)
 target_sources_ifdef(CONFIG_APP_BATTERY app PRIVATE src/modules/battery/battery.c)
 target_sources_ifdef(CONFIG_APP_MODEM_AT app PRIVATE src/modules/modem_at/modem_at.c)
 target_sources_ifdef(CONFIG_APP_MODEM_AT_SHELL app PRIVATE src/modules/modem_at/modem_at_shell.c)

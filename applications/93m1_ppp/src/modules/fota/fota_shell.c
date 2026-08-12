@@ -52,7 +52,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	sub_cmds,
 	SHELL_CMD(poll,
 		  NULL,
-		  "Check Memfault for a pending firmware update",
+		  "Check nRF Cloud for a pending firmware update",
 		  cmd_poll),
 	SHELL_CMD(cancel,
 		  NULL,

@@ -26,9 +26,6 @@ BUILD_ASSERT(CONFIG_APP_FOTA_WATCHDOG_TIMEOUT_SECONDS >
 	     CONFIG_APP_FOTA_MSG_PROCESSING_TIMEOUT_SECONDS,
 	     "Watchdog timeout must be greater than maximum message processing time");
 
-/* Register message subscriber - will be called everytime a channel that the module listens on
- * receives a new message.
- */
 ZBUS_MSG_SUBSCRIBER_DEFINE(fota);
 
 /* Define FOTA channel */
@@ -63,9 +60,6 @@ ZBUS_CHAN_DEFINE(priv_fota_chan,
 		 ZBUS_MSG_INIT(0)
 );
 
-/* Define the channels that the module subscribes to, their associated message types
- * and the subscriber that will receive the messages on the channel.
- */
 #define CHANNEL_LIST(X)							\
 	X(fota_chan,		struct fota_msg)			\
 	X(priv_fota_chan,	struct priv_fota_msg)			\
@@ -89,9 +83,7 @@ enum fota_module_state {
 		STATE_POLLING_FOR_UPDATE,
 		/* The module is downloading an update */
 		STATE_DOWNLOADING_UPDATE,
-		/* The module is waiting for the application to disconnect the network before
-		 * triggering a reboot.
-		 */
+		/* Waiting for the application to disconnect the network before reboot. */
 		STATE_AWAITING_NETWORK_DOWN_BEFORE_REBOOT,
 		/* The FOTA module is waiting for a reboot */
 		STATE_REBOOT_PENDING,
@@ -99,9 +91,6 @@ enum fota_module_state {
 		STATE_CANCELING,
 };
 
-/* State object.
- * Used to transfer context data between state changes.
- */
 struct fota_state_object {
 	/* This must be first */
 	struct smf_ctx ctx;
@@ -124,6 +113,7 @@ static enum smf_state_result state_downloading_update_run(void *obj);
 static void state_awaiting_network_down_before_reboot_entry(void *obj);
 static enum smf_state_result state_awaiting_network_down_before_reboot_run(void *obj);
 static void state_reboot_pending_entry(void *obj);
+static enum smf_state_result state_reboot_pending_run(void *obj);
 static void state_canceling_entry(void *obj);
 static enum smf_state_result state_canceling_run(void *obj);
 
@@ -160,7 +150,7 @@ static const struct smf_state states[] = {
 				 NULL),
 	[STATE_REBOOT_PENDING] =
 		SMF_CREATE_STATE(state_reboot_pending_entry,
-				 NULL,
+				 state_reboot_pending_run,
 				 NULL,
 				 &states[STATE_RUNNING],
 				 NULL),
@@ -200,19 +190,10 @@ static void publish_priv_fota(enum priv_fota_msg_type type)
 
 /* FOTA support functions */
 
-/* nRF Cloud FOTA poll context. The Memfault NCS override backend --wraps
- * nrf_cloud_coap_fota_job_get(), so polling pulls Memfault OTA releases over the
- * nRF Cloud CoAP download proxy. status_fn is left NULL, so
- * nrf_cloud_fota_poll_process() runs synchronously (blocking download) and
- * invokes reboot_fn once the image is staged.
- */
 static atomic_t reboot_requested;
 
 static void fota_reboot_handler(enum nrf_cloud_fota_reboot_status status)
 {
-	/* Defer the reboot to the state machine so the network link is brought
-	 * down first; here we only record that the poll wants a reboot.
-	 */
 	LOG_INF("FOTA reboot requested (status %d)", status);
 	atomic_set(&reboot_requested, 1);
 }
@@ -310,10 +291,6 @@ static void state_polling_for_update_entry(void *obj)
 		poll_initialized = true;
 	}
 
-	/* Blocking: checks Memfault for a release (via the --wrap'd job fetch),
-	 * downloads it over the CoAP proxy, stages it, and calls reboot_fn.
-	 * -EAGAIN = no job; -EBUSY = image staged, reboot pending.
-	 */
 	atomic_set(&reboot_requested, 0);
 	err = nrf_cloud_fota_poll_process(&fota_poll_ctx);
 
@@ -424,6 +401,10 @@ static enum smf_state_result state_awaiting_network_down_before_reboot_run(void 
 			smf_set_state(SMF_CTX(state_object), &states[STATE_REBOOT_PENDING]);
 
 			return SMF_EVENT_HANDLED;
+		} else if (msg->type == FOTA_DOWNLOAD_CANCEL) {
+			LOG_DBG("Update already staged, too late to cancel");
+
+			return SMF_EVENT_HANDLED;
 		}
 	}
 
@@ -438,6 +419,23 @@ static void state_reboot_pending_entry(void *obj)
 	LOG_DBG("Waiting for the application to reboot in order to apply the update");
 
 	publish_fota_event(FOTA_SUCCESS);
+}
+
+static enum smf_state_result state_reboot_pending_run(void *obj)
+{
+	struct fota_state_object const *state_object = obj;
+
+	if (&fota_chan == state_object->chan) {
+		const struct fota_msg *msg = (const struct fota_msg *)state_object->msg_buf;
+
+		if (msg->type == FOTA_DOWNLOAD_CANCEL) {
+			LOG_DBG("Update already staged, too late to cancel");
+
+			return SMF_EVENT_HANDLED;
+		}
+	}
+
+	return SMF_EVENT_PROPAGATE;
 }
 
 static void state_canceling_entry(void *obj)
