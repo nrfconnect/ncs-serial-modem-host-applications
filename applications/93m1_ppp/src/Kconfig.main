@@ -14,6 +14,20 @@ config APP_MAIN_MSG_PROCESSING_TIMEOUT_SECONDS
 	int "Maximum message processing time"
 	default 110
 
+config APP_MAIN_SYNC_BOOT_DELAY_SECONDS
+	int "Delay before the first sync after connect (seconds)"
+	default 10
+	help
+	  Lets the CoAP session settle before the first location fix and
+	  FOTA poll.
+
+config APP_MAIN_SYNC_INTERVAL_SECONDS
+	int "Sync interval (seconds)"
+	default 600
+	help
+	  Period between syncs. Each sync requests a location fix, uploads
+	  diagnostics, and polls for a FOTA job.
+
 module = APP_MAIN
 module-str = Main
 source "subsys/logging/Kconfig.template.log_config"

@@ -2,12 +2,12 @@
 
 Getting started with the 93m1 ppp application: build, flash, provision credentials, and connect to nRF Cloud over CoAP/DTLS.
 
-The application runs on the nRF54L15 host of the nRF93M1 DK, with cellular over the on-board nRF93M1 Serial Modem via PPP. The host terminates DTLS and CoAP itself. PPP just carries IP traffic between the host's network stack and the modem's cellular radio. The modem's own onboard AT-based cloud client is not used here. It targets the non-secure (TF-M) build and stores the host's TLS credentials in Protected Storage. Telemetry, location, and FOTA go to nRF Cloud over CoAP. Location fixes still pull raw cell and Wi-Fi scan data out of the modem with AT commands, but the actual cloud request is host-side CoAP. Memfault data goes to the Memfault project linked to your nRF Cloud account.
+The application runs on the nRF54L15 host of the nRF93M1 DK, with cellular over the on-board nRF93M1 Serial Modem via PPP. The host terminates DTLS and CoAP itself. PPP just carries IP traffic between the host's network stack and the modem's cellular radio. The modem's own onboard AT-based cloud client is not used here. It targets the non-secure (TF-M) build and stores the host's TLS credentials in Protected Storage. Telemetry, location, and FOTA go to nRF Cloud over CoAP. Location fixes still pull raw cell and Wi-Fi scan data out of the modem with AT commands, but the actual cloud request is host-side CoAP. Diagnostics go to your nRF Cloud project.
 
 ## Prerequisites
 
 - nRF93M1 DK running Serial Modem firmware with PPP and CMUX enabled on the nRF93M1.
-- An nRF Cloud account and API key, with a linked Memfault project.
+- An nRF Cloud account and API key.
 - nRF Cloud Utils: `pip3 install nrfcloud-utils`.
 
 ## 1. Build and flash
@@ -65,9 +65,9 @@ Wait for the cellular link, then for the connection and first upload:
 ```text
 <inf> main: Network connected
 <inf> nrf_cloud_coap_transport: Authorized
-<inf> memfault_module: Memfault data uploaded
+<inf> cloud: Diagnostics uploaded
 ```
 
-Heartbeats and metrics appear in the linked Memfault project. Location and FOTA use the same CoAP session.
+Heartbeats and metrics appear in the linked nRF Cloud project. Location and FOTA use the same CoAP session.
 
 See the [91m1_ppp README](../../91m1_ppp/doc/README.md) for credential and troubleshooting detail, which applies here too.
