@@ -50,10 +50,15 @@ jobs:
             fi
           }
 
-          for app in 91m1_ppp 93m1_ppp 93m1_at; do
-            root="firmware/firmware-${app}"
+          for artifact_dir in firmware/firmware-*; do
+            [ -d "$artifact_dir" ] || continue
+
+            rest="${artifact_dir#firmware/firmware-}"
+            app="${rest%-*}"
+            board_type="${rest##*-}"
+            root="$artifact_dir"
             zephyr="${root}/${app}/zephyr"
-            prefix="release-assets/${app}-v${VERSION}"
+            prefix="release-assets/${app}-${board_type}-v${VERSION}"
 
             copy_release_file "${root}/merged.hex" "${prefix}.merged.hex"
             copy_release_file "${zephyr}/zephyr.elf" "${prefix}.elf"

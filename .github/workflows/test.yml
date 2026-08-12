@@ -148,7 +148,7 @@ jobs:
         if: inputs.use_prebuilt_firmware
         uses: actions/download-artifact@v7
         with:
-          name: firmware-${{ matrix.app }}
+          name: firmware-${{ matrix.app }}-${{ matrix.board_type }}
           path: serial-modem-host-applications/applications/${{ matrix.app }}/build
 
       - name: Initialize West workspace
