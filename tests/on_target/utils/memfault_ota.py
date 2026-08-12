@@ -13,6 +13,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+from utils.app_version import memfault_software_versions_match
 from utils.helpers import assert_dut_device_id
 from utils.logger import get_logger
 
@@ -716,7 +717,7 @@ def _extract_software_version(payload: dict) -> str | None:
     return None
 
 
-def get_device_software_version(env: dict[str, str], device_id: str) -> str | None:
+def get_device_payload(env: dict[str, str], device_id: str) -> dict | None:
     status, payload = _memfault_json_request(
         env,
         "GET",
@@ -724,6 +725,13 @@ def get_device_software_version(env: dict[str, str], device_id: str) -> str | No
         allowed_statuses={200, 404},
     )
     if status == 404 or payload is None:
+        return None
+    return payload
+
+
+def get_device_software_version(env: dict[str, str], device_id: str) -> str | None:
+    payload = get_device_payload(env, device_id)
+    if payload is None:
         return None
 
     return _extract_software_version(payload)
@@ -738,13 +746,29 @@ def wait_for_device_version(
     poll_interval: float = 5.0,
 ) -> str:
     deadline = time.monotonic() + timeout
+    last_version: str | None = None
     while time.monotonic() < deadline:
         version = get_device_software_version(env, device_id)
-        logger.debug("Memfault device %s reported software_version=%r", device_id, version)
-        if version == expected_version:
-            return version
+        last_version = version
+        logger.info(
+            "Memfault device %s reported software_version=%r (waiting for %r)",
+            device_id,
+            version,
+            expected_version,
+        )
+        if memfault_software_versions_match(expected_version, version):
+            return version or expected_version
         time.sleep(poll_interval)
+
+    payload = get_device_payload(env, device_id)
+    if payload is not None:
+        logger.error(
+            "Memfault device %s final API payload while waiting for software_version %r: %s",
+            device_id,
+            expected_version,
+            json.dumps(payload, indent=2, sort_keys=True),
+        )
     raise TimeoutError(
         f"Timed out after {timeout:.0f}s waiting for Memfault device {device_id} "
-        f"to report software_version {expected_version!r}"
+        f"to report software_version {expected_version!r} (last seen: {last_version!r})"
     )

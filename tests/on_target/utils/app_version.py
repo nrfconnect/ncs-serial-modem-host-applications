@@ -34,6 +34,26 @@ def memfault_software_version(semver: str) -> str:
     return f"{semver}+0"
 
 
+def normalize_memfault_software_version(software_version: str) -> str:
+    """Return the canonical Memfault software version for comparisons.
+
+    Memfault device records often omit a zero tweak suffix (``0.0.5`` vs ``0.0.5+0``).
+    """
+    base, sep, tweak = software_version.partition("+")
+    if sep and tweak == "0":
+        return base
+    return software_version
+
+
+def memfault_software_versions_match(expected: str, reported: str | None) -> bool:
+    """Return True when two Memfault software version strings refer to the same release."""
+    if reported is None:
+        return False
+    return normalize_memfault_software_version(expected) == normalize_memfault_software_version(
+        reported
+    )
+
+
 def parse_memfault_software_version(software_version: str) -> str:
     """Convert a Memfault software version string to MAJOR.MINOR.PATCH."""
     semver = software_version.split("+", 1)[0]
