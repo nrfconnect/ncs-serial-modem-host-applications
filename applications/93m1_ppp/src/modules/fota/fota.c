@@ -8,7 +8,6 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/zbus/zbus.h>
 #include <zephyr/smf.h>
-#include <zephyr/sys/atomic.h>
 #include <zephyr/task_wdt/task_wdt.h>
 #include <zephyr/dfu/mcuboot.h>
 #include <dfu/dfu_target.h>
@@ -190,16 +189,38 @@ static void publish_priv_fota(enum priv_fota_msg_type type)
 
 /* FOTA support functions */
 
-static atomic_t reboot_requested;
-
 static void fota_reboot_handler(enum nrf_cloud_fota_reboot_status status)
 {
 	LOG_INF("FOTA reboot requested (status %d)", status);
-	atomic_set(&reboot_requested, 1);
+	publish_priv_fota(FOTA_PRIV_REBOOT_NEEDED);
 }
 
+static void fota_status_handler(enum nrf_cloud_fota_status status,
+				const char *const status_details)
+{
+	LOG_DBG("FOTA status: %d, details: %s", status,
+		status_details ? status_details : "none");
+
+	switch (status) {
+	case NRF_CLOUD_FOTA_DOWNLOADING:
+		publish_priv_fota(FOTA_PRIV_DOWNLOADING);
+		break;
+	case NRF_CLOUD_FOTA_FAILED:
+	case NRF_CLOUD_FOTA_CANCELED:
+	case NRF_CLOUD_FOTA_REJECTED:
+	case NRF_CLOUD_FOTA_TIMED_OUT:
+		publish_priv_fota(FOTA_PRIV_ABORTED);
+		break;
+	default:
+		/* SUCCEEDED is followed by reboot_fn, so leave the transition to that. */
+		break;
+	}
+}
+
+/* status_fn makes nrf_cloud_fota_poll_process() non-blocking. */
 static struct nrf_cloud_fota_poll_ctx fota_poll_ctx = {
 	.reboot_fn = fota_reboot_handler,
+	.status_fn = fota_status_handler,
 };
 
 static void fota_wdt_callback(int channel_id, void *user_data)
@@ -291,17 +312,12 @@ static void state_polling_for_update_entry(void *obj)
 		poll_initialized = true;
 	}
 
-	atomic_set(&reboot_requested, 0);
 	err = nrf_cloud_fota_poll_process(&fota_poll_ctx);
-
-	if (atomic_get(&reboot_requested) || err == -EBUSY) {
-		LOG_INF("FOTA update staged for MCUboot");
-		publish_priv_fota(FOTA_PRIV_REBOOT_NEEDED);
-	} else if (err == -EAGAIN) {
+	if (err == -EINVAL) {
+		LOG_ERR("nrf_cloud_fota_poll_process, error: %d", err);
+		FATAL_ERROR();
+	} else if (err) {
 		LOG_DBG("No FOTA update available");
-		publish_priv_fota(FOTA_PRIV_ABORTED);
-	} else {
-		LOG_WRN("nrf_cloud_fota_poll_process, error: %d", err);
 		publish_priv_fota(FOTA_PRIV_ABORTED);
 	}
 }
@@ -315,8 +331,12 @@ static enum smf_state_result state_polling_for_update_run(void *obj)
 			(const struct priv_fota_msg *)state_object->msg_buf;
 
 		switch (msg->type) {
+		case FOTA_PRIV_DOWNLOADING:
+			smf_set_state(SMF_CTX(state_object), &states[STATE_DOWNLOADING_UPDATE]);
+
+			return SMF_EVENT_HANDLED;
 		case FOTA_PRIV_REBOOT_NEEDED:
-			/* Blocking poll already downloaded + staged the image. */
+			/* A job staged before this boot needs no download. */
 			publish_fota_event(FOTA_STARTING);
 			smf_set_state(SMF_CTX(state_object),
 				      &states[STATE_AWAITING_NETWORK_DOWN_BEFORE_REBOOT]);
