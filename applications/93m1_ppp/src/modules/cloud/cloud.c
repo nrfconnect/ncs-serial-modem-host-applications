@@ -34,7 +34,6 @@ BUILD_ASSERT(CONFIG_APP_CLOUD_WATCHDOG_TIMEOUT_SECONDS >
 	     CONFIG_APP_CLOUD_MSG_PROCESSING_TIMEOUT_SECONDS,
 	     "Watchdog timeout must be greater than maximum message processing time");
 
-/* Root CAs are installed at boot by the NCS integration; periodic upload runs separately. */
 ZBUS_CHAN_DEFINE(cloud_chan,
 		 struct cloud_msg,
 		 NULL,
@@ -48,6 +47,8 @@ ZBUS_MSG_SUBSCRIBER_DEFINE(cloud_subscriber);
 enum priv_cloud_msg_type {
 	/* date_time_update_async() completed. */
 	CLOUD_PRIV_TIME_READY,
+	/* date_time_update_async() could not obtain a valid time. */
+	CLOUD_PRIV_TIME_NOT_OBTAINED,
 	/* nrf_cloud_coap_connect() succeeded. */
 	CLOUD_PRIV_SESSION_READY,
 	/* Connect failed, or a request on an established session failed. */
@@ -82,16 +83,18 @@ CHANNEL_LIST(ADD_OBSERVERS)
 /* State machine */
 
 enum cloud_module_state {
-	/* No CoAP session. */
+	/* One-time setup: initialise the CoAP library and wait for a valid clock. */
+	STATE_INIT,
+	/* No CoAP session, waiting for a sync or ground-fix request. */
 	STATE_DISCONNECTED,
-	/* Acquiring date/time and establishing the CoAP session. */
+	/* Establishing the CoAP session. */
 	STATE_CONNECTING,
-	/* CoAP session ready. */
+	/* CoAP session established, requests are served immediately. */
 	STATE_CONNECTED,
 };
 
-/* Work requested while a session was not available. main only ever has one such request
- * in flight at a time: it waits for CLOUD_SYNC_DONE before triggering a ground-fix.
+/* A request that arrived before the CoAP session was ready, deferred until it
+ * connects. Only one request can be pending at a time.
  */
 enum pending_request {
 	PENDING_NONE,
@@ -112,12 +115,14 @@ struct cloud_state_object {
 	uint8_t msg_buf[MAX_MSG_SIZE];
 
 	enum pending_request pending;
+
 #if defined(CONFIG_APP_LOCATION)
 	struct location_msg pending_location;
 #endif
 };
 
 /* Forward declarations of state handlers */
+static void state_init_entry(void *obj);
 static enum smf_state_result state_disconnected_run(void *obj);
 static void state_connecting_entry(void *obj);
 static enum smf_state_result state_connecting_run(void *obj);
@@ -125,6 +130,12 @@ static void state_connected_entry(void *obj);
 static enum smf_state_result state_connected_run(void *obj);
 
 static const struct smf_state states[] = {
+	[STATE_INIT] =
+		SMF_CREATE_STATE(state_init_entry,
+				 NULL,
+				 NULL,
+				 NULL,
+				 NULL),
 	[STATE_DISCONNECTED] =
 		SMF_CREATE_STATE(NULL,
 				 state_disconnected_run,
@@ -169,7 +180,6 @@ static void publish_sync_done(void)
 	}
 }
 
-/* date_time_update_async()'s callback: never block on it, just forward it as a zbus event. */
 static void date_time_evt_handler(const struct date_time_evt *evt)
 {
 	switch (evt->type) {
@@ -179,7 +189,7 @@ static void date_time_evt_handler(const struct date_time_evt *evt)
 		publish_priv_cloud(CLOUD_PRIV_TIME_READY);
 		break;
 	case DATE_TIME_NOT_OBTAINED:
-		publish_priv_cloud(CLOUD_PRIV_SESSION_FAILED);
+		publish_priv_cloud(CLOUD_PRIV_TIME_NOT_OBTAINED);
 		break;
 	}
 }
@@ -268,6 +278,23 @@ static int ground_fix(const struct location_msg *msg)
 
 /* State handlers */
 
+static void state_init_entry(void *obj)
+{
+	int err;
+
+	LOG_DBG("%s", __func__);
+
+	err = nrf_cloud_coap_init();
+	if (err) {
+		LOG_ERR("nrf_cloud_coap_init, error: %d", err);
+		FATAL_ERROR();
+
+		return;
+	}
+
+	smf_set_state(SMF_CTX(obj), &states[STATE_DISCONNECTED]);
+}
+
 static enum smf_state_result state_disconnected_run(void *obj)
 {
 	struct cloud_state_object *state_object = obj;
@@ -302,24 +329,11 @@ static enum smf_state_result state_disconnected_run(void *obj)
 
 static void state_connecting_entry(void *obj)
 {
-	static bool coap_initialized;
 	int err;
 
 	ARG_UNUSED(obj);
 
 	LOG_DBG("%s", __func__);
-
-	if (!coap_initialized) {
-		err = nrf_cloud_coap_init();
-		if (err) {
-			LOG_ERR("nrf_cloud_coap_init, error: %d", err);
-			publish_priv_cloud(CLOUD_PRIV_SESSION_FAILED);
-
-			return;
-		}
-
-		coap_initialized = true;
-	}
 
 	if (!date_time_is_valid()) {
 		LOG_INF("Updating date/time for the CoAP JWT");
@@ -339,61 +353,47 @@ static void state_connecting_entry(void *obj)
 	publish_priv_cloud(CLOUD_PRIV_SESSION_READY);
 }
 
-/* Reacts to our own connect protocol: attempt-connect result, or the follow-up
- * connect after date/time became valid.
- */
-static enum smf_state_result state_connecting_priv_msg(struct cloud_state_object *state_object)
-{
-	const struct priv_cloud_msg *msg = (const struct priv_cloud_msg *)state_object->msg_buf;
-
-	switch (msg->type) {
-	case CLOUD_PRIV_TIME_READY: {
-		int err = nrf_cloud_coap_connect(NULL);
-
-		if (err) {
-			LOG_ERR("nrf_cloud_coap_connect, error: %d", err);
-			publish_priv_cloud(CLOUD_PRIV_SESSION_FAILED);
-		} else {
-			publish_priv_cloud(CLOUD_PRIV_SESSION_READY);
-		}
-
-		return SMF_EVENT_HANDLED;
-	}
-	case CLOUD_PRIV_SESSION_READY:
-		smf_set_state(SMF_CTX(state_object), &states[STATE_CONNECTED]);
-
-		return SMF_EVENT_HANDLED;
-	case CLOUD_PRIV_SESSION_FAILED:
-		switch (state_object->pending) {
-		case PENDING_DIAGNOSTICS:
-			/* main is waiting on CLOUD_SYNC_DONE to advance; send it
-			 * even though nothing was uploaded, or main stalls forever.
-			 */
-			publish_sync_done();
-			break;
-#if defined(CONFIG_APP_LOCATION)
-		case PENDING_GROUND_FIX:
-			LOG_WRN("No CoAP session, dropping ground-fix");
-			break;
-#endif
-		case PENDING_NONE:
-			break;
-		}
-		state_object->pending = PENDING_NONE;
-		smf_set_state(SMF_CTX(state_object), &states[STATE_DISCONNECTED]);
-
-		return SMF_EVENT_HANDLED;
-	default:
-		return SMF_EVENT_PROPAGATE;
-	}
-}
-
 static enum smf_state_result state_connecting_run(void *obj)
 {
 	struct cloud_state_object *state_object = obj;
 
 	if (state_object->chan == &priv_cloud_chan) {
-		return state_connecting_priv_msg(state_object);
+		const struct priv_cloud_msg *msg =
+			(const struct priv_cloud_msg *)state_object->msg_buf;
+
+		switch (msg->type) {
+		case CLOUD_PRIV_TIME_READY:
+			smf_set_state(SMF_CTX(state_object), &states[STATE_CONNECTING]);
+
+			return SMF_EVENT_HANDLED;
+		case CLOUD_PRIV_SESSION_READY:
+			smf_set_state(SMF_CTX(state_object), &states[STATE_CONNECTED]);
+
+			return SMF_EVENT_HANDLED;
+		case CLOUD_PRIV_TIME_NOT_OBTAINED:
+		case CLOUD_PRIV_SESSION_FAILED:
+			switch (state_object->pending) {
+			case PENDING_DIAGNOSTICS:
+				/* main is waiting on CLOUD_SYNC_DONE to advance, send it
+				 * even though nothing was uploaded, or main stalls.
+				 */
+				publish_sync_done();
+				break;
+#if defined(CONFIG_APP_LOCATION)
+			case PENDING_GROUND_FIX:
+				LOG_WRN("No CoAP session, dropping ground-fix");
+				break;
+#endif
+			case PENDING_NONE:
+				break;
+			}
+			state_object->pending = PENDING_NONE;
+			smf_set_state(SMF_CTX(state_object), &states[STATE_DISCONNECTED]);
+
+			return SMF_EVENT_HANDLED;
+		default:
+			return SMF_EVENT_PROPAGATE;
+		}
 	}
 
 	if (state_object->chan == &cloud_chan) {
@@ -533,7 +533,7 @@ static void cloud_module_thread(void)
 		return;
 	}
 
-	smf_set_initial(SMF_CTX(&cloud_state), &states[STATE_DISCONNECTED]);
+	smf_set_initial(SMF_CTX(&cloud_state), &states[STATE_INIT]);
 
 	while (true) {
 		err = task_wdt_feed(task_wdt_id);
