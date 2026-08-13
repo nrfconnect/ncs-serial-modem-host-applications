@@ -515,6 +515,13 @@ int main(void)
 
 	LOG_INF("Serial Modem Host 93m1 starting");
 
+	err = task_wdt_init(DEVICE_DT_GET(DT_ALIAS(watchdog0)));
+	if (err) {
+		LOG_ERR("task_wdt_init, error: %d", err);
+		FATAL_ERROR();
+		return -EFAULT;
+	}
+
 	task_wdt_id = task_wdt_add(wdt_timeout_ms, main_wdt_callback, (void *)k_current_get());
 	if (task_wdt_id < 0) {
 		LOG_ERR("Failed to add task to watchdog: %d", task_wdt_id);

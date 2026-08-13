@@ -38,5 +38,10 @@
 	status = "disabled";
 };
 
+/* Hardware fallback for CONFIG_TASK_WDT_HW_FALLBACK */
+&wdt31 {
+	status = "okay";
+};
+
 /* Flash/SRAM partitioning */
 #include "nrf93m1dk_partitions.dtsi"
