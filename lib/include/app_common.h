@@ -17,11 +17,13 @@ extern "C" {
 
 /** @brief Handle fatal error.
  *  @param is_watchdog_timeout Boolean indicating if the macro was called upon a watchdog timeout.
+ *			       Skips k_sleep() if the fatal error is a watchdog timeout.
  */
 #define FATAL_ERROR_HANDLE(is_watchdog_timeout) do { \
 	LOG_PANIC(); \
-	ARG_UNUSED(is_watchdog_timeout); \
-	k_sleep(K_SECONDS(10)); \
+	if (!(is_watchdog_timeout)) { \
+		k_sleep(K_SECONDS(10)); \
+	} \
 	__ASSERT(false, "FATAL_ERROR() macro called"); \
 } while (0)
 
