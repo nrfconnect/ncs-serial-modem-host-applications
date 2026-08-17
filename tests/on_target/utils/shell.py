@@ -74,7 +74,7 @@ def send_shell_command(
     """Send a Zephyr shell command.
 
     When *wait_for_completion* is False, return after writing the command. Use
-    this for commands that crash or reboot the device (e.g. ``mflt test hardfault``).
+    this for commands that crash or reboot the device (e.g. ``mflt test busfault``).
     """
     with serial.Serial(
         serial_port,

@@ -823,17 +823,23 @@ def _trace_reason(trace: dict) -> str | None:
     return None
 
 
+def _normalize_reason(reason: str) -> str:
+    """Fold reason spelling variants, e.g. 'Bus Fault' and 'BusFault'."""
+    return "".join(char for char in reason.lower() if char.isalnum())
+
+
 def wait_for_device_crash_trace(
     env: dict[str, str],
     device_id: str,
     *,
-    reason: str = "HardFault",
+    reason: str = "BusFault",
     since: datetime,
     timeout: float = 180.0,
     poll_interval: float = 5.0,
 ) -> dict:
     """Poll Memfault Issues until a trace for *device_id* with *reason* appears."""
     expected_device_id = device_id.strip().upper()
+    expected_reason = _normalize_reason(reason)
     since_param = since.astimezone().isoformat()
 
     deadline = time.monotonic() + timeout
@@ -841,7 +847,6 @@ def wait_for_device_crash_trace(
     while time.monotonic() < deadline:
         query = urllib.parse.urlencode(
             {
-                "title": f"*{reason}*",
                 "last_seen_since": since_param,
                 "per_page": "25",
                 "sort": "-last_seen",
@@ -856,10 +861,10 @@ def wait_for_device_crash_trace(
         issues = _iter_issues(payload)
         last_issue_count = len(issues)
         logger.info(
-            "Memfault returned %d issue(s) matching reason %r since %s",
+            "Memfault returned %d issue(s) since %s while looking for reason %r",
             last_issue_count,
-            reason,
             since_param,
+            reason,
         )
 
         for issue in issues:
@@ -877,7 +882,7 @@ def wait_for_device_crash_trace(
             )
             if trace_serial != expected_device_id:
                 continue
-            if trace_reason != reason:
+            if trace_reason is None or _normalize_reason(trace_reason) != expected_reason:
                 continue
 
             logger.info(

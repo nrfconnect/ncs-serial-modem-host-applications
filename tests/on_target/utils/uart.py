@@ -14,12 +14,6 @@ logger = get_logger()
 DEFAULT_UART_TIMEOUT = 60 * 30
 
 
-def _ordinal_suffix(value: int) -> str:
-    if 10 <= value % 100 <= 20:
-        return "th"
-    return {1: "st", 2: "nd", 3: "rd"}.get(value % 10, "th")
-
-
 class Uart:
     def __init__(
         self,
@@ -119,41 +113,6 @@ class Uart:
             f"Timed out after {timeout:.0f}s waiting for serial log line containing {needle!r}"
         )
 
-    def wait_for_nth_occurrence(
-        self,
-        needle: str,
-        count: int,
-        *,
-        timeout: float = 900.0,
-        poll_interval: float = 1.0,
-    ) -> str:
-        """Block until *needle* appears *count* times in the captured log."""
-        if count < 1:
-            raise ValueError(f"count must be >= 1, got {count}")
-
-        deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
-            captured = self.snapshot_log()
-            seen = 0
-            start = 0
-            while True:
-                index = captured.find(needle, start)
-                if index < 0:
-                    break
-                seen += 1
-                if seen == count:
-                    tail = captured[index:]
-                    for line in tail.splitlines():
-                        if needle in line:
-                            return line
-                    return needle
-                start = index + len(needle)
-            time.sleep(poll_interval)
-        raise TimeoutError(
-            f"Timed out after {timeout:.0f}s waiting for {count} occurrences of "
-            f"{needle!r} in serial log"
-        )
-
     def wait_for_substring_after(
         self,
         needle: str,
@@ -178,49 +137,6 @@ class Uart:
         raise TimeoutError(
             f"Timed out after {timeout:.0f}s waiting for serial log line containing "
             f"{needle!r} after {after!r}"
-        )
-
-    def wait_for_substring_after_nth(
-        self,
-        needle: str,
-        *,
-        after: str,
-        after_count: int,
-        timeout: float = 900.0,
-        poll_interval: float = 1.0,
-    ) -> str:
-        """Block until *needle* appears after the *after_count* occurrence of *after*."""
-        if after_count < 1:
-            raise ValueError(f"after_count must be >= 1, got {after_count}")
-
-        deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
-            captured = self.snapshot_log()
-            start = 0
-            seen_after = 0
-            marker_index = -1
-            while True:
-                index = captured.find(after, start)
-                if index < 0:
-                    break
-                seen_after += 1
-                if seen_after == after_count:
-                    marker_index = index
-                    break
-                start = index + len(after)
-
-            if marker_index >= 0:
-                tail = captured[marker_index + len(after):]
-                if needle in tail:
-                    for line in tail.splitlines():
-                        if needle in line:
-                            return line
-                    return needle
-            time.sleep(poll_interval)
-        raise TimeoutError(
-            f"Timed out after {timeout:.0f}s waiting for serial log line containing "
-            f"{needle!r} after the {after_count}{_ordinal_suffix(after_count)} "
-            f"occurrence of {after!r}"
         )
 
     def stop(self) -> None:

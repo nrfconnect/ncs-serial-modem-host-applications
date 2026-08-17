@@ -32,10 +32,15 @@ logger = get_logger()
 CLOUD_CONNECTED_LOG = "Cloud connected"
 MISSING_CREDENTIALS_LOG = "Missing nRF Cloud credentials"
 MEMFAULT_DATA_POSTED_LOG = "Memfault data posted"
-HARD_FAULT_SHELL_COMMAND = "mflt test hardfault"
-HARD_FAULT_REASON = "HardFault"
+BOOT_BANNER_LOG = "Booting Serial Modem Host"
+
+# TF-M traps HardFaults before Memfault's handler runs and halts the core, so the
+# fault has to be one that CONFIG_TFM_ALLOW_NON_SECURE_FAULT_HANDLING forwards.
+FAULT_SHELL_COMMAND = "mflt test busfault"
+FAULT_REASON = "BusFault"
 
 CLOUD_CONNECT_TIMEOUT = 120.0
+REBOOT_TIMEOUT = 60.0
 SHELL_COMMAND_TIMEOUT = 60.0
 MEMFAULT_TRACE_TIMEOUT = 180.0
 
@@ -46,7 +51,7 @@ def test_memfault_coredump_upload_via_cloud_sync(
     nrf_cloud_env: dict,
     test_config: dict,
 ) -> None:
-    """Provision a device, trigger a test HardFault, and verify the coredump in Memfault."""
+    """Provision a device, trigger a test BusFault, and verify the coredump in Memfault."""
     dut = coredump_dut
     memfault_env = load_memfault_env(test_config)
     expected_device_id = load_expected_device_id(test_config)
@@ -100,7 +105,7 @@ def test_memfault_coredump_upload_via_cloud_sync(
             dut.uart = Uart(dut.serial_port, log_path=dut.serial_log)
             nrfutil_reset(dut.segger_sn)
 
-        logger.info("Phase 7/7 - Trigger HardFault and verify coredump upload")
+        logger.info("Phase 7/7 - Trigger a fault and verify coredump upload")
         dut.uart.wait_for_substring(CLOUD_CONNECTED_LOG, timeout=CLOUD_CONNECT_TIMEOUT)
 
         test_start = datetime.now(timezone.utc)
@@ -108,29 +113,31 @@ def test_memfault_coredump_upload_via_cloud_sync(
         try:
             send_shell_command(
                 dut.serial_port,
-                HARD_FAULT_SHELL_COMMAND,
+                FAULT_SHELL_COMMAND,
                 timeout=SHELL_COMMAND_TIMEOUT,
                 wait_for_completion=False,
             )
         finally:
+            # Capture restarts empty here, so every wait below refers to the
+            # post-crash boot.
             dut.uart = Uart(dut.serial_port, log_path=dut.serial_log)
 
-        dut.uart.wait_for_nth_occurrence(
+        dut.uart.wait_for_substring(BOOT_BANNER_LOG, timeout=REBOOT_TIMEOUT)
+        dut.uart.wait_for_substring_after(
             CLOUD_CONNECTED_LOG,
-            2,
+            after=BOOT_BANNER_LOG,
             timeout=CLOUD_CONNECT_TIMEOUT,
         )
-        dut.uart.wait_for_substring_after_nth(
+        dut.uart.wait_for_substring_after(
             MEMFAULT_DATA_POSTED_LOG,
             after=CLOUD_CONNECTED_LOG,
-            after_count=2,
             timeout=CLOUD_CONNECT_TIMEOUT,
         )
 
         wait_for_device_crash_trace(
             memfault_env,
             device_id,
-            reason=HARD_FAULT_REASON,
+            reason=FAULT_REASON,
             since=test_start,
             timeout=MEMFAULT_TRACE_TIMEOUT,
         )
