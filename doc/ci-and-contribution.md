@@ -28,6 +28,16 @@ Firmware built for a release embeds that version via each application's [`VERSIO
 
 FOTA hardware tests on `main` use the same release semver as the baseline: CI passes `FIRMWARE_VERSION` to the Test workflow, flashes the Build artifact's `merged.hex` without rebuilding, then builds and deploys a patch-bumped update image (e.g. `1.2.3` → `1.2.4`) for OTA verification. Local runs fall back to `baseline_version` in [`.github/test/tests.yml`](../.github/test/tests.yml) and flash with `west flash --recover`.
 
+Memfault coredump hardware tests provision the DUT, connect to nRF Cloud, trigger `mflt test hardfault` over the shell, and verify a new HardFault trace for the device appears in Memfault via the REST API. Coredumps are stored in a 32 KiB RRAM partition on the nRF54L15. The test uses a dedicated Memfault cohort (`ci-91m1-coredump-nrf54l15`) defined in [`.github/test/tests.yml`](../.github/test/tests.yml). Local run:
+
+```shell
+export REPO_ROOT=$PWD
+export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load 91m1_ppp-memfault-coredump-nrf54l15)"
+PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_memfault/ -c tests/on_target/tests/pytest.ini -v
+```
+
+Set the same `NRF_CLOUD_*`, `MEMFAULT_*`, and `CI_NRF54L15_*` variables/secrets as the FOTA test.
+
 ## Commit messages
 
 We use a title format that combines [Conventional Commits](https://www.conventionalcommits.org/) semver types with [Zephyr-style](https://docs.zephyrproject.org/latest/contribute/guidelines.html#commit-guidelines) subsystem prefixes:

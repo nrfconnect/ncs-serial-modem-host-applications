@@ -47,7 +47,7 @@ In the Memfault UI:
 1. Click **Devices** in the left toolbar to see devices that have reported in.
 2. Select a device to inspect its coredumps, metrics, and event history.
 
-Coredumps are captured automatically on crashes (RAM-backed, 3 KB). Without an uploaded symbol file, traces appear with a **Symbols Missing** label and cannot be decoded.
+Coredumps are captured automatically on crashes and stored in a dedicated 32 KiB RRAM partition (`memfault_coredump_partition`), so they survive reboot and power cycles without consuming SRAM. Without an uploaded symbol file, traces appear with a **Symbols Missing** label and cannot be decoded.
 
 ## Testing
 

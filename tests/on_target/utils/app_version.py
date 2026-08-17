@@ -80,12 +80,12 @@ def bump_patch(semver: str) -> str:
     return f"{major}.{minor}.{patch + 1}"
 
 
-def resolve_fota_versions(
+def resolve_baseline_version(
     *,
     test_config: dict,
     prebuilt_metadata: dict[str, str] | None = None,
-) -> tuple[str, str]:
-    """Return baseline and update semvers for a FOTA hardware test."""
+) -> str:
+    """Return the baseline semver for a hardware test."""
     memfault = test_config.get("memfault", {})
     firmware_version_env = os.environ.get("FIRMWARE_VERSION", "").strip()
 
@@ -97,6 +97,19 @@ def resolve_fota_versions(
         baseline = memfault.get("baseline_version", "0.1.0")
 
     if not _SEMVER.match(baseline):
-        raise ValueError(f"Invalid FOTA baseline semver: {baseline!r}")
+        raise ValueError(f"Invalid baseline semver: {baseline!r}")
 
+    return baseline
+
+
+def resolve_fota_versions(
+    *,
+    test_config: dict,
+    prebuilt_metadata: dict[str, str] | None = None,
+) -> tuple[str, str]:
+    """Return baseline and update semvers for a FOTA hardware test."""
+    baseline = resolve_baseline_version(
+        test_config=test_config,
+        prebuilt_metadata=prebuilt_metadata,
+    )
     return baseline, bump_patch(baseline)

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
-"""Memfault OTA release management for on-target FOTA tests."""
+"""Memfault REST/CLI helpers for on-target hardware tests."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime
 from pathlib import Path
 
 from utils.app_version import memfault_software_versions_match
@@ -105,8 +106,8 @@ def load_memfault_env(test_config: dict) -> dict[str, str]:
     cohort = memfault.get("cohort") or os.environ.get(cohort_var) or "default"
     if cohort == "default":
         raise RuntimeError(
-            "FOTA tests must configure a dedicated Memfault cohort in tests.yml "
-            f"(or set {cohort_var}) so deploy-release cannot affect production devices"
+            "Hardware tests must configure a dedicated Memfault cohort in tests.yml "
+            f"(or set {cohort_var}) so CI cannot affect production devices"
         )
 
     return {
@@ -776,4 +777,127 @@ def wait_for_device_version(
     raise TimeoutError(
         f"Timed out after {timeout:.0f}s waiting for Memfault device {device_id} "
         f"to report software_version {expected_version!r} (last seen: {last_version!r})"
+    )
+
+
+def _issues_url(env: dict[str, str]) -> str:
+    return (
+        f"{API_HOST}/organizations/{env['org']}/projects/{env['project']}/issues"
+    )
+
+
+def _iter_issues(payload: dict | None) -> list[dict]:
+    if payload is None:
+        return []
+
+    data = payload.get("data")
+    if isinstance(data, list):
+        return [item for item in data if isinstance(item, dict)]
+
+    if isinstance(data, dict):
+        return [data]
+
+    return []
+
+
+def _trace_from_issue(issue: dict) -> dict | None:
+    last_trace = issue.get("last_trace")
+    if isinstance(last_trace, dict):
+        return last_trace
+    return None
+
+
+def _trace_device_serial(trace: dict) -> str | None:
+    device = trace.get("device")
+    if isinstance(device, dict):
+        serial = device.get("device_serial")
+        if isinstance(serial, str):
+            return serial.upper()
+    return None
+
+
+def _trace_reason(trace: dict) -> str | None:
+    reason = trace.get("reason")
+    if isinstance(reason, str):
+        return reason
+    return None
+
+
+def wait_for_device_crash_trace(
+    env: dict[str, str],
+    device_id: str,
+    *,
+    reason: str = "HardFault",
+    since: datetime,
+    timeout: float = 180.0,
+    poll_interval: float = 5.0,
+) -> dict:
+    """Poll Memfault Issues until a trace for *device_id* with *reason* appears."""
+    expected_device_id = device_id.strip().upper()
+    since_param = since.astimezone().isoformat()
+
+    deadline = time.monotonic() + timeout
+    last_issue_count = 0
+    while time.monotonic() < deadline:
+        query = urllib.parse.urlencode(
+            {
+                "title": f"*{reason}*",
+                "last_seen_since": since_param,
+                "per_page": "25",
+                "sort": "-last_seen",
+            }
+        )
+        _, payload = _memfault_json_request(
+            env,
+            "GET",
+            f"{_issues_url(env)}?{query}",
+            allowed_statuses={200},
+        )
+        issues = _iter_issues(payload)
+        last_issue_count = len(issues)
+        logger.info(
+            "Memfault returned %d issue(s) matching reason %r since %s",
+            last_issue_count,
+            reason,
+            since_param,
+        )
+
+        for issue in issues:
+            trace = _trace_from_issue(issue)
+            if trace is None:
+                continue
+
+            trace_serial = _trace_device_serial(trace)
+            trace_reason = _trace_reason(trace)
+            logger.info(
+                "Memfault issue %r last_trace device=%r reason=%r",
+                issue.get("title"),
+                trace_serial,
+                trace_reason,
+            )
+            if trace_serial != expected_device_id:
+                continue
+            if trace_reason != reason:
+                continue
+
+            logger.info(
+                "Memfault confirmed %r trace for device %s",
+                reason,
+                expected_device_id,
+            )
+            return trace
+
+        time.sleep(poll_interval)
+
+    logger.error(
+        "Memfault Issues API returned %d matching issue(s) before timeout; "
+        "expected device %s reason %r since %s",
+        last_issue_count,
+        expected_device_id,
+        reason,
+        since_param,
+    )
+    raise TimeoutError(
+        f"Timed out after {timeout:.0f}s waiting for Memfault {reason!r} trace "
+        f"from device {expected_device_id}"
     )
