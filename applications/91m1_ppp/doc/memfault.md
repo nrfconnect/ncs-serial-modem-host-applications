@@ -47,14 +47,16 @@ In the Memfault UI:
 1. Click **Devices** in the left toolbar to see devices that have reported in.
 2. Select a device to inspect its coredumps, metrics, and event history.
 
-Coredumps are captured automatically on crashes and stored in a dedicated 32 KiB RRAM partition (`memfault_coredump_partition`), so they survive reboot and power cycles without consuming SRAM. Without an uploaded symbol file, traces appear with a **Symbols Missing** label and cannot be decoded.
+Coredumps are captured automatically on crashes (RAM-backed, 3 KB) and are truncated if a crash needs more space than that. Without an uploaded symbol file, traces appear with a **Symbols Missing** label and cannot be decoded.
+
+Because TF-M owns the fault handlers for HardFaults, only BusFaults and SecureFaults originating in non-secure code reach Memfault's handler (`CONFIG_TFM_ALLOW_NON_SECURE_FAULT_HANDLING=y`). A `mflt test hardfault` is trapped by TF-M, which halts the core without collecting a coredump; use `mflt test busfault` instead.
 
 ## Testing
 
 Trigger test faults from the nRF54L15 shell to verify the full pipeline:
 
 ```shell
-uart:~$ mflt test hardfault
+uart:~$ mflt test busfault
 uart:~$ mflt test assert
 uart:~$ mflt test usagefault
 ```

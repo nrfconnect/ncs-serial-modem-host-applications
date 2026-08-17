@@ -7,12 +7,11 @@
  * |
  * +-- 0x0000_0000 boot_partition              (  64 KiB) MCUboot
  * |
- * +-- 0x0001_0000 slot0_partition             (1356 KiB) image-0
+ * +-- 0x0001_0000 slot0_partition             (1388 KiB) image-0
  * |   +-- 0x0001_0000 slot0_s_partition       ( 128 KiB) TF-M secure
- * |   +-- 0x0003_0000 slot0_ns_partition      (1232 KiB) Zephyr/app non-secure
+ * |   +-- 0x0003_0000 slot0_ns_partition      (1260 KiB) Zephyr/app non-secure
  * |
- * +-- 0x0016_3000 storage_partition           (  40 KiB) Zephyr settings
- * +-- 0x0016_d000 memfault_coredump_partition (  32 KiB) Memfault coredump (RRAM)
+ * +-- 0x0016_b000 storage_partition           (  40 KiB) Zephyr settings
  * |
  * +-- 0x0017_5000 tfm_storage_partition       (  32 KiB) TF-M storage
  * |   +-- 0x0017_5000 tfm_its_partition       (   8 KiB) TF-M ITS
@@ -23,8 +22,8 @@
  *
  * External flash layout (mx25r64, 8 MiB):
  * |
- * +-- 0x0000_0000 slot1_partition             (1356 KiB) image-1 (matches slot0 for MCUboot)
- * +-- 0x0015_3000 (remaining flash)           (~6.6 MiB) unused external flash
+ * +-- 0x0000_0000 slot1_partition             (1388 KiB) image-1 (matches slot0 for MCUboot)
+ * +-- 0x0015_b000 (remaining flash)           (~6.6 MiB) unused external flash
  *
  * Include after deleting the board default partition nodes.
  */
@@ -44,8 +43,8 @@
 		slot0_partition: partition@10000 {
 			compatible = "zephyr,mapped-partition";
 			label = "image-0";
-			reg = <0x10000 0x153000>;
-			ranges = <0x0 0x10000 0x153000>;
+			reg = <0x10000 0x15b000>;
+			ranges = <0x0 0x10000 0x15b000>;
 			#address-cells = <1>;
 			#size-cells = <1>;
 
@@ -58,20 +57,14 @@
 			slot0_ns_partition: partition@20000 {
 				compatible = "zephyr,mapped-partition";
 				label = "image-0-nonsecure";
-				reg = <0x20000 0x133000>;
+				reg = <0x20000 0x13b000>;
 			};
 		};
 
-		storage_partition: partition@163000 {
+		storage_partition: partition@16b000 {
 			compatible = "zephyr,mapped-partition";
 			label = "storage";
-			reg = <0x163000 DT_SIZE_K(40)>;
-		};
-
-		memfault_coredump_partition: partition@16d000 {
-			compatible = "zephyr,mapped-partition";
-			label = "memfault_coredump_partition";
-			reg = <0x16d000 DT_SIZE_K(32)>;
+			reg = <0x16b000 DT_SIZE_K(40)>;
 		};
 
 		tfm_storage_partition: partition@175000 {
@@ -113,7 +106,7 @@
 
 		slot1_partition: partition@0 {
 			label = "image-1";
-			reg = <0x0 0x153000>;
+			reg = <0x0 0x15b000>;
 		};
 	};
 };
