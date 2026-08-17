@@ -23,6 +23,9 @@ logger = get_logger()
 API_HOST = "https://api.memfault.com/api/v0"
 CONFIG_RE = re.compile(r'^CONFIG_(?P<key>[A-Z0-9_]+)="(?P<value>.*)"$')
 
+# Each candidate issue costs an extra request to read its last_trace.
+MAX_ISSUE_LOOKUPS = 10
+
 
 def _read_kconfig_values(config_path: Path, keys: set[str]) -> dict[str, str]:
     if not config_path.is_file():
@@ -807,6 +810,32 @@ def _trace_from_issue(issue: dict) -> dict | None:
     return None
 
 
+def _fetch_issue_trace(env: dict[str, str], issue_id) -> dict | None:
+    """Read last_trace from a single Issue; the Issues list response omits it."""
+    _, payload = _memfault_json_request(
+        env,
+        "GET",
+        f"{_issues_url(env)}/{issue_id}",
+        allowed_statuses={200, 404},
+    )
+    if not isinstance(payload, dict):
+        return None
+
+    data = payload.get("data")
+    if isinstance(data, dict):
+        return _trace_from_issue(data)
+    return None
+
+
+def _parse_api_timestamp(value) -> datetime | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
 def _trace_device_serial(trace: dict) -> str | None:
     device = trace.get("device")
     if isinstance(device, dict):
@@ -840,18 +869,13 @@ def wait_for_device_crash_trace(
     """Poll Memfault Issues until a trace for *device_id* with *reason* appears."""
     expected_device_id = device_id.strip().upper()
     expected_reason = _normalize_reason(reason)
-    since_param = since.astimezone().isoformat()
 
     deadline = time.monotonic() + timeout
     last_issue_count = 0
+    logged_issue_shape = False
+    logged_missing_trace = False
     while time.monotonic() < deadline:
-        query = urllib.parse.urlencode(
-            {
-                "last_seen_since": since_param,
-                "per_page": "25",
-                "sort": "-last_seen",
-            }
-        )
+        query = urllib.parse.urlencode({"per_page": "25", "sort": "-last_seen"})
         _, payload = _memfault_json_request(
             env,
             "GET",
@@ -861,28 +885,45 @@ def wait_for_device_crash_trace(
         issues = _iter_issues(payload)
         last_issue_count = len(issues)
         logger.info(
-            "Memfault returned %d issue(s) since %s while looking for reason %r",
+            "Memfault returned %d issue(s) while looking for a %r trace newer than %s",
             last_issue_count,
-            since_param,
             reason,
+            since.isoformat(),
         )
+        if issues and not logged_issue_shape:
+            logger.info("Memfault issue fields: %s", sorted(issues[0]))
+            logged_issue_shape = True
 
-        for issue in issues:
-            trace = _trace_from_issue(issue)
+        for issue in issues[:MAX_ISSUE_LOOKUPS]:
+            # Issues are newest first, so stop once they predate the fault.
+            last_seen = _parse_api_timestamp(issue.get("last_seen"))
+            if last_seen is not None and last_seen < since:
+                break
+
+            trace = _trace_from_issue(issue) or _fetch_issue_trace(env, issue.get("id"))
             if trace is None:
+                if not logged_missing_trace:
+                    logger.info(
+                        "Memfault issue %r exposes no last_trace", issue.get("id")
+                    )
+                    logged_missing_trace = True
                 continue
 
             trace_serial = _trace_device_serial(trace)
             trace_reason = _trace_reason(trace)
+            captured = _parse_api_timestamp(trace.get("captured_date"))
             logger.info(
-                "Memfault issue %r last_trace device=%r reason=%r",
+                "Memfault issue %r last_trace device=%r reason=%r captured=%r",
                 issue.get("title"),
                 trace_serial,
                 trace_reason,
+                trace.get("captured_date"),
             )
             if trace_serial != expected_device_id:
                 continue
             if trace_reason is None or _normalize_reason(trace_reason) != expected_reason:
+                continue
+            if captured is not None and captured < since:
                 continue
 
             logger.info(
@@ -895,12 +936,12 @@ def wait_for_device_crash_trace(
         time.sleep(poll_interval)
 
     logger.error(
-        "Memfault Issues API returned %d matching issue(s) before timeout; "
+        "Memfault Issues API returned %d issue(s) before timeout; "
         "expected device %s reason %r since %s",
         last_issue_count,
         expected_device_id,
         reason,
-        since_param,
+        since.isoformat(),
     )
     raise TimeoutError(
         f"Timed out after {timeout:.0f}s waiting for Memfault {reason!r} trace "
