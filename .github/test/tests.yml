@@ -23,3 +23,28 @@ tests:
       cohort: ci-91m1-fota-nrf54l15
       cohort_name: CI 91m1 FOTA nRF54L15
       baseline_version: "1.0.0"  # local-dev fallback when FIRMWARE_VERSION is unset
+
+  - id: 91m1_ppp-memfault-coredump-nrf54l15
+    enabled: true
+    type: memfault
+    pytest_dir: tests/on_target/tests/test_memfault/
+    app: 91m1_ppp
+    board: nrf54l15dk/nrf54l15/cpuapp/ns
+    board_type: nrf54l15
+    hardware:
+      segger_sn_var: CI_NRF54L15_SEGGER_SN
+      serial_port_var: CI_NRF54L15_SERIAL_PORT
+      console_vcom: 1
+      device_id_var: CI_NRF54L15_DEVICE_ID
+    nrf_cloud:
+      api_key_var: NRF_CLOUD_API_KEY
+      ca_cert_var: NRF_CLOUD_CA_CERT
+      ca_key_var: NRF_CLOUD_CA_KEY
+    memfault:
+      org_token_var: MEMFAULT_ORG_TOKEN
+      org_var: MEMFAULT_ORG
+      project_var: MEMFAULT_PROJECT
+      fleet_sampling_configuration_var: MEMFAULT_FLEET_SAMPLING_CONFIGURATION
+      cohort: ci-91m1-coredump-nrf54l15
+      cohort_name: CI 91m1 Coredump nRF54L15
+      baseline_version: "1.0.0"  # local-dev fallback when FIRMWARE_VERSION is unset

@@ -56,6 +56,7 @@ on:
         options:
           - all
           - 91m1_ppp-application-fota-nrf54l15
+          - 91m1_ppp-memfault-coredump-nrf54l15
       use_prebuilt_firmware:
         description: Download firmware artifacts from a prior Build run in this workflow
         required: false

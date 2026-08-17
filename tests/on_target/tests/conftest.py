@@ -10,7 +10,12 @@ from pathlib import Path
 
 import pytest
 
-from utils.app_version import memfault_software_version, resolve_fota_versions, write_app_version
+from utils.app_version import (
+    memfault_software_version,
+    resolve_baseline_version,
+    resolve_fota_versions,
+    write_app_version,
+)
 from utils.flash_tools import (
     flash_baseline_firmware,
     nrfutil_reset,
@@ -100,6 +105,66 @@ def fota_dut(request: pytest.FixtureRequest, test_config: dict) -> types.SimpleN
         serial_log=SERIAL_LOG,
         baseline_version=baseline_semver,
         update_version=update_semver,
+    )
+
+    yield dut
+
+    dut.uart.stop()
+    request.node.user_properties.append(("serial_log", str(SERIAL_LOG)))
+
+
+@pytest.fixture(scope="function")
+def coredump_dut(request: pytest.FixtureRequest, test_config: dict) -> types.SimpleNamespace:
+    """Prepare device with baseline firmware for Memfault coredump test."""
+    segger_sn, board, app_dir = _hardware_context(test_config)
+    _prepare_serial_log()
+
+    app_name = test_config["app"]
+    prebuilt_metadata = None
+    if should_use_prebuilt_firmware(app_dir, app_name):
+        prebuilt_metadata = read_build_metadata(app_dir, app_name)
+
+    baseline_semver = resolve_baseline_version(
+        test_config=test_config,
+        prebuilt_metadata=prebuilt_metadata,
+    )
+    expected_baseline = memfault_software_version(baseline_semver)
+
+    if should_use_prebuilt_firmware(app_dir, app_name):
+        metadata = prebuilt_metadata or read_build_metadata(app_dir, app_name)
+        if metadata["software_version"] != expected_baseline:
+            raise RuntimeError(
+                "Prebuilt firmware version "
+                f"{metadata['software_version']!r} != expected baseline "
+                f"{expected_baseline!r}. Ensure Build and Test use the same "
+                "FIRMWARE_VERSION."
+            )
+        logger.info(
+            "Step 1/3 - Using prebuilt CI baseline firmware %s (merged.hex)",
+            expected_baseline,
+        )
+    else:
+        logger.info("Step 1/3 - Build baseline firmware %s", baseline_semver)
+        write_app_version(app_dir, baseline_semver)
+        west_build(app_dir, board)
+
+    logger.info("Step 2/3 - Recover and flash firmware (clears all flash including TF-M storage)")
+    flash_baseline_firmware(app_dir, app_name, segger_sn, recover=True)
+
+    logger.info("Step 3/3 - Start serial capture and reset device")
+    time.sleep(2)
+    serial_port = resolve_serial_port(test_config)
+    uart = Uart(serial_port, log_path=SERIAL_LOG)
+    nrfutil_reset(segger_sn)
+
+    dut = types.SimpleNamespace(
+        uart=uart,
+        segger_sn=segger_sn,
+        serial_port=serial_port,
+        app_dir=app_dir,
+        board=board,
+        serial_log=SERIAL_LOG,
+        baseline_version=baseline_semver,
     )
 
     yield dut

@@ -39,7 +39,7 @@ An initial synchronization runs immediately on cloud connect. The timer is cance
 
 ## Memfault
 
-Memfault is configured for firmware type `smha-91m1` and uploads through nRF Cloud CoAP (`CONFIG_MEMFAULT_USE_NRF_CLOUD_COAP`). The SDK collects heartbeat metrics on its internal timer and uploads data periodically (`CONFIG_MEMFAULT_PERIODIC_UPLOAD`). Coredumps are RAM-backed. See [Memfault remote debugging](memfault.md) for dashboard setup.
+Memfault is configured for firmware type `smha-91m1` and uploads through nRF Cloud CoAP (`CONFIG_MEMFAULT_USE_NRF_CLOUD_COAP`). The SDK collects heartbeat metrics on its internal timer and uploads data periodically (`CONFIG_MEMFAULT_PERIODIC_UPLOAD`). Coredumps are stored in a 32 KiB RRAM partition. See [Memfault remote debugging](memfault.md) for dashboard setup.
 
 ## Configuration
 
