@@ -54,6 +54,21 @@ class CloudDutSession:
         self.dut.uart.wait_for_substring(MISSING_CREDENTIALS_LOG, timeout=60.0)
         return self.device_id
 
+    def wait_for_provisioned_boot(self, *, device_id_timeout: float = 60.0) -> str:
+        """Read the DUT device ID and confirm nRF Cloud credentials are present."""
+        logger.info("Wait for device ID in boot log (expect existing credentials)")
+        self.device_id = assert_dut_device_id(
+            wait_for_device_id(self.dut.uart, timeout=device_id_timeout),
+            self.expected_device_id,
+        )
+
+        if MISSING_CREDENTIALS_LOG in self.dut.uart.snapshot_log():
+            raise RuntimeError(
+                "DUT booted without nRF Cloud credentials; provision the test DUT "
+                "before running preprovisioned tests"
+            )
+        return self.device_id
+
     def remove_prior_registrations(self) -> None:
         """Remove a stale nRF Cloud registration before provisioning."""
         if self.device_id is None:

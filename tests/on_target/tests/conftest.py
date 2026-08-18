@@ -26,6 +26,7 @@ from utils.dut_lifecycle import CloudDutSession
 from utils.memfault_ota import read_build_metadata
 from utils.helpers import REPO_ROOT, SERIAL_LOG, load_test_config
 from utils.logger import get_logger
+from utils.provisioning_config import flash_recover_enabled, nrf_cloud_cleanup_enabled
 from utils.serial_port import resolve_serial_port
 from utils.uart import Uart
 
@@ -48,75 +49,11 @@ def _prepare_serial_log() -> None:
     SERIAL_LOG.write_text("", encoding="utf-8")
 
 
-@pytest.fixture(scope="session")
-def test_config() -> dict:
-    return load_test_config()
-
-
-@pytest.fixture(scope="function")
-def fota_dut(request: pytest.FixtureRequest, test_config: dict) -> types.SimpleNamespace:
-    """Prepare device with baseline FOTA firmware for application FOTA test."""
-    segger_sn, board, app_dir = _hardware_context(test_config)
-    _prepare_serial_log()
-
-    app_name = test_config["app"]
-    prebuilt_metadata = None
-    if should_use_prebuilt_firmware(app_dir, app_name):
-        prebuilt_metadata = read_build_metadata(app_dir, app_name)
-
-    baseline_semver, update_semver = resolve_fota_versions(
-        test_config=test_config,
-        prebuilt_metadata=prebuilt_metadata,
-    )
-    expected_baseline = memfault_software_version(baseline_semver)
-
-    if should_use_prebuilt_firmware(app_dir, app_name):
-        metadata = prebuilt_metadata or read_build_metadata(app_dir, app_name)
-        if metadata["software_version"] != expected_baseline:
-            raise RuntimeError(
-                "Prebuilt firmware version "
-                f"{metadata['software_version']!r} != expected baseline "
-                f"{expected_baseline!r}. Ensure Build and Test use the same "
-                "FIRMWARE_VERSION."
-            )
-        logger.info(
-            "Step 1/3 - Using prebuilt CI baseline firmware %s (merged.hex)",
-            expected_baseline,
-        )
-    else:
-        logger.info("Step 1/3 - Build baseline FOTA firmware %s", baseline_semver)
-        write_app_version(app_dir, baseline_semver)
-        west_build(app_dir, board)
-
-    logger.info("Step 2/3 - Recover and flash firmware (clears all flash including TF-M storage)")
-    flash_baseline_firmware(app_dir, app_name, segger_sn, recover=True)
-
-    logger.info("Step 3/3 - Start serial capture and reset device")
-    time.sleep(2)
-    serial_port = resolve_serial_port(test_config)
-    uart = Uart(serial_port, log_path=SERIAL_LOG)
-    nrfutil_reset(segger_sn)
-
-    dut = types.SimpleNamespace(
-        uart=uart,
-        segger_sn=segger_sn,
-        serial_port=serial_port,
-        app_dir=app_dir,
-        board=board,
-        serial_log=SERIAL_LOG,
-        baseline_version=baseline_semver,
-        update_version=update_semver,
-    )
-
-    yield dut
-
-    dut.uart.stop()
-    request.node.user_properties.append(("serial_log", str(SERIAL_LOG)))
-
-
-@pytest.fixture(scope="function")
-def coredump_dut(request: pytest.FixtureRequest, test_config: dict) -> types.SimpleNamespace:
-    """Prepare device with baseline firmware for Memfault coredump test."""
+def _prepare_baseline_firmware(
+    test_config: dict,
+    *,
+    recover: bool,
+) -> types.SimpleNamespace:
     segger_sn, board, app_dir = _hardware_context(test_config)
     _prepare_serial_log()
 
@@ -149,8 +86,15 @@ def coredump_dut(request: pytest.FixtureRequest, test_config: dict) -> types.Sim
         write_app_version(app_dir, baseline_semver)
         west_build(app_dir, board)
 
-    logger.info("Step 2/3 - Recover and flash firmware (clears all flash including TF-M storage)")
-    flash_baseline_firmware(app_dir, app_name, segger_sn, recover=True)
+    if recover:
+        logger.info(
+            "Step 2/3 - Recover and flash firmware (clears all flash including TF-M storage)"
+        )
+    else:
+        logger.info(
+            "Step 2/3 - Flash baseline firmware without recover (preserves credentials)"
+        )
+    flash_baseline_firmware(app_dir, app_name, segger_sn, recover=recover)
 
     logger.info("Step 3/3 - Start serial capture and reset device")
     time.sleep(2)
@@ -158,7 +102,7 @@ def coredump_dut(request: pytest.FixtureRequest, test_config: dict) -> types.Sim
     uart = Uart(serial_port, log_path=SERIAL_LOG)
     nrfutil_reset(segger_sn)
 
-    dut = types.SimpleNamespace(
+    return types.SimpleNamespace(
         uart=uart,
         segger_sn=segger_sn,
         serial_port=serial_port,
@@ -167,6 +111,52 @@ def coredump_dut(request: pytest.FixtureRequest, test_config: dict) -> types.Sim
         serial_log=SERIAL_LOG,
         baseline_version=baseline_semver,
     )
+
+
+@pytest.fixture(scope="session")
+def test_config() -> dict:
+    return load_test_config()
+
+
+@pytest.fixture(scope="function")
+def provision_dut(request: pytest.FixtureRequest, test_config: dict) -> types.SimpleNamespace:
+    """Prepare the provisioning DUT with recover flash."""
+    dut = _prepare_baseline_firmware(test_config, recover=True)
+
+    yield dut
+
+    dut.uart.stop()
+    request.node.user_properties.append(("serial_log", str(SERIAL_LOG)))
+
+
+@pytest.fixture(scope="function")
+def fota_dut(request: pytest.FixtureRequest, test_config: dict) -> types.SimpleNamespace:
+    """Prepare device with baseline FOTA firmware for application FOTA test."""
+    recover = flash_recover_enabled(test_config)
+    dut = _prepare_baseline_firmware(test_config, recover=recover)
+
+    app_name = test_config["app"]
+    prebuilt_metadata = None
+    if should_use_prebuilt_firmware(dut.app_dir, app_name):
+        prebuilt_metadata = read_build_metadata(dut.app_dir, app_name)
+
+    _, update_semver = resolve_fota_versions(
+        test_config=test_config,
+        prebuilt_metadata=prebuilt_metadata,
+    )
+    dut.update_version = update_semver
+
+    yield dut
+
+    dut.uart.stop()
+    request.node.user_properties.append(("serial_log", str(SERIAL_LOG)))
+
+
+@pytest.fixture(scope="function")
+def coredump_dut(request: pytest.FixtureRequest, test_config: dict) -> types.SimpleNamespace:
+    """Prepare device with baseline firmware for Memfault coredump test."""
+    recover = flash_recover_enabled(test_config)
+    dut = _prepare_baseline_firmware(test_config, recover=recover)
 
     yield dut
 
@@ -186,8 +176,9 @@ def cloud_dut_session(nrf_cloud_env: dict, test_config: dict):
 
     yield create
 
-    for session in sessions:
-        session.cleanup_nrf_cloud()
+    if nrf_cloud_cleanup_enabled(test_config):
+        for session in sessions:
+            session.cleanup_nrf_cloud()
 
 
 @pytest.fixture(scope="function")

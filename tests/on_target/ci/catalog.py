@@ -11,35 +11,58 @@ from pathlib import Path
 
 import yaml
 
+PROVISION_TEST_ID = "91m1_ppp-provision-nrf54l15-nrf91"
+COREDUMP_TEST_ID = "91m1_ppp-memfault-coredump-nrf54l15-nrf91"
+FOTA_TEST_ID = "91m1_ppp-application-fota-nrf54l15-nrf91"
+
 
 def _catalog_path(root: Path) -> Path:
     return root / ".github/test/tests.yml"
 
 
-def load_catalog(root: Path) -> list[dict]:
+def _read_catalog(root: Path) -> list[dict]:
     catalog = yaml.safe_load(_catalog_path(root).read_text(encoding="utf-8"))
-    return [test for test in catalog.get("tests", []) if test.get("enabled", True)]
+    return catalog.get("tests", [])
+
+
+def load_catalog(root: Path) -> list[dict]:
+    return [test for test in _read_catalog(root) if test.get("enabled", True)]
+
+
+def load_test_entry(root: Path, test_id: str) -> dict:
+    for test in _read_catalog(root):
+        if test.get("id") == test_id:
+            return test
+    raise SystemExit(f"test id not found: {test_id}")
+
+
+def _filter_tests(tests: list[dict], test_filter: str) -> list[dict]:
+    if test_filter == "all":
+        return tests
+    return [test for test in tests if test.get("id") == test_filter]
+
+
+def _write_github_output(name: str, value: str) -> None:
+    if github_output := os.environ.get("GITHUB_OUTPUT"):
+        with open(github_output, "a", encoding="utf-8") as handle:
+            handle.write(f"{name}={value}\n")
+    else:
+        print(f"{name}={value}")
 
 
 def cmd_matrix(root: Path, test_filter: str) -> None:
-    tests = load_catalog(root)
-    if test_filter != "all":
-        tests = [test for test in tests if test.get("id") == test_filter]
+    selected = {test["id"] for test in _filter_tests(load_catalog(root), test_filter)}
 
-    payload = json.dumps(tests)
-    if github_output := os.environ.get("GITHUB_OUTPUT"):
-        with open(github_output, "a", encoding="utf-8") as handle:
-            handle.write(f"matrix={payload}\n")
-    else:
-        print(payload)
+    for output_name, test_id in (
+        ("run_provision", PROVISION_TEST_ID),
+        ("run_coredump", COREDUMP_TEST_ID),
+        ("run_fota", FOTA_TEST_ID),
+    ):
+        _write_github_output(output_name, "true" if test_id in selected else "false")
 
 
 def cmd_load(root: Path, test_id: str) -> None:
-    for test in load_catalog(root):
-        if test.get("id") == test_id:
-            print(json.dumps(test))
-            return
-    raise SystemExit(f"test id not found: {test_id}")
+    print(json.dumps(load_test_entry(root, test_id)))
 
 
 def cmd_list(root: Path) -> None:
@@ -59,7 +82,7 @@ def main(argv: list[str] | None = None) -> None:
 
     matrix_parser = subparsers.add_parser(
         "matrix",
-        help="Emit enabled tests as a JSON array",
+        help="Emit CI run flags for provision, coredump, and FOTA tests",
         allow_abbrev=False,
     )
     matrix_parser.add_argument(

@@ -30,15 +30,39 @@ Note that a device therefore reports its version as `1.2.3+0`, while Memfault st
 
 FOTA hardware tests on `main` use the same release semver as the baseline: CI passes `FIRMWARE_VERSION` to the Test workflow, flashes the Build artifact's `merged.hex` without rebuilding, then builds and deploys a patch-bumped update image (e.g. `1.2.3` → `1.2.4`) for OTA verification. Local runs fall back to `baseline_version` in [`.github/test/tests.yml`](../.github/test/tests.yml) and flash with `west flash --recover`.
 
-Memfault coredump hardware tests provision the DUT, connect to nRF Cloud, trigger `mflt test busfault` over the shell, and verify a new bus fault coredump for the device appears in the Memfault Traces REST API. "New" means newer than the device's newest coredump recorded before the fault, so the check does not depend on the device clock agreeing with the runner. A bus fault is used because TF-M traps HardFaults before Memfault's handler runs. The test uses a dedicated Memfault cohort (`ci-91m1-coredump-nrf54l15`) defined in [`.github/test/tests.yml`](../.github/test/tests.yml). Local run:
+Hardware tests use two nRF54L15 + nRF91 rigs (see [`.github/test/tests.yml`](../.github/test/tests.yml)):
+
+| CI job | DUT | Every CI run |
+|--------|-----|--------------|
+| `91m1_ppp-provision-nrf54l15-nrf91` | Provisioning (`CI_NRF54L15_PROVISION_*`) | Recover flash, full nRF Cloud + Memfault onboard |
+| `91m1_ppp-memfault-coredump-nrf54l15-nrf91` | Test (`CI_NRF54L15_*`) | Coredump (no re-provision) |
+| `91m1_ppp-application-fota-nrf54l15-nrf91` | Test (`CI_NRF54L15_*`) | FOTA after coredump (`depends_on` in catalog) |
+
+Provisioning and coredump run in parallel. FOTA runs after the coredump job finishes, even when coredump fails (the workflow still reports failure if either test failed).
+
+The test DUT must be provisioned once (manually or by running the provisioning flow locally against it). CI flashes baseline firmware without recover so TF-M credentials persist. FOTA and coredump do not remove the device from nRF Cloud or Memfault after each run.
+
+First-time setup for the test DUT (`CI_NRF54L15_*`): follow [91m1_ppp cloud provisioning](../applications/91m1_ppp/doc/README.md) steps 3–6 on that board, or run the provisioning test locally with `TEST_JSON` from `91m1_ppp-provision-nrf54l15-nrf91` while pointing the `CI_NRF54L15_PROVISION_*` variables at the test board (once only). Register the device in both Memfault cohorts (`ci-91m1-coredump-nrf54l15-nrf91` and `ci-91m1-fota-nrf54l15-nrf91`).
+
+Memfault coredump tests connect to nRF Cloud, trigger `mflt test busfault` over the shell, and verify a new bus fault coredump for the device appears in the Memfault Traces REST API. "New" means newer than the device's newest coredump recorded before the fault, so the check does not depend on the device clock agreeing with the runner. A bus fault is used because TF-M traps HardFaults before Memfault's handler runs. Local run:
 
 ```shell
 export REPO_ROOT=$PWD
-export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load 91m1_ppp-memfault-coredump-nrf54l15)"
+export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load 91m1_ppp-memfault-coredump-nrf54l15-nrf91)"
 PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_memfault/ -c tests/on_target/tests/pytest.ini -v
 ```
 
-Set the same `NRF_CLOUD_*`, `MEMFAULT_*`, and `CI_NRF54L15_*` variables/secrets as the FOTA test.
+Run coredump then FOTA locally (same order as CI):
+
+```shell
+export REPO_ROOT=$PWD
+export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load 91m1_ppp-memfault-coredump-nrf54l15-nrf91)"
+PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_memfault/ -c tests/on_target/tests/pytest.ini -v
+export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load 91m1_ppp-application-fota-nrf54l15-nrf91)"
+PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_fota/ -c tests/on_target/tests/pytest.ini -v
+```
+
+Set `NRF_CLOUD_*`, `MEMFAULT_*`, and the `CI_NRF54L15_*` / `CI_NRF54L15_PROVISION_*` variables/secrets documented in [`.github/workflows/test.yml`](../.github/workflows/test.yml).
 
 ## Commit messages
 

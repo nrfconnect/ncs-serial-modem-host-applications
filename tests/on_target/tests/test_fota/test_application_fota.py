@@ -104,7 +104,7 @@ def test_application_fota_via_cloud_sync(
     cloud_dut_session,
     test_config: dict,
 ) -> None:
-    """Provision a device, deploy a Memfault OTA release, and verify automatic FOTA."""
+    """Deploy a Memfault OTA release on a pre-provisioned DUT and verify automatic FOTA."""
     dut = fota_dut
     session = cloud_dut_session(dut)
     app_name = test_config["app"]
@@ -114,8 +114,7 @@ def test_application_fota_via_cloud_sync(
     release_override_set = False
 
     try:
-        session.wait_for_unprovisioned_boot()
-        session.remove_prior_registrations()
+        session.wait_for_provisioned_boot()
 
         logger.info("Build update firmware %s", update_semver)
         write_app_version(dut.app_dir, update_semver)
@@ -123,8 +122,6 @@ def test_application_fota_via_cloud_sync(
         update_binary = signed_image_path(dut.app_dir, app_name)
         update_metadata = read_build_metadata(dut.app_dir, app_name)
         update_version = update_metadata["software_version"]
-
-        session.ensure_memfault_device(hardware_version=baseline_metadata["hardware_version"])
 
         logger.info("Upload and deploy Memfault OTA release before cloud connect")
         upload_mcu_symbols(
@@ -153,8 +150,6 @@ def test_application_fota_via_cloud_sync(
             NRF_CLOUD_OTA_PROPAGATION_DELAY,
         )
         time.sleep(NRF_CLOUD_OTA_PROPAGATION_DELAY)
-
-        session.onboard_to_cloud()
 
         logger.info("Wait for cloud connect and automatic FOTA via cloud sync")
         dut.uart.wait_for_substring(CLOUD_CONNECTED_LOG, timeout=CLOUD_CONNECT_TIMEOUT)
@@ -191,7 +186,6 @@ def test_application_fota_via_cloud_sync(
             update_version,
             timeout=MEMFAULT_CLOUD_VERSION_TIMEOUT,
         )
-        session.cleanup_memfault()
     finally:
         if release_override_set:
             try:
