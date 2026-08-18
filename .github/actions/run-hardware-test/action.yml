@@ -1,0 +1,117 @@
+name: Run on-target hardware test
+description: Flash firmware and run a catalog hardware test with pytest.
+
+inputs:
+  test_id:
+    description: Test id from .github/test/tests.yml
+    required: true
+  use_prebuilt_firmware:
+    description: Whether to download and flash prebuilt firmware artifacts
+    required: true
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Load test configuration
+      id: config
+      shell: bash
+      working-directory: serial-modem-host-applications
+      run: |
+        set -eu
+        pip install --quiet -r tests/on_target/requirements.txt
+        TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load "${{ inputs.test_id }}")"
+        APP="$(echo "$TEST_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['app'])")"
+        BOARD_TYPE="$(echo "$TEST_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['board_type'])")"
+        PYTEST_DIR="$(echo "$TEST_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['pytest_dir'])")"
+        {
+          echo "test_json<<EOF"
+          echo "$TEST_JSON"
+          echo "EOF"
+          echo "app=$APP"
+          echo "board_type=$BOARD_TYPE"
+          echo "pytest_dir=$PYTEST_DIR"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Initialize West workspace
+      uses: ./serial-modem-host-applications/.github/actions/west-init
+
+    - name: Download prebuilt firmware
+      if: inputs.use_prebuilt_firmware == 'true'
+      uses: actions/download-artifact@v7
+      with:
+        name: firmware-${{ steps.config.outputs.app }}-${{ steps.config.outputs.board_type }}
+        path: serial-modem-host-applications/applications/${{ steps.config.outputs.app }}/build
+
+    - name: Install SEGGER J-Link
+      shell: bash
+      run: |
+        set -eu
+        apt-get update && apt-get install --no-install-recommends -y wget
+        jlink_deb=JLink_Linux_V924a_x86_64.deb
+        wget --post-data="accept_license_agreement=accepted&non_emb_ctr=confirmed" \
+          -O "$jlink_deb" "https://www.segger.com/downloads/jlink/$jlink_deb"
+        dpkg --unpack "./$jlink_deb"
+        rm -f /var/lib/dpkg/info/jlink.postinst
+        apt-get install -f -y
+        rm -f "$jlink_deb"
+        test -f /opt/SEGGER/JLink/libjlinkarm.so
+
+    - name: Install nrfutil
+      shell: bash
+      run: |
+        set -eu
+        apt-get update && apt-get install --no-install-recommends -y curl
+        work_dir="$(mktemp -d)"
+        curl -fsSL \
+          https://files.nordicsemi.com/artifactory/swtools/external/nrfutil/executables/x86_64-unknown-linux-gnu/nrfutil \
+          -o "$work_dir/nrfutil"
+        chmod +x "$work_dir/nrfutil"
+        install -m 0755 "$work_dir/nrfutil" /usr/local/bin/nrfutil
+        curl -fsSL \
+          https://files.nordicsemi.com/artifactory/swtools/external/nrfutil/packages/nrfutil/nrfutil-x86_64-unknown-linux-gnu-8.1.1.tar.gz \
+          -o "$work_dir/nrfutil-core.tar.gz"
+        export NRFUTIL_BOOTSTRAP_TARBALL_PATH="$work_dir/nrfutil-core.tar.gz"
+        export NRFUTIL_HOME=/usr/local/share/nrfutil
+        mkdir -p "$NRFUTIL_HOME"
+        nrfutil install device=2.19.0 --force
+
+    - name: Run hardware test
+      shell: bash
+      working-directory: serial-modem-host-applications
+      env:
+        REPO_ROOT: ${{ github.workspace }}/serial-modem-host-applications
+        TEST_JSON: ${{ steps.config.outputs.test_json }}
+      run: |
+        pip install --quiet -r tests/on_target/requirements.txt
+        PYTHONPATH=tests/on_target python3 -m pytest \
+          ${{ steps.config.outputs.pytest_dir }} \
+          -c tests/on_target/tests/pytest.ini \
+          --html=build/hardware-pytest-report.html \
+          --self-contained-html \
+          -v
+
+    - name: Upload DuT firmware artifacts
+      if: always() && inputs.use_prebuilt_firmware != 'true'
+      uses: actions/upload-artifact@v7
+      with:
+        name: dut-firmware-${{ steps.config.outputs.app }}-${{ inputs.test_id }}-${{ github.run_id }}
+        path: serial-modem-host-applications/applications/${{ steps.config.outputs.app }}/build/
+        retention-days: 7
+        if-no-files-found: ignore
+
+    - name: Upload serial log
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: hardware-serial-log-${{ inputs.test_id }}-${{ github.run_id }}
+        path: serial-modem-host-applications/build/hardware-serial.log
+        if-no-files-found: ignore
+
+    - name: Upload pytest report
+      if: failure()
+      uses: actions/upload-artifact@v7
+      with:
+        name: hardware-pytest-report-${{ inputs.test_id }}-${{ github.run_id }}
+        path: serial-modem-host-applications/build/hardware-pytest-report.html
+        if-no-files-found: ignore

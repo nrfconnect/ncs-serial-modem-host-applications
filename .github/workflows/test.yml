@@ -6,24 +6,36 @@
 #
 # When adding tests, update workflow_dispatch options below and .github/test/tests.yml.
 #
+# Hardware layout (91m1_ppp + nRF54L15 + nRF91 Serial Modem):
+# - DUT 1 (provision): provisioning test every CI (recover flash, full onboard)
+# - DUT 2 (test): coredump then FOTA as separate catalog entries; stays provisioned
+#
+# CI scheduling:
+# - provision and coredump run in parallel (separate jobs)
+# - FOTA runs after coredump finishes (even if coredump failed; see hardware_fota job)
+#
 # Prerequisites:
-# - Self-hosted Linux runner with USB access to the DK (container runs --privileged -v /dev:/dev)
-# - SEGGER J-Link is installed in the job container (see "Install SEGGER J-Link" step)
-# - nRF54L15 DK + nRF9151 Serial Modem wired and configured per applications/91m1_ppp/doc
+# - Self-hosted Linux runner with USB access to both DK rigs (container: --privileged -v /dev:/dev)
+# - SEGGER J-Link is installed in the job container (see run-hardware-test action)
 # - Self-signed CA certificate and private key stored in GitHub secrets
 # - nRF Cloud API key with permission to onboard/delete devices
 #
-# GitHub variables:
-#   CI_NRF54L15_SEGGER_SN=<SEGGER serial of the nRF54L15 DK J-Link>
-#   CI_NRF54L15_DEVICE_ID=<16-hex host device ID allowlist; only this ID may be deleted>
-#   CI_NRF54L15_SERIAL_PORT=<optional explicit /dev/tty... path; auto-resolved if unset>
+# GitHub variables (DUT 1 — provisioning):
+#   CI_NRF54L15_PROVISION_SEGGER_SN
+#   CI_NRF54L15_PROVISION_DEVICE_ID
+#   CI_NRF54L15_PROVISION_SERIAL_PORT  (optional)
+#
+# GitHub variables (DUT 2 — FOTA + coredump, must be provisioned once out-of-band):
+#   CI_NRF54L15_SEGGER_SN
+#   CI_NRF54L15_DEVICE_ID
+#   CI_NRF54L15_SERIAL_PORT  (optional)
 #
 # GitHub secrets:
 #   NRF_CLOUD_API_KEY, NRF_CLOUD_CA_CERT, NRF_CLOUD_CA_KEY, MEMFAULT_ORG_TOKEN
 #
 # GitHub variables (Memfault, linked nRF Cloud project):
 #   MEMFAULT_ORG, MEMFAULT_PROJECT
-#   MEMFAULT_COHORT (optional fallback; FOTA tests define a dedicated cohort in tests.yml)
+#   MEMFAULT_COHORT (optional fallback; tests define dedicated cohorts in tests.yml)
 #   MEMFAULT_FLEET_SAMPLING_CONFIGURATION (optional fleet sampling config ID for dev mode)
 
 name: Test
@@ -55,8 +67,9 @@ on:
         default: all
         options:
           - all
-          - 91m1_ppp-application-fota-nrf54l15
-          - 91m1_ppp-memfault-coredump-nrf54l15
+          - 91m1_ppp-provision-nrf54l15-nrf91
+          - 91m1_ppp-memfault-coredump-nrf54l15-nrf91
+          - 91m1_ppp-application-fota-nrf54l15-nrf91
       use_prebuilt_firmware:
         description: Download firmware artifacts from a prior Build run in this workflow
         required: false
@@ -71,24 +84,22 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: hardware-test-${{ github.ref }}-${{ github.run_id }}
-  cancel-in-progress: false
-
 jobs:
   plan:
     runs-on: self-hosted
     container:
       image: ghcr.io/zephyrproject-rtos/ci:v0.29.2
     outputs:
-      matrix: ${{ steps.resolve.outputs.matrix }}
+      run_provision: ${{ steps.resolve.outputs.run_provision }}
+      run_coredump: ${{ steps.resolve.outputs.run_coredump }}
+      run_fota: ${{ steps.resolve.outputs.run_fota }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           path: serial-modem-host-applications
 
-      - name: Resolve test matrix
+      - name: Resolve test selection
         id: resolve
         working-directory: serial-modem-host-applications
         env:
@@ -97,19 +108,50 @@ jobs:
           pip install --quiet -r tests/on_target/requirements.txt
           PYTHONPATH=tests/on_target python3 -m ci.catalog matrix --filter "$TEST_FILTER"
 
-  hardware_test:
+  hardware_provision:
     needs: plan
-    if: ${{ needs.plan.outputs.matrix != '[]' && needs.plan.outputs.matrix != '' }}
-    name: ${{ matrix.id }}
+    if: needs.plan.outputs.run_provision == 'true'
+    name: 91m1_ppp-provision-nrf54l15-nrf91
     runs-on: self-hosted
     container:
       image: ghcr.io/zephyrproject-rtos/ci:v0.29.2
       options: --privileged -v /dev:/dev
-    strategy:
-      fail-fast: false
-      max-parallel: 1
-      matrix:
-        include: ${{ fromJson(needs.plan.outputs.matrix) }}
+    env:
+      CMAKE_PREFIX_PATH: /opt/toolchains
+      NRFUTIL_HOME: /usr/local/share/nrfutil
+      CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
+      FIRMWARE_VERSION: ${{ inputs.firmware_version }}
+      NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
+      NRF_CLOUD_CA_CERT: ${{ secrets.NRF_CLOUD_CA_CERT }}
+      NRF_CLOUD_CA_KEY: ${{ secrets.NRF_CLOUD_CA_KEY }}
+      CI_NRF54L15_PROVISION_SEGGER_SN: ${{ vars.CI_NRF54L15_PROVISION_SEGGER_SN }}
+      CI_NRF54L15_PROVISION_SERIAL_PORT: ${{ vars.CI_NRF54L15_PROVISION_SERIAL_PORT }}
+      CI_NRF54L15_PROVISION_DEVICE_ID: ${{ vars.CI_NRF54L15_PROVISION_DEVICE_ID }}
+      MEMFAULT_ORG_TOKEN: ${{ secrets.MEMFAULT_ORG_TOKEN }}
+      MEMFAULT_ORG: ${{ vars.MEMFAULT_ORG }}
+      MEMFAULT_PROJECT: ${{ vars.MEMFAULT_PROJECT }}
+      MEMFAULT_COHORT: ${{ vars.MEMFAULT_COHORT }}
+      MEMFAULT_FLEET_SAMPLING_CONFIGURATION: ${{ vars.MEMFAULT_FLEET_SAMPLING_CONFIGURATION }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          path: serial-modem-host-applications
+
+      - name: Run hardware test
+        uses: ./serial-modem-host-applications/.github/actions/run-hardware-test
+        with:
+          test_id: 91m1_ppp-provision-nrf54l15-nrf91
+          use_prebuilt_firmware: ${{ inputs.use_prebuilt_firmware }}
+
+  hardware_coredump:
+    needs: plan
+    if: needs.plan.outputs.run_coredump == 'true'
+    name: 91m1_ppp-memfault-coredump-nrf54l15-nrf91
+    runs-on: self-hosted
+    container:
+      image: ghcr.io/zephyrproject-rtos/ci:v0.29.2
+      options: --privileged -v /dev:/dev
     env:
       CMAKE_PREFIX_PATH: /opt/toolchains
       NRFUTIL_HOME: /usr/local/share/nrfutil
@@ -132,98 +174,47 @@ jobs:
         with:
           path: serial-modem-host-applications
 
-      - name: Load test configuration
-        id: config
-        working-directory: serial-modem-host-applications
-        run: |
-          set -eu
-          pip install --quiet -r tests/on_target/requirements.txt
-          TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load "${{ matrix.id }}")"
-          {
-            echo "test_json<<EOF"
-            echo "$TEST_JSON"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Initialize West workspace
-        uses: ./serial-modem-host-applications/.github/actions/west-init
-
-      # Must stay after west-init: it runs `git clean -fdx` on an existing
-      # workspace, which would delete the untracked build directory.
-      - name: Download prebuilt firmware
-        if: inputs.use_prebuilt_firmware
-        uses: actions/download-artifact@v7
+      - name: Run hardware test
+        uses: ./serial-modem-host-applications/.github/actions/run-hardware-test
         with:
-          name: firmware-${{ matrix.app }}-${{ matrix.board_type }}
-          path: serial-modem-host-applications/applications/${{ matrix.app }}/build
+          test_id: 91m1_ppp-memfault-coredump-nrf54l15-nrf91
+          use_prebuilt_firmware: ${{ inputs.use_prebuilt_firmware }}
 
-      - name: Install SEGGER J-Link
-        run: |
-          set -eu
-          apt-get update && apt-get install --no-install-recommends -y wget
-          # nrfutil device 2.19.0 expects J-Link 9.24a at /opt/SEGGER/JLink.
-          jlink_deb=JLink_Linux_V924a_x86_64.deb
-          wget --post-data="accept_license_agreement=accepted&non_emb_ctr=confirmed" \
-            -O "$jlink_deb" "https://www.segger.com/downloads/jlink/$jlink_deb"
-          # The postinst script calls udevadm, which is unavailable in CI containers.
-          dpkg --unpack "./$jlink_deb"
-          rm -f /var/lib/dpkg/info/jlink.postinst
-          apt-get install -f -y
-          rm -f "$jlink_deb"
-          test -f /opt/SEGGER/JLink/libjlinkarm.so
-
-      - name: Install nrfutil
-        run: |
-          set -eu
-          apt-get update && apt-get install --no-install-recommends -y curl
-          work_dir="$(mktemp -d)"
-          curl -fsSL \
-            https://files.nordicsemi.com/artifactory/swtools/external/nrfutil/executables/x86_64-unknown-linux-gnu/nrfutil \
-            -o "$work_dir/nrfutil"
-          chmod +x "$work_dir/nrfutil"
-          install -m 0755 "$work_dir/nrfutil" /usr/local/bin/nrfutil
-          curl -fsSL \
-            https://files.nordicsemi.com/artifactory/swtools/external/nrfutil/packages/nrfutil/nrfutil-x86_64-unknown-linux-gnu-8.1.1.tar.gz \
-            -o "$work_dir/nrfutil-core.tar.gz"
-          export NRFUTIL_BOOTSTRAP_TARBALL_PATH="$work_dir/nrfutil-core.tar.gz"
-          export NRFUTIL_HOME=/usr/local/share/nrfutil
-          mkdir -p "$NRFUTIL_HOME"
-          nrfutil install device=2.19.0 --force
+  hardware_fota:
+    needs: [plan, hardware_coredump]
+    if: >-
+      always() &&
+      needs.plan.outputs.run_fota == 'true' &&
+      needs.hardware_coredump.result != 'cancelled'
+    name: 91m1_ppp-application-fota-nrf54l15-nrf91
+    runs-on: self-hosted
+    container:
+      image: ghcr.io/zephyrproject-rtos/ci:v0.29.2
+      options: --privileged -v /dev:/dev
+    env:
+      CMAKE_PREFIX_PATH: /opt/toolchains
+      NRFUTIL_HOME: /usr/local/share/nrfutil
+      CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
+      FIRMWARE_VERSION: ${{ inputs.firmware_version }}
+      NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
+      NRF_CLOUD_CA_CERT: ${{ secrets.NRF_CLOUD_CA_CERT }}
+      NRF_CLOUD_CA_KEY: ${{ secrets.NRF_CLOUD_CA_KEY }}
+      CI_NRF54L15_SEGGER_SN: ${{ vars.CI_NRF54L15_SEGGER_SN }}
+      CI_NRF54L15_SERIAL_PORT: ${{ vars.CI_NRF54L15_SERIAL_PORT }}
+      CI_NRF54L15_DEVICE_ID: ${{ vars.CI_NRF54L15_DEVICE_ID }}
+      MEMFAULT_ORG_TOKEN: ${{ secrets.MEMFAULT_ORG_TOKEN }}
+      MEMFAULT_ORG: ${{ vars.MEMFAULT_ORG }}
+      MEMFAULT_PROJECT: ${{ vars.MEMFAULT_PROJECT }}
+      MEMFAULT_COHORT: ${{ vars.MEMFAULT_COHORT }}
+      MEMFAULT_FLEET_SAMPLING_CONFIGURATION: ${{ vars.MEMFAULT_FLEET_SAMPLING_CONFIGURATION }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          path: serial-modem-host-applications
 
       - name: Run hardware test
-        working-directory: serial-modem-host-applications
-        env:
-          REPO_ROOT: ${{ github.workspace }}/serial-modem-host-applications
-          TEST_JSON: ${{ steps.config.outputs.test_json }}
-        run: |
-          PYTHONPATH=tests/on_target python3 -m pytest \
-            ${{ matrix.pytest_dir }} \
-            -c tests/on_target/tests/pytest.ini \
-            --html=build/hardware-pytest-report.html \
-            --self-contained-html \
-            -v
-
-      - name: Upload DuT firmware artifacts
-        if: always() && inputs.use_prebuilt_firmware != true
-        uses: actions/upload-artifact@v7
+        uses: ./serial-modem-host-applications/.github/actions/run-hardware-test
         with:
-          name: dut-firmware-${{ matrix.app }}-${{ matrix.id }}-${{ github.run_id }}
-          path: serial-modem-host-applications/applications/${{ matrix.app }}/build/
-          retention-days: 7
-          if-no-files-found: ignore
-
-      - name: Upload serial log
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: hardware-serial-log-${{ matrix.id }}-${{ github.run_id }}
-          path: serial-modem-host-applications/build/hardware-serial.log
-          if-no-files-found: ignore
-
-      - name: Upload pytest report
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: hardware-pytest-report-${{ matrix.id }}-${{ github.run_id }}
-          path: serial-modem-host-applications/build/hardware-pytest-report.html
-          if-no-files-found: ignore
+          test_id: 91m1_ppp-application-fota-nrf54l15-nrf91
+          use_prebuilt_firmware: ${{ inputs.use_prebuilt_firmware }}

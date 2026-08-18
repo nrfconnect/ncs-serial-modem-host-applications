@@ -11,7 +11,7 @@ from utils.memfault_ota import (
     upload_mcu_symbols,
     wait_for_new_device_coredump,
 )
-from utils.flash_tools import elf_image_path, nrfutil_reset
+from utils.flash_tools import elf_image_path
 from utils.shell import send_shell_command
 from utils.uart import Uart
 
@@ -38,14 +38,13 @@ def test_memfault_coredump_upload_via_cloud_sync(
     cloud_dut_session,
     test_config: dict,
 ) -> None:
-    """Provision a device, trigger a test BusFault, and verify the coredump in Memfault."""
+    """Trigger a BusFault on a pre-provisioned DUT and verify the coredump in Memfault."""
     dut = coredump_dut
     session = cloud_dut_session(dut)
     app_name = test_config["app"]
     build_metadata = read_build_metadata(dut.app_dir, app_name)
 
-    session.wait_for_unprovisioned_boot()
-    session.remove_prior_registrations()
+    session.wait_for_provisioned_boot()
 
     logger.info("Upload MCU symbols for baseline firmware")
     upload_mcu_symbols(
@@ -54,9 +53,6 @@ def test_memfault_coredump_upload_via_cloud_sync(
         metadata=build_metadata,
         software_version=build_metadata["software_version"],
     )
-
-    session.ensure_memfault_device(hardware_version=build_metadata["hardware_version"])
-    session.onboard_to_cloud()
 
     logger.info("Trigger a fault and verify coredump upload")
     dut.uart.wait_for_substring(CLOUD_CONNECTED_LOG, timeout=CLOUD_CONNECT_TIMEOUT)
@@ -94,4 +90,3 @@ def test_memfault_coredump_upload_via_cloud_sync(
         baseline=baseline_coredump,
         timeout=MEMFAULT_TRACE_TIMEOUT,
     )
-    session.cleanup_memfault()
