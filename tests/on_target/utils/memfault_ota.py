@@ -101,11 +101,6 @@ def _load_memfault_credentials(test_config: dict) -> dict[str, str | int]:
     return credentials
 
 
-def load_memfault_credentials(test_config: dict) -> dict[str, str | int]:
-    """Return Memfault org/project credentials for device cleanup and developer mode."""
-    return _load_memfault_credentials(test_config)
-
-
 def load_memfault_env(test_config: dict) -> dict[str, str]:
     memfault = test_config.get("memfault", {})
     cohort_var = memfault.get("cohort_var", "MEMFAULT_COHORT")
@@ -137,6 +132,22 @@ def _memfault_cli_base(env: dict[str, str]) -> list[str]:
     ]
 
 
+def _run_memfault_cli(command: list[str], *, check: bool = True) -> subprocess.CompletedProcess:
+    """Run the Memfault CLI, logging its output so CI shows what the upload did."""
+    result = subprocess.run(command, capture_output=True, text=True)
+    output = "\n".join(part.strip() for part in (result.stdout, result.stderr) if part.strip())
+    if output:
+        logger.info("Memfault CLI output:\n%s", output)
+    if check and result.returncode != 0:
+        raise subprocess.CalledProcessError(
+            result.returncode,
+            command,
+            output=result.stdout,
+            stderr=result.stderr,
+        )
+    return result
+
+
 def upload_ota_payload(
     *,
     env: dict[str, str],
@@ -165,7 +176,7 @@ def upload_ota_payload(
         metadata["software_type"],
         software_version,
     )
-    subprocess.run(command, check=True)
+    _run_memfault_cli(command)
 
 
 def _cohort_url(env: dict[str, str], cohort: str | None = None) -> str:
@@ -201,7 +212,7 @@ def upload_mcu_symbols(
         metadata["software_type"],
         software_version,
     )
-    subprocess.run(command, check=True)
+    _run_memfault_cli(command)
 
 
 def deploy_release(*, env: dict[str, str], software_version: str) -> None:
@@ -227,7 +238,7 @@ def deploy_release(*, env: dict[str, str], software_version: str) -> None:
         software_version,
         env["cohort"],
     )
-    result = subprocess.run(command, capture_output=True, text=True)
+    result = _run_memfault_cli(command, check=False)
     if result.returncode == 0:
         return
 
@@ -263,7 +274,7 @@ def deactivate_release(*, env: dict[str, str], software_version: str) -> None:
         software_version,
         env["cohort"],
     )
-    subprocess.run(command, check=True)
+    _run_memfault_cli(command)
 
 
 def _auth_headers(env: dict[str, str]) -> dict[str, str]:
