@@ -28,7 +28,7 @@ Firmware built for a release embeds that version via each application's [`VERSIO
 
 FOTA hardware tests on `main` use the same release semver as the baseline: CI passes `FIRMWARE_VERSION` to the Test workflow, flashes the Build artifact's `merged.hex` without rebuilding, then builds and deploys a patch-bumped update image (e.g. `1.2.3` → `1.2.4`) for OTA verification. Local runs fall back to `baseline_version` in [`.github/test/tests.yml`](../.github/test/tests.yml) and flash with `west flash --recover`.
 
-Memfault coredump hardware tests provision the DUT, connect to nRF Cloud, trigger `mflt test busfault` over the shell, and verify a new bus fault trace for the device appears in Memfault via the REST API. A bus fault is used because TF-M traps HardFaults before Memfault's handler runs. The test uses a dedicated Memfault cohort (`ci-91m1-coredump-nrf54l15`) defined in [`.github/test/tests.yml`](../.github/test/tests.yml). Local run:
+Memfault coredump hardware tests provision the DUT, connect to nRF Cloud, trigger `mflt test busfault` over the shell, and verify a new bus fault coredump for the device appears in the Memfault Traces REST API. A bus fault is used because TF-M traps HardFaults before Memfault's handler runs. The test uses a dedicated Memfault cohort (`ci-91m1-coredump-nrf54l15`) defined in [`.github/test/tests.yml`](../.github/test/tests.yml). Local run:
 
 ```shell
 export REPO_ROOT=$PWD
