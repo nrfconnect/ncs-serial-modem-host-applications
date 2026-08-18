@@ -47,7 +47,7 @@ In the Memfault UI:
 1. Click **Devices** in the left toolbar to see devices that have reported in.
 2. Select a device to inspect its coredumps, metrics, and event history.
 
-Coredumps are captured automatically on crashes (RAM-backed, 3 KB) and are truncated if a crash needs more space than that. Without an uploaded symbol file, traces appear with a **Symbols Missing** label and cannot be decoded.
+Coredumps are captured automatically on crashes (RAM-backed, 3 KB) and are truncated if a crash needs more space than that. Without an uploaded symbol file, traces appear with a **Symbols Missing** label and cannot be decoded. Memfault matches a coredump to its symbol file by the GNU build ID that the application logs at boot (`<inf> mflt: GNU Build ID: ...`), so the symbol file has to come from the exact build running on the device; rebuilding the same version produces a different build ID.
 
 Because TF-M owns the fault handlers for HardFaults, only BusFaults and SecureFaults originating in non-secure code reach Memfault's handler (`CONFIG_TFM_ALLOW_NON_SECURE_FAULT_HANDLING=y`). A `mflt test hardfault` is trapped by TF-M, which halts the core without collecting a coredump; use `mflt test busfault` instead.
 

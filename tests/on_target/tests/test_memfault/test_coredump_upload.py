@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
 import pytest
 
 from utils.helpers import (
@@ -13,13 +11,13 @@ from utils.helpers import (
 )
 from utils.logger import get_logger
 from utils.memfault_ota import (
-    delete_device_if_exists,
     ensure_cohort_exists,
     ensure_device_in_cohort,
+    latest_device_coredump,
     load_memfault_env,
     read_build_metadata,
     upload_mcu_symbols,
-    wait_for_device_crash_trace,
+    wait_for_new_device_coredump,
 )
 from utils.nrf_cloud_device import delete_if_exists, onboard
 from utils.nrf_cloud_provision import install_device_credentials
@@ -71,7 +69,6 @@ def test_memfault_coredump_upload_via_cloud_sync(
 
         logger.info("Phase 3/7 - Remove only the configured DUT from nRF Cloud if registered")
         delete_if_exists(device_id, expected_device_id)
-        delete_device_if_exists(memfault_env, device_id, expected_device_id)
 
         logger.info("Phase 4/7 - Upload MCU symbols for baseline firmware")
         upload_mcu_symbols(
@@ -108,7 +105,7 @@ def test_memfault_coredump_upload_via_cloud_sync(
         logger.info("Phase 7/7 - Trigger a fault and verify coredump upload")
         dut.uart.wait_for_substring(CLOUD_CONNECTED_LOG, timeout=CLOUD_CONNECT_TIMEOUT)
 
-        test_start = datetime.now(timezone.utc)
+        baseline_coredump = latest_device_coredump(memfault_env, device_id)
         dut.uart.stop()
         try:
             send_shell_command(
@@ -134,11 +131,11 @@ def test_memfault_coredump_upload_via_cloud_sync(
             timeout=CLOUD_CONNECT_TIMEOUT,
         )
 
-        wait_for_device_crash_trace(
+        wait_for_new_device_coredump(
             memfault_env,
             device_id,
             reason=FAULT_REASON,
-            since=test_start,
+            baseline=baseline_coredump,
             timeout=MEMFAULT_TRACE_TIMEOUT,
         )
     finally:
@@ -148,12 +145,5 @@ def test_memfault_coredump_upload_via_cloud_sync(
             except RuntimeError as exc:
                 logger.warning(
                     "Failed to delete DUT from nRF Cloud during cleanup: %s",
-                    exc,
-                )
-            try:
-                delete_device_if_exists(memfault_env, device_id, expected_device_id)
-            except RuntimeError as exc:
-                logger.warning(
-                    "Failed to delete DUT from Memfault during cleanup: %s",
                     exc,
                 )
