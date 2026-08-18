@@ -105,7 +105,7 @@ def test_application_fota_via_cloud_sync(
     cloud_dut_session,
     test_config: dict,
 ) -> None:
-    """Deploy a Memfault OTA release on a pre-provisioned DUT and verify automatic FOTA."""
+    """Deploy a Memfault OTA release on the DUT and verify automatic FOTA."""
     dut = fota_dut
     session = cloud_dut_session(dut)
     app_name = test_config["app"]
@@ -115,7 +115,9 @@ def test_application_fota_via_cloud_sync(
     release_override_set = False
 
     try:
-        session.wait_for_provisioned_boot()
+        session.ensure_provisioned(
+            hardware_version=baseline_metadata["hardware_version"],
+        )
 
         logger.info("Build update firmware %s", update_semver)
         write_app_version(dut.app_dir, update_semver)

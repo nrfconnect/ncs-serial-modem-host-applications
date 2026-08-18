@@ -38,13 +38,15 @@ def test_memfault_coredump_upload_via_cloud_sync(
     cloud_dut_session,
     test_config: dict,
 ) -> None:
-    """Trigger a BusFault on a pre-provisioned DUT and verify the coredump in Memfault."""
+    """Trigger a BusFault on the DUT and verify the coredump in Memfault."""
     dut = coredump_dut
     session = cloud_dut_session(dut)
     app_name = test_config["app"]
     build_metadata = read_build_metadata(dut.app_dir, app_name)
 
-    session.wait_for_provisioned_boot()
+    session.ensure_provisioned(
+        hardware_version=build_metadata["hardware_version"],
+    )
 
     logger.info("Upload MCU symbols for baseline firmware")
     upload_mcu_symbols(
