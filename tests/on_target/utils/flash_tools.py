@@ -48,14 +48,26 @@ def merged_hex_path(app_dir: Path) -> Path:
 
 
 def should_use_prebuilt_firmware(app_dir: Path, app_name: str) -> bool:
-    """Return True when CI prebuilt firmware is complete enough to flash."""
+    """Return True when CI prebuilt firmware is complete enough to flash.
+
+    Raises when CI asked for prebuilt firmware but the artifact is incomplete,
+    rather than quietly rebuilding a binary that was never released.
+    """
     if os.environ.get("CI_USE_PREBUILT_FIRMWARE") != "1":
         return False
-    return (
-        merged_hex_path(app_dir).is_file()
-        and signed_image_path(app_dir, app_name).is_file()
-        and elf_image_path(app_dir, app_name).is_file()
+
+    required = (
+        merged_hex_path(app_dir),
+        signed_image_path(app_dir, app_name),
+        elf_image_path(app_dir, app_name),
     )
+    missing = [str(path) for path in required if not path.is_file()]
+    if missing:
+        raise RuntimeError(
+            "CI_USE_PREBUILT_FIRMWARE=1 but the downloaded Build artifact is "
+            f"incomplete. Missing: {', '.join(missing)}."
+        )
+    return True
 
 
 def west_flash(app_dir: Path, serial: str, *, recover: bool = False) -> None:
@@ -103,14 +115,6 @@ def flash_baseline_firmware(
     if should_use_prebuilt_firmware(app_dir, app_name):
         flash_merged_hex(merged_hex_path(app_dir), serial, recover=recover)
         return
-
-    if os.environ.get("CI_USE_PREBUILT_FIRMWARE") == "1":
-        raise RuntimeError(
-            "CI_USE_PREBUILT_FIRMWARE=1 but the downloaded Build artifact is incomplete. "
-            f"Expected {merged_hex_path(app_dir)}, "
-            f"{signed_image_path(app_dir, app_name)}, and "
-            f"{elf_image_path(app_dir, app_name)}."
-        )
 
     west_flash(app_dir, serial, recover=recover)
 
