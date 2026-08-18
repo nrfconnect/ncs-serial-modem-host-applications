@@ -22,6 +22,7 @@ from utils.flash_tools import (
     should_use_prebuilt_firmware,
     west_build,
 )
+from utils.dut_lifecycle import CloudDutSession
 from utils.memfault_ota import read_build_metadata
 from utils.helpers import REPO_ROOT, SERIAL_LOG, load_test_config
 from utils.logger import get_logger
@@ -171,6 +172,22 @@ def coredump_dut(request: pytest.FixtureRequest, test_config: dict) -> types.Sim
 
     dut.uart.stop()
     request.node.user_properties.append(("serial_log", str(SERIAL_LOG)))
+
+
+@pytest.fixture(scope="function")
+def cloud_dut_session(nrf_cloud_env: dict, test_config: dict):
+    """Factory fixture for shared nRF Cloud / Memfault provisioning and cleanup."""
+    sessions: list[CloudDutSession] = []
+
+    def create(dut: types.SimpleNamespace) -> CloudDutSession:
+        session = CloudDutSession(dut, nrf_cloud_env, test_config)
+        sessions.append(session)
+        return session
+
+    yield create
+
+    for session in sessions:
+        session.cleanup_nrf_cloud()
 
 
 @pytest.fixture(scope="function")

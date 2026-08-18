@@ -7,20 +7,17 @@ import time
 
 import pytest
 
-from utils.helpers import (
-    assert_dut_device_id,
-    load_expected_device_id,
-    wait_for_device_id,
+from utils.app_version import write_app_version
+from utils.flash_tools import (
+    elf_image_path,
+    signed_image_path,
+    west_build,
 )
 from utils.logger import get_logger
 from utils.memfault_ota import (
     clear_device_release_override,
     deactivate_release,
-    delete_device_if_exists,
     deploy_release,
-    ensure_cohort_exists,
-    ensure_device_in_cohort,
-    load_memfault_env,
     read_build_metadata,
     set_device_release_override,
     upload_mcu_symbols,
@@ -28,21 +25,11 @@ from utils.memfault_ota import (
     wait_for_cohort_release_deployed,
     wait_for_device_version,
 )
-from utils.nrf_cloud_device import delete_if_exists, onboard
-from utils.nrf_cloud_provision import install_device_credentials
-from utils.app_version import write_app_version
-from utils.flash_tools import (
-    elf_image_path,
-    nrfutil_reset,
-    signed_image_path,
-    west_build,
-)
 from utils.uart import Uart
 
 logger = get_logger()
 
 CLOUD_CONNECTED_LOG = "Cloud connected"
-MISSING_CREDENTIALS_LOG = "Missing nRF Cloud credentials"
 FOTA_DOWNLOAD_STARTING_LOG = "FOTA download starting"
 FOTA_REBOOT_LOG = "FOTA successful, rebooting to apply the update"
 
@@ -114,69 +101,52 @@ def _wait_for_fota_log_after_cloud_connect(
 @pytest.mark.slow
 def test_application_fota_via_cloud_sync(
     fota_dut,
-    nrf_cloud_env: dict,
+    cloud_dut_session,
     test_config: dict,
 ) -> None:
     """Provision a device, deploy a Memfault OTA release, and verify automatic FOTA."""
     dut = fota_dut
-    memfault_env = load_memfault_env(test_config)
-    expected_device_id = load_expected_device_id(test_config)
+    session = cloud_dut_session(dut)
     app_name = test_config["app"]
     update_semver = dut.update_version
     baseline_metadata = read_build_metadata(dut.app_dir, app_name)
     release_deployed = False
     release_override_set = False
-    device_id: str | None = None
 
     try:
-        logger.info("Phase 1/9 - Wait for device ID in boot log")
-        device_id = assert_dut_device_id(
-            wait_for_device_id(dut.uart, timeout=60),
-            expected_device_id,
-        )
+        session.wait_for_unprovisioned_boot()
+        session.remove_prior_registrations()
 
-        logger.info("Phase 2/9 - Confirm device boots without nRF Cloud credentials")
-        dut.uart.wait_for_substring(MISSING_CREDENTIALS_LOG, timeout=60)
-
-        logger.info("Phase 3/9 - Remove only the configured DUT from nRF Cloud if registered")
-        delete_if_exists(device_id, expected_device_id)
-
-        logger.info("Phase 4/9 - Build update firmware %s", update_semver)
+        logger.info("Build update firmware %s", update_semver)
         write_app_version(dut.app_dir, update_semver)
         west_build(dut.app_dir, dut.board)
         update_binary = signed_image_path(dut.app_dir, app_name)
         update_metadata = read_build_metadata(dut.app_dir, app_name)
         update_version = update_metadata["software_version"]
 
-        logger.info("Phase 5/9 - Ensure Memfault CI cohort and assign DUT")
-        ensure_cohort_exists(memfault_env)
-        ensure_device_in_cohort(
-            memfault_env,
-            device_id,
-            hardware_version=baseline_metadata["hardware_version"],
-        )
+        session.ensure_memfault_device(hardware_version=baseline_metadata["hardware_version"])
 
-        logger.info("Phase 6/9 - Upload and deploy Memfault OTA release before cloud connect")
+        logger.info("Upload and deploy Memfault OTA release before cloud connect")
         upload_mcu_symbols(
-            env=memfault_env,
+            env=session.memfault_env,
             elf=elf_image_path(dut.app_dir, app_name),
             metadata=update_metadata,
             software_version=update_version,
         )
         upload_ota_payload(
-            env=memfault_env,
+            env=session.memfault_env,
             binary=update_binary,
             metadata=baseline_metadata,
             software_version=update_version,
         )
-        deploy_release(env=memfault_env, software_version=update_version)
+        deploy_release(env=session.memfault_env, software_version=update_version)
         release_deployed = True
         wait_for_cohort_release_deployed(
-            memfault_env,
+            session.memfault_env,
             update_version,
             timeout=MEMFAULT_RELEASE_DEPLOY_TIMEOUT,
         )
-        set_device_release_override(memfault_env, device_id, update_version)
+        set_device_release_override(session.memfault_env, session.device_id, update_version)
         release_override_set = True
         logger.info(
             "Waiting %.0fs for nRF Cloud OTA propagation before device connect",
@@ -184,23 +154,9 @@ def test_application_fota_via_cloud_sync(
         )
         time.sleep(NRF_CLOUD_OTA_PROPAGATION_DELAY)
 
-        logger.info("Phase 7/9 - Install credentials and onboard using onboard.csv")
-        dut.uart.stop()
-        try:
-            onboard_csv = install_device_credentials(
-                work_dir=nrf_cloud_env["work_dir"],
-                device_id=device_id,
-                serial_port=dut.serial_port,
-                ca_cert=nrf_cloud_env["ca_cert"],
-                ca_key=nrf_cloud_env["ca_key"],
-                segger_sn=dut.segger_sn,
-            )
-            onboard(str(onboard_csv))
-        finally:
-            dut.uart = Uart(dut.serial_port, log_path=dut.serial_log)
-            nrfutil_reset(dut.segger_sn)
+        session.onboard_to_cloud()
 
-        logger.info("Phase 8/9 - Wait for cloud connect and automatic FOTA via cloud sync")
+        logger.info("Wait for cloud connect and automatic FOTA via cloud sync")
         dut.uart.wait_for_substring(CLOUD_CONNECTED_LOG, timeout=CLOUD_CONNECT_TIMEOUT)
         _wait_for_fota_log_after_cloud_connect(
             dut.uart,
@@ -217,12 +173,12 @@ def test_application_fota_via_cloud_sync(
             "Clearing Memfault release override and deactivating cohort release "
             "before post-update verification"
         )
-        clear_device_release_override(memfault_env, device_id)
+        clear_device_release_override(session.memfault_env, session.device_id)
         release_override_set = False
-        deactivate_release(env=memfault_env, software_version=update_version)
+        deactivate_release(env=session.memfault_env, software_version=update_version)
         release_deployed = False
 
-        logger.info("Phase 9/9 - Verify post-update cloud connect and firmware version")
+        logger.info("Verify post-update cloud connect and firmware version")
         dut.uart.wait_for_substring_after(
             CLOUD_CONNECTED_LOG,
             after=FOTA_REBOOT_LOG,
@@ -230,30 +186,16 @@ def test_application_fota_via_cloud_sync(
         )
         _assert_no_fota_redownload(dut.uart)
         wait_for_device_version(
-            memfault_env,
-            device_id,
+            session.memfault_env,
+            session.device_id,
             update_version,
             timeout=MEMFAULT_CLOUD_VERSION_TIMEOUT,
         )
+        session.cleanup_memfault()
     finally:
-        if device_id is not None:
-            try:
-                delete_if_exists(device_id, expected_device_id)
-            except RuntimeError as exc:
-                logger.warning(
-                    "Failed to delete DUT from nRF Cloud during cleanup: %s",
-                    exc,
-                )
-            try:
-                delete_device_if_exists(memfault_env, device_id, expected_device_id)
-            except RuntimeError as exc:
-                logger.warning(
-                    "Failed to delete DUT from Memfault during cleanup: %s",
-                    exc,
-                )
         if release_override_set:
             try:
-                clear_device_release_override(memfault_env, device_id)
+                clear_device_release_override(session.memfault_env, session.device_id)
             except RuntimeError as exc:
                 logger.warning(
                     "Failed to clear Memfault release override during cleanup: %s",
@@ -261,6 +203,6 @@ def test_application_fota_via_cloud_sync(
                 )
         if release_deployed:
             try:
-                deactivate_release(env=memfault_env, software_version=update_version)
+                deactivate_release(env=session.memfault_env, software_version=update_version)
             except subprocess.CalledProcessError as exc:
                 logger.warning("Failed to deactivate Memfault release during cleanup: %s", exc)
