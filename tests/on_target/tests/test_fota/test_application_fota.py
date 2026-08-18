@@ -18,6 +18,7 @@ from utils.memfault_ota import (
     clear_device_release_override,
     deactivate_release,
     deploy_release,
+    ensure_cohort_exists,
     read_build_metadata,
     set_device_release_override,
     upload_mcu_symbols,
@@ -122,6 +123,8 @@ def test_application_fota_via_cloud_sync(
         update_binary = signed_image_path(dut.app_dir, app_name)
         update_metadata = read_build_metadata(dut.app_dir, app_name)
         update_version = update_metadata["software_version"]
+
+        ensure_cohort_exists(session.memfault_env)
 
         logger.info("Upload and deploy Memfault OTA release before cloud connect")
         upload_mcu_symbols(

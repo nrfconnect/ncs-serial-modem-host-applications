@@ -47,8 +47,8 @@ tests:
       org_var: MEMFAULT_ORG
       project_var: MEMFAULT_PROJECT
       fleet_sampling_configuration_var: MEMFAULT_FLEET_SAMPLING_CONFIGURATION
-      cohort: ci-91m1-coredump-nrf54l15-nrf91
-      cohort_name: CI 91m1 Coredump nRF54L15 nRF91
+      cohort: ci-91m1-test-nrf54l15-nrf91
+      cohort_name: CI 91m1 Test nRF54L15 nRF91
       baseline_version: "1.0.0"  # local-dev fallback when FIRMWARE_VERSION is unset
     provisioning:
       mode: preprovisioned
@@ -74,8 +74,8 @@ tests:
       org_var: MEMFAULT_ORG
       project_var: MEMFAULT_PROJECT
       fleet_sampling_configuration_var: MEMFAULT_FLEET_SAMPLING_CONFIGURATION
-      cohort: ci-91m1-fota-nrf54l15-nrf91
-      cohort_name: CI 91m1 FOTA nRF54L15 nRF91
+      cohort: ci-91m1-test-nrf54l15-nrf91
+      cohort_name: CI 91m1 Test nRF54L15 nRF91
       baseline_version: "1.0.0"  # local-dev fallback when FIRMWARE_VERSION is unset
     provisioning:
       mode: preprovisioned
