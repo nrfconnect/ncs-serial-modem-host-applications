@@ -42,7 +42,7 @@ Provisioning and coredump run in parallel. FOTA runs after the coredump job fini
 
 The test DUT must be provisioned once (manually or by running the provisioning flow locally against it). CI flashes baseline firmware without recover so TF-M credentials persist. FOTA and coredump do not remove the device from nRF Cloud or Memfault after each run.
 
-First-time setup for the test DUT (`CI_NRF54L15_*`): follow [91m1_ppp cloud provisioning](../applications/91m1_ppp/doc/README.md) steps 3–6 on that board, or run the provisioning test locally with `TEST_JSON` from `91m1_ppp-provision-nrf54l15-nrf91` while pointing the `CI_NRF54L15_PROVISION_*` variables at the test board (once only). Register the device in both Memfault cohorts (`ci-91m1-coredump-nrf54l15-nrf91` and `ci-91m1-fota-nrf54l15-nrf91`).
+First-time setup for the test DUT (`CI_NRF54L15_*`): follow [91m1_ppp cloud provisioning](../applications/91m1_ppp/doc/README.md) steps 3–6 on that board, or run the provisioning test locally with `TEST_JSON` from `91m1_ppp-provision-nrf54l15-nrf91` while pointing the `CI_NRF54L15_PROVISION_*` variables at the test board (once only). Register the device in the shared Memfault cohort `ci-91m1-test-nrf54l15-nrf91` (used by both coredump and FOTA tests).
 
 Memfault coredump tests connect to nRF Cloud, trigger `mflt test busfault` over the shell, and verify a new bus fault coredump for the device appears in the Memfault Traces REST API. "New" means newer than the device's newest coredump recorded before the fault, so the check does not depend on the device clock agreeing with the runner. A bus fault is used because TF-M traps HardFaults before Memfault's handler runs. Local run:
 
