@@ -145,15 +145,17 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Initialize West workspace
+        uses: ./serial-modem-host-applications/.github/actions/west-init
+
+      # Must stay after west-init: it runs `git clean -fdx` on an existing
+      # workspace, which would delete the untracked build directory.
       - name: Download prebuilt firmware
         if: inputs.use_prebuilt_firmware
         uses: actions/download-artifact@v7
         with:
           name: firmware-${{ matrix.app }}-${{ matrix.board_type }}
           path: serial-modem-host-applications/applications/${{ matrix.app }}/build
-
-      - name: Initialize West workspace
-        uses: ./serial-modem-host-applications/.github/actions/west-init
 
       - name: Install SEGGER J-Link
         run: |
