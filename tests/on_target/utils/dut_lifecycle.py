@@ -19,18 +19,21 @@ from utils.memfault_ota import (
     ensure_device_in_cohort,
     load_memfault_env,
 )
-from utils.nrf_cloud_device import delete_if_exists, onboard
+from utils.nrf_cloud_device import delete_if_exists, device_exists, onboard
 from utils.nrf_cloud_provision import install_device_credentials
 from utils.uart import Uart
 
 logger = get_logger()
 
 MISSING_CREDENTIALS_LOG = "Missing nRF Cloud credentials"
+CLOUD_CONNECTED_LOG = "Cloud connected"
+CLOUD_AUTH_FAILURE_LOG = "Device not authenticated"
 CLOUD_CREDENTIALS_READY_MARKERS = (
     "Connected to nRF Cloud",
     "nRF Cloud client ID:",
 )
 CREDENTIAL_STATE_TIMEOUT = 120.0
+CLOUD_CONNECT_VERIFY_TIMEOUT = 60.0
 
 
 class CloudDutSession:
@@ -72,6 +75,22 @@ class CloudDutSession:
             "Timed out waiting for nRF Cloud credential state in serial log"
         )
 
+    def _cloud_connect_succeeded(
+        self,
+        *,
+        timeout: float = CLOUD_CONNECT_VERIFY_TIMEOUT,
+    ) -> bool:
+        """Return True when the DUT reaches a connected nRF Cloud session."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            captured = self.dut.uart.snapshot_log()
+            if CLOUD_CONNECTED_LOG in captured:
+                return True
+            if CLOUD_AUTH_FAILURE_LOG in captured:
+                return False
+            time.sleep(1.0)
+        return False
+
     def wait_for_unprovisioned_boot(self, *, device_id_timeout: float = 60.0) -> str:
         """Read the DUT device ID and confirm it has no nRF Cloud credentials yet."""
         self._wait_for_device_id(device_id_timeout=device_id_timeout)
@@ -97,17 +116,23 @@ class CloudDutSession:
         hardware_version: str,
         device_id_timeout: float = 60.0,
     ) -> str:
-        """Wait for boot and provision the DUT when nRF Cloud credentials are missing."""
+        """Wait for boot and provision the DUT when cloud access is unavailable."""
         self._wait_for_device_id(device_id_timeout=device_id_timeout)
 
-        if self._credentials_missing():
-            logger.info("DUT is not provisioned; provisioning nRF Cloud and Memfault")
-            self.remove_prior_registrations()
-            self.ensure_memfault_device(hardware_version=hardware_version)
-            self.onboard_to_cloud()
-        else:
+        if not self._credentials_missing():
             logger.info("DUT already has nRF Cloud credentials")
+            if device_exists(self.device_id) and self._cloud_connect_succeeded():
+                return self.device_id
+            logger.info(
+                "Cloud connection unavailable with existing credentials; "
+                "re-provisioning nRF Cloud and Memfault"
+            )
+        else:
+            logger.info("DUT is not provisioned; provisioning nRF Cloud and Memfault")
 
+        self.remove_prior_registrations()
+        self.ensure_memfault_device(hardware_version=hardware_version)
+        self.onboard_to_cloud()
         return self.device_id
 
     def remove_prior_registrations(self) -> None:
