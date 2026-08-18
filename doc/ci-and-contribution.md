@@ -26,9 +26,11 @@ Releases are tagged `vX.Y.Z` and include signed firmware binaries (`.signed.bin`
 
 Firmware built for a release embeds that version via each application's [`VERSION`](../applications/91m1_ppp/VERSION) file. The CI build step overwrites `VERSION` from the resolved semver before compiling (without committing the change); Memfault reads it through NCS (`CONFIG_MEMFAULT_NCS_FW_VERSION_STATIC` defaults to `APP_VERSION_TWEAK_STRING`). The `VERSION` files checked into the repository are for local development only.
 
+Note that a device therefore reports its version as `1.2.3+0`, while Memfault stores it as `1.2.3 0`: the `+` becomes a space somewhere in the nRF Cloud forwarding path, so the version we upload symbol files and OTA releases under never matches the version recorded on the device. Build IDs, not versions, are what Memfault uses to match a coredump to its symbol file, so this is cosmetic today.
+
 FOTA hardware tests on `main` use the same release semver as the baseline: CI passes `FIRMWARE_VERSION` to the Test workflow, flashes the Build artifact's `merged.hex` without rebuilding, then builds and deploys a patch-bumped update image (e.g. `1.2.3` → `1.2.4`) for OTA verification. Local runs fall back to `baseline_version` in [`.github/test/tests.yml`](../.github/test/tests.yml) and flash with `west flash --recover`.
 
-Memfault coredump hardware tests provision the DUT, connect to nRF Cloud, trigger `mflt test busfault` over the shell, and verify a new bus fault coredump for the device appears in the Memfault Traces REST API. A bus fault is used because TF-M traps HardFaults before Memfault's handler runs. The test uses a dedicated Memfault cohort (`ci-91m1-coredump-nrf54l15`) defined in [`.github/test/tests.yml`](../.github/test/tests.yml). Local run:
+Memfault coredump hardware tests provision the DUT, connect to nRF Cloud, trigger `mflt test busfault` over the shell, and verify a new bus fault coredump for the device appears in the Memfault Traces REST API. "New" means newer than the device's newest coredump recorded before the fault, so the check does not depend on the device clock agreeing with the runner. A bus fault is used because TF-M traps HardFaults before Memfault's handler runs. The test uses a dedicated Memfault cohort (`ci-91m1-coredump-nrf54l15`) defined in [`.github/test/tests.yml`](../.github/test/tests.yml). Local run:
 
 ```shell
 export REPO_ROOT=$PWD

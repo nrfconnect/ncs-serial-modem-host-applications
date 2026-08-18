@@ -11,7 +11,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 from utils.app_version import memfault_software_versions_match
@@ -25,11 +25,6 @@ CONFIG_RE = re.compile(r'^CONFIG_(?P<key>[A-Z0-9_]+)="(?P<value>.*)"$')
 
 # source_type of a Trace that carries a coredump.
 COREDUMP_SOURCE_TYPE = "coredump"
-
-# captured_date comes from the device clock, which can lag the test runner. The test
-# deletes the device from Memfault before crashing it, so this cannot admit a trace
-# from an earlier run.
-CAPTURED_DATE_SKEW = timedelta(minutes=2)
 
 
 def _read_kconfig_values(config_path: Path, keys: set[str]) -> dict[str, str]:
@@ -849,52 +844,79 @@ def _normalize_reason(reason: str) -> str:
     return "".join(char for char in reason.lower() if char.isalnum())
 
 
-def wait_for_device_crash_trace(
+def _device_coredumps(env: dict[str, str], device_id: str) -> list[dict]:
+    """Return the coredump traces for *device_id* from the newest page of Traces."""
+    expected_device_id = device_id.strip().upper()
+    query = urllib.parse.urlencode({"per_page": "25"})
+    _, payload = _memfault_json_request(
+        env,
+        "GET",
+        f"{_traces_url(env)}?{query}",
+        allowed_statuses={200},
+    )
+    return [
+        trace
+        for trace in _iter_traces(payload)
+        if _trace_device_serial(trace) == expected_device_id
+        and trace.get("source_type") == COREDUMP_SOURCE_TYPE
+    ]
+
+
+def latest_device_coredump(env: dict[str, str], device_id: str) -> dict | None:
+    """Return the newest coredump for *device_id*, to use as a pre-crash baseline."""
+    dated = [
+        (trace, _parse_api_timestamp(trace.get("captured_date")))
+        for trace in _device_coredumps(env, device_id)
+    ]
+    dated = [(trace, captured) for trace, captured in dated if captured is not None]
+    if not dated:
+        logger.info("Memfault has no coredump for device %s yet", device_id)
+        return None
+
+    latest = max(dated, key=lambda item: item[1])[0]
+    logger.info(
+        "Newest Memfault coredump for device %s before the fault was captured %s",
+        device_id,
+        latest.get("captured_date"),
+    )
+    return latest
+
+
+def wait_for_new_device_coredump(
     env: dict[str, str],
     device_id: str,
     *,
     reason: str = "BusFault",
-    since: datetime,
+    baseline: dict | None = None,
     timeout: float = 300.0,
     poll_interval: float = 5.0,
 ) -> dict:
-    """Poll Memfault Traces until a coredump for *device_id* newer than *since* appears."""
+    """Poll Memfault Traces until a coredump newer than *baseline* appears.
+
+    Comparing against the newest coredump seen before the fault keeps the check
+    independent of how the device clock relates to the test runner's.
+    """
     expected_device_id = device_id.strip().upper()
     expected_reason = _normalize_reason(reason)
+    baseline_id = baseline.get("id") if baseline else None
+    baseline_captured = (
+        _parse_api_timestamp(baseline.get("captured_date")) if baseline else None
+    )
 
     deadline = time.monotonic() + timeout
-    last_trace_count = 0
-    logged_traces = False
+    last_coredump_count = 0
     reported_reasons: set[str] = set()
     while time.monotonic() < deadline:
-        query = urllib.parse.urlencode({"per_page": "25"})
-        _, payload = _memfault_json_request(
-            env,
-            "GET",
-            f"{_traces_url(env)}?{query}",
-            allowed_statuses={200},
-        )
-        traces = _iter_traces(payload)
-        last_trace_count = len(traces)
-        if traces and not logged_traces:
-            logger.info(
-                "Memfault returned %d trace(s), newest %r from device %r captured %r",
-                last_trace_count,
-                traces[0].get("source_type"),
-                _trace_device_serial(traces[0]),
-                traces[0].get("captured_date"),
-            )
-            logged_traces = True
+        coredumps = _device_coredumps(env, device_id)
+        last_coredump_count = len(coredumps)
 
-        for trace in traces:
-            if _trace_device_serial(trace) != expected_device_id:
+        for trace in coredumps:
+            if baseline_id is not None and trace.get("id") == baseline_id:
                 continue
-            if trace.get("source_type") != COREDUMP_SOURCE_TYPE:
-                continue
-
-            captured = _parse_api_timestamp(trace.get("captured_date"))
-            if captured is not None and captured < since - CAPTURED_DATE_SKEW:
-                continue
+            if baseline_captured is not None:
+                captured = _parse_api_timestamp(trace.get("captured_date"))
+                if captured is None or captured <= baseline_captured:
+                    continue
 
             # The coredump upload is the assertion; the reason is a cross-check that
             # tolerates added detail such as "BusFault: precise data bus error".
@@ -921,14 +943,14 @@ def wait_for_device_crash_trace(
         time.sleep(poll_interval)
 
     logger.error(
-        "Memfault Traces API returned %d trace(s) before timeout; "
-        "expected a %s coredump from device %s captured after %s",
-        last_trace_count,
-        reason,
+        "Memfault reported %d coredump(s) for device %s before timeout; expected a new "
+        "%s coredump newer than %s",
+        last_coredump_count,
         expected_device_id,
-        since.isoformat(),
+        reason,
+        baseline.get("captured_date") if baseline else "(none)",
     )
     raise TimeoutError(
-        f"Timed out after {timeout:.0f}s waiting for a Memfault {reason!r} coredump "
+        f"Timed out after {timeout:.0f}s waiting for a new Memfault {reason!r} coredump "
         f"from device {expected_device_id}"
     )
