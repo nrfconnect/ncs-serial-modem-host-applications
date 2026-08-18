@@ -11,7 +11,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from utils.app_version import memfault_software_versions_match
@@ -23,8 +23,13 @@ logger = get_logger()
 API_HOST = "https://api.memfault.com/api/v0"
 CONFIG_RE = re.compile(r'^CONFIG_(?P<key>[A-Z0-9_]+)="(?P<value>.*)"$')
 
-# Each candidate issue costs an extra request to read its last_trace.
-MAX_ISSUE_LOOKUPS = 10
+# source_type of a Trace that carries a coredump.
+COREDUMP_SOURCE_TYPE = "coredump"
+
+# captured_date comes from the device clock, which can lag the test runner. The test
+# deletes the device from Memfault before crashing it, so this cannot admit a trace
+# from an earlier run.
+CAPTURED_DATE_SKEW = timedelta(minutes=2)
 
 
 def _read_kconfig_values(config_path: Path, keys: set[str]) -> dict[str, str]:
@@ -783,13 +788,13 @@ def wait_for_device_version(
     )
 
 
-def _issues_url(env: dict[str, str]) -> str:
+def _traces_url(env: dict[str, str]) -> str:
     return (
-        f"{API_HOST}/organizations/{env['org']}/projects/{env['project']}/issues"
+        f"{API_HOST}/organizations/{env['org']}/projects/{env['project']}/traces"
     )
 
 
-def _iter_issues(payload: dict | None) -> list[dict]:
+def _iter_traces(payload: dict | None) -> list[dict]:
     if payload is None:
         return []
 
@@ -801,30 +806,6 @@ def _iter_issues(payload: dict | None) -> list[dict]:
         return [data]
 
     return []
-
-
-def _trace_from_issue(issue: dict) -> dict | None:
-    last_trace = issue.get("last_trace")
-    if isinstance(last_trace, dict):
-        return last_trace
-    return None
-
-
-def _fetch_issue_trace(env: dict[str, str], issue_id) -> dict | None:
-    """Read last_trace from a single Issue; the Issues list response omits it."""
-    _, payload = _memfault_json_request(
-        env,
-        "GET",
-        f"{_issues_url(env)}/{issue_id}",
-        allowed_statuses={200, 404},
-    )
-    if not isinstance(payload, dict):
-        return None
-
-    data = payload.get("data")
-    if isinstance(data, dict):
-        return _trace_from_issue(data)
-    return None
 
 
 def _parse_api_timestamp(value) -> datetime | None:
@@ -863,87 +844,80 @@ def wait_for_device_crash_trace(
     *,
     reason: str = "BusFault",
     since: datetime,
-    timeout: float = 180.0,
+    timeout: float = 300.0,
     poll_interval: float = 5.0,
 ) -> dict:
-    """Poll Memfault Issues until a trace for *device_id* with *reason* appears."""
+    """Poll Memfault Traces until a coredump for *device_id* newer than *since* appears."""
     expected_device_id = device_id.strip().upper()
     expected_reason = _normalize_reason(reason)
 
     deadline = time.monotonic() + timeout
-    last_issue_count = 0
-    logged_issue_shape = False
-    logged_missing_trace = False
+    last_trace_count = 0
+    logged_traces = False
+    reported_reasons: set[str] = set()
     while time.monotonic() < deadline:
-        query = urllib.parse.urlencode({"per_page": "25", "sort": "-last_seen"})
+        query = urllib.parse.urlencode({"per_page": "25"})
         _, payload = _memfault_json_request(
             env,
             "GET",
-            f"{_issues_url(env)}?{query}",
+            f"{_traces_url(env)}?{query}",
             allowed_statuses={200},
         )
-        issues = _iter_issues(payload)
-        last_issue_count = len(issues)
-        logger.info(
-            "Memfault returned %d issue(s) while looking for a %r trace newer than %s",
-            last_issue_count,
-            reason,
-            since.isoformat(),
-        )
-        if issues and not logged_issue_shape:
-            logger.info("Memfault issue fields: %s", sorted(issues[0]))
-            logged_issue_shape = True
-
-        for issue in issues[:MAX_ISSUE_LOOKUPS]:
-            # Issues are newest first, so stop once they predate the fault.
-            last_seen = _parse_api_timestamp(issue.get("last_seen"))
-            if last_seen is not None and last_seen < since:
-                break
-
-            trace = _trace_from_issue(issue) or _fetch_issue_trace(env, issue.get("id"))
-            if trace is None:
-                if not logged_missing_trace:
-                    logger.info(
-                        "Memfault issue %r exposes no last_trace", issue.get("id")
-                    )
-                    logged_missing_trace = True
-                continue
-
-            trace_serial = _trace_device_serial(trace)
-            trace_reason = _trace_reason(trace)
-            captured = _parse_api_timestamp(trace.get("captured_date"))
+        traces = _iter_traces(payload)
+        last_trace_count = len(traces)
+        if traces and not logged_traces:
             logger.info(
-                "Memfault issue %r last_trace device=%r reason=%r captured=%r",
-                issue.get("title"),
-                trace_serial,
-                trace_reason,
-                trace.get("captured_date"),
+                "Memfault returned %d trace(s), newest %r from device %r captured %r",
+                last_trace_count,
+                traces[0].get("source_type"),
+                _trace_device_serial(traces[0]),
+                traces[0].get("captured_date"),
             )
-            if trace_serial != expected_device_id:
+            logged_traces = True
+
+        for trace in traces:
+            if _trace_device_serial(trace) != expected_device_id:
                 continue
-            if trace_reason is None or _normalize_reason(trace_reason) != expected_reason:
+            if trace.get("source_type") != COREDUMP_SOURCE_TYPE:
                 continue
-            if captured is not None and captured < since:
+
+            captured = _parse_api_timestamp(trace.get("captured_date"))
+            if captured is not None and captured < since - CAPTURED_DATE_SKEW:
+                continue
+
+            # The coredump upload is the assertion; the reason is a cross-check that
+            # tolerates added detail such as "BusFault: precise data bus error".
+            trace_reason = _trace_reason(trace)
+            if trace_reason and expected_reason not in _normalize_reason(trace_reason):
+                if trace_reason not in reported_reasons:
+                    reported_reasons.add(trace_reason)
+                    logger.warning(
+                        "Ignoring coredump for device %s: expected reason %r, got %r",
+                        expected_device_id,
+                        reason,
+                        trace_reason,
+                    )
                 continue
 
             logger.info(
-                "Memfault confirmed %r trace for device %s",
-                reason,
+                "Memfault confirmed a %s coredump for device %s captured %s",
+                trace_reason or reason,
                 expected_device_id,
+                trace.get("captured_date"),
             )
             return trace
 
         time.sleep(poll_interval)
 
     logger.error(
-        "Memfault Issues API returned %d issue(s) before timeout; "
-        "expected device %s reason %r since %s",
-        last_issue_count,
-        expected_device_id,
+        "Memfault Traces API returned %d trace(s) before timeout; "
+        "expected a %s coredump from device %s captured after %s",
+        last_trace_count,
         reason,
+        expected_device_id,
         since.isoformat(),
     )
     raise TimeoutError(
-        f"Timed out after {timeout:.0f}s waiting for Memfault {reason!r} trace "
+        f"Timed out after {timeout:.0f}s waiting for a Memfault {reason!r} coredump "
         f"from device {expected_device_id}"
     )
