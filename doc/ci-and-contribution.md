@@ -30,15 +30,31 @@ Note that a device therefore reports its version as `1.2.3+0`, while Memfault st
 
 FOTA hardware tests on `main` use the same release semver as the baseline: CI passes `FIRMWARE_VERSION` to the Test workflow, flashes the Build artifact's `merged.hex` without rebuilding, then builds and deploys a patch-bumped update image (e.g. `1.2.3` → `1.2.4`) for OTA verification. Local runs fall back to `baseline_version` in [`.github/test/tests.yml`](../.github/test/tests.yml) and flash with `west flash --recover`.
 
-Hardware tests use two nRF54L15 + nRF91 rigs (see [`.github/test/tests.yml`](../.github/test/tests.yml)):
+Hardware tests use two nRF54L15 + nRF91 rigs on two self-hosted runners (see [`.github/test/tests.yml`](../.github/test/tests.yml)):
 
-| CI job | DUT | Every CI run |
-|--------|-----|--------------|
-| `91m1_ppp-provision-nrf54l15-nrf91` | Provisioning (`CI_NRF54L15_PROVISION_*`) | Recover flash, full nRF Cloud + Memfault onboard |
-| `91m1_ppp-memfault-coredump-nrf54l15-nrf91` | Test (`CI_NRF54L15_*`) | Coredump (no re-provision) |
-| `91m1_ppp-application-fota-nrf54l15-nrf91` | Test (`CI_NRF54L15_*`) | FOTA after coredump (`depends_on` in catalog) |
+| CI job | Runner | DUT | Every CI run |
+|--------|--------|-----|--------------|
+| `91m1_ppp-provision-nrf54l15-nrf91` | `self-hosted-provisioning` | Provisioning (`CI_NRF54L15_PROVISION_*`) | Recover flash, full nRF Cloud + Memfault onboard |
+| `91m1_ppp-memfault-coredump-nrf54l15-nrf91` | `self-hosted` | Test (`CI_NRF54L15_*`) | Coredump (no re-provision) |
+| `91m1_ppp-application-fota-nrf54l15-nrf91` | `self-hosted` | Test (`CI_NRF54L15_*`) | FOTA after coredump (`depends_on` in catalog) |
 
-Provisioning and coredump run in parallel. FOTA runs after the coredump job finishes, even when coredump fails (the workflow still reports failure if either test failed).
+Provisioning and coredump run in parallel on their respective runners. FOTA runs after the coredump job finishes, even when coredump fails (the workflow still reports failure if either test failed).
+
+### Self-hosted runner setup
+
+Keep the existing runner on the coredump/FOTA rig with the default `self-hosted` label. Register a second runner on the provisioning rig with the label `self-hosted-provisioning` only (do not add `self-hosted`, or that machine may pick up coredump/FOTA jobs when the primary runner is busy):
+
+```shell
+# On the provisioning rig — use a new runner name, e.g. smha-provisioning
+mkdir actions-runner-provisioning && cd actions-runner-provisioning
+curl -o actions-runner-linux-x64-2.XXX.0.tar.gz -L https://github.com/actions/runner/releases/download/v2.XXX.0/actions-runner-linux-x64-2.XXX.0.tar.gz
+tar xzf ./actions-runner-linux-x64-*.tar.gz
+./config.sh --url https://github.com/<org>/<repo> --token <registration-token> \
+  --name smha-provisioning --labels self-hosted-provisioning,Linux,X64 --unattended
+sudo ./svc.sh install && sudo ./svc.sh start
+```
+
+Both runners need Docker and USB access to their DK (`--privileged -v /dev:/dev` in the test workflow containers). Set the GitHub repository variables for each rig on the same repo (`CI_NRF54L15_PROVISION_*` for DUT 1, `CI_NRF54L15_*` for DUT 2).
 
 The test DUT must be provisioned once (manually or by running the provisioning flow locally against it). CI flashes baseline firmware without recover so TF-M credentials persist. FOTA and coredump do not remove the device from nRF Cloud or Memfault after each run.
 
