@@ -10,14 +10,15 @@
 # - DUT 1 (provision): provisioning test every CI (recover flash, full onboard)
 # - DUT 2 (test): coredump and FOTA as separate catalog entries on the same rig; stays provisioned
 #
-# Runners (one rig per machine; register with distinct labels):
-# - self-hosted: build, plan, coredump, FOTA (DUT 2)
-# - self-hosted-provisioning: provisioning test only (DUT 1)
+# Runners (dedicated labels; do not rely on the default self-hosted label):
+# - self-hosted-build: firmware builds, compliance, SonarCloud (build-A/B/C)
+# - self-hosted-test: plan, coredump, and FOTA on DUT 2 (one runner, one job at a time)
+# - self-hosted-provisioning: provisioning test only on DUT 1
 #
 # CI scheduling:
-# - provision, coredump, and FOTA are sibling jobs after plan (all start together)
-# - provision uses self-hosted-provisioning (DUT 1); coredump and FOTA use self-hosted (DUT 2)
-# - coredump and FOTA share DUT 2; the self-hosted runner runs one job at a time
+# - provision starts after plan on self-hosted-provisioning (DUT 1)
+# - coredump and FOTA start after plan on self-hosted-test (DUT 2)
+# - coredump and FOTA share one test runner, so GitHub queues them one at a time
 #
 # Prerequisites:
 # - Two self-hosted Linux runners with USB access to their DK rig (container: --privileged -v /dev:/dev)
@@ -91,7 +92,7 @@ permissions:
 
 jobs:
   plan:
-    runs-on: self-hosted
+    runs-on: self-hosted-test
     container:
       image: ghcr.io/zephyrproject-rtos/ci:v0.29.2
     outputs:
@@ -153,7 +154,7 @@ jobs:
     needs: plan
     if: needs.plan.outputs.run_coredump == 'true'
     name: 91m1_ppp-memfault-coredump-nrf54l15-nrf91
-    runs-on: self-hosted
+    runs-on: self-hosted-test
     container:
       image: ghcr.io/zephyrproject-rtos/ci:v0.29.2
       options: --privileged -v /dev:/dev
@@ -189,7 +190,7 @@ jobs:
     needs: plan
     if: needs.plan.outputs.run_fota == 'true'
     name: 91m1_ppp-application-fota-nrf54l15-nrf91
-    runs-on: self-hosted
+    runs-on: self-hosted-test
     container:
       image: ghcr.io/zephyrproject-rtos/ci:v0.29.2
       options: --privileged -v /dev:/dev

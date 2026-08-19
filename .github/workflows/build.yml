@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   cleanup:
-    runs-on: self-hosted
+    runs-on: self-hosted-build
     steps:
       - name: Prune old Docker resources
         run: docker system prune --force --filter "until=48h"
@@ -39,7 +39,7 @@ jobs:
 
   build:
     needs: cleanup
-    runs-on: self-hosted
+    runs-on: self-hosted-build
     container: ghcr.io/zephyrproject-rtos/ci:v0.29.2
     env:
       CMAKE_PREFIX_PATH: /opt/toolchains

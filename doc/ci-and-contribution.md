@@ -35,14 +35,24 @@ Hardware tests use two nRF54L15 + nRF91 rigs on two self-hosted runners (see [`.
 | CI job | Runner | DUT | Every CI run |
 |--------|--------|-----|--------------|
 | `91m1_ppp-provision-nrf54l15-nrf91` | `self-hosted-provisioning` | Provisioning (`CI_NRF54L15_PROVISION_*`) | Recover flash, full nRF Cloud + Memfault onboard |
-| `91m1_ppp-memfault-coredump-nrf54l15-nrf91` | `self-hosted` | Test (`CI_NRF54L15_*`) | Coredump (no re-provision) |
-| `91m1_ppp-application-fota-nrf54l15-nrf91` | `self-hosted` | Test (`CI_NRF54L15_*`) | FOTA after coredump (`depends_on` in catalog) |
+| `91m1_ppp-memfault-coredump-nrf54l15-nrf91` | `self-hosted-test` | Test (`CI_NRF54L15_*`) | Coredump (no re-provision) |
+| `91m1_ppp-application-fota-nrf54l15-nrf91` | `self-hosted-test` | Test (`CI_NRF54L15_*`) | FOTA (queued with coredump on same runner) |
 
-Provisioning and coredump run in parallel on their respective runners. FOTA runs after the coredump job finishes, even when coredump fails (the workflow still reports failure if either test failed).
+Provisioning runs in parallel with the first queued test job on the separate runners. Coredump and FOTA share the test runner and run one at a time; GitHub queues whichever job does not get the runner first.
+
+Build, compliance, and SonarCloud jobs use `self-hosted-build` (three runners for parallel matrix builds). Hardware tests and the test plan job use `self-hosted-test` on the DUT 2 rig.
 
 ### Self-hosted runner setup
 
-Keep the existing runner on the coredump/FOTA rig with the default `self-hosted` label. Register a second runner on the provisioning rig with the label `self-hosted-provisioning` only (do not add `self-hosted`, or that machine may pick up coredump/FOTA jobs when the primary runner is busy):
+Register runners with dedicated labels only. GitHub adds the default `self-hosted` label unless you override it during registration; remove that label from the provisioning and test runners so they never pick up build or cross-rig jobs.
+
+| Runner | Labels | Purpose |
+|--------|--------|---------|
+| `*-build-A/B/C` | `self-hosted-build` | Firmware builds, compliance, SonarCloud |
+| `*-host` | `self-hosted-test` | Coredump and FOTA on DUT 2 |
+| `*-prov` | `self-hosted-provisioning` | Provisioning test on DUT 1 |
+
+Example registration for the provisioning rig:
 
 ```shell
 # On the provisioning rig — use a new runner name, e.g. smha-provisioning
@@ -52,6 +62,20 @@ tar xzf ./actions-runner-linux-x64-*.tar.gz
 ./config.sh --url https://github.com/<org>/<repo> --token <registration-token> \
   --name smha-provisioning --labels self-hosted-provisioning,Linux,X64 --unattended
 sudo ./svc.sh install && sudo ./svc.sh start
+```
+
+Example for a build runner:
+
+```shell
+./config.sh --url https://github.com/<org>/<repo> --token <registration-token> \
+  --name smha-build-a --labels self-hosted-build,Linux,X64 --unattended
+```
+
+Example for the test rig (DUT 2):
+
+```shell
+./config.sh --url https://github.com/<org>/<repo> --token <registration-token> \
+  --name smha-test --labels self-hosted-test,Linux,X64 --unattended
 ```
 
 Both runners need Docker and USB access to their DK (`--privileged -v /dev:/dev` in the test workflow containers). Set the GitHub repository variables for each rig on the same repo (`CI_NRF54L15_PROVISION_*` for DUT 1, `CI_NRF54L15_*` for DUT 2).
