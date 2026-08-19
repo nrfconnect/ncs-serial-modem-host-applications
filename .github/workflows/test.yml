@@ -10,12 +10,16 @@
 # - DUT 1 (provision): provisioning test every CI (recover flash, full onboard)
 # - DUT 2 (test): coredump then FOTA as separate catalog entries; stays provisioned
 #
+# Runners (one rig per machine; register with distinct labels):
+# - self-hosted: build, plan, coredump, FOTA (DUT 2)
+# - self-hosted-provisioning: provisioning test only (DUT 1)
+#
 # CI scheduling:
-# - provision and coredump run in parallel (separate jobs)
+# - provision and coredump run in parallel (separate jobs on separate runners)
 # - FOTA runs after coredump finishes (even if coredump failed; see hardware_fota job)
 #
 # Prerequisites:
-# - Self-hosted Linux runner with USB access to both DK rigs (container: --privileged -v /dev:/dev)
+# - Two self-hosted Linux runners with USB access to their DK rig (container: --privileged -v /dev:/dev)
 # - SEGGER J-Link is installed in the job container (see run-hardware-test action)
 # - Self-signed CA certificate and private key stored in GitHub secrets
 # - nRF Cloud API key with permission to onboard/delete devices
@@ -112,7 +116,7 @@ jobs:
     needs: plan
     if: needs.plan.outputs.run_provision == 'true'
     name: 91m1_ppp-provision-nrf54l15-nrf91
-    runs-on: self-hosted
+    runs-on: self-hosted-provisioning
     container:
       image: ghcr.io/zephyrproject-rtos/ci:v0.29.2
       options: --privileged -v /dev:/dev
