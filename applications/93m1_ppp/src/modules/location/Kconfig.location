@@ -48,6 +48,20 @@ config APP_LOCATION_WIFISCAN_TIMEOUT_SECONDS
 	int "%WIFISCAN command timeout (seconds)"
 	default 30
 
+config APP_LOCATION_WATCHDOG_TIMEOUT_SECONDS
+	int "Watchdog timeout"
+	default 120
+	help
+	  Must exceed CONFIG_APP_LOCATION_BCINFO_TIMEOUT_SECONDS +
+	  CONFIG_APP_LOCATION_WIFISCAN_TIMEOUT_SECONDS.
+	  The value must be greater than CONFIG_APP_LOCATION_MSG_PROCESSING_TIMEOUT_SECONDS.
+
+config APP_LOCATION_MSG_PROCESSING_TIMEOUT_SECONDS
+	int "Maximum message processing time"
+	default 100
+	help
+	  The value must be smaller than CONFIG_APP_LOCATION_WATCHDOG_TIMEOUT_SECONDS.
+
 module = APP_LOCATION
 module-str = location
 source "subsys/logging/Kconfig.template.log_config"

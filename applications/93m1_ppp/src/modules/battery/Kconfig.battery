@@ -19,6 +19,18 @@ config APP_BATTERY_THREAD_STACK_SIZE
 	int "Thread stack size"
 	default 2048
 
+config APP_BATTERY_WATCHDOG_TIMEOUT_SECONDS
+	int "Watchdog timeout"
+	default 60
+	help
+	  Ensure that this value exceeds CONFIG_APP_BATTERY_MSG_PROCESSING_TIMEOUT_SECONDS.
+
+config APP_BATTERY_MSG_PROCESSING_TIMEOUT_SECONDS
+	int "Maximum message processing time"
+	default 30
+	help
+	  The value must be smaller than CONFIG_APP_BATTERY_WATCHDOG_TIMEOUT_SECONDS.
+
 module = APP_BATTERY
 module-str = Battery
 source "subsys/logging/Kconfig.template.log_config"
