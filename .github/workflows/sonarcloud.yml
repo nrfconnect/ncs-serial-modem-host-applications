@@ -26,7 +26,7 @@ concurrency:
 jobs:
   analyze:
     name: Build and analyze
-    runs-on: self-hosted
+    runs-on: self-hosted-build
     container: ghcr.io/zephyrproject-rtos/ci:v0.29.2
     env:
       BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory
