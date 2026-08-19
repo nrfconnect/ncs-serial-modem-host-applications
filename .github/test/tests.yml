@@ -79,4 +79,3 @@ tests:
       baseline_version: "1.0.0"  # local-dev fallback when FIRMWARE_VERSION is unset
     provisioning:
       mode: preprovisioned
-    depends_on: 91m1_ppp-memfault-coredump-nrf54l15-nrf91

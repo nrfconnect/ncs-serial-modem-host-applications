@@ -8,15 +8,16 @@
 #
 # Hardware layout (91m1_ppp + nRF54L15 + nRF91 Serial Modem):
 # - DUT 1 (provision): provisioning test every CI (recover flash, full onboard)
-# - DUT 2 (test): coredump then FOTA as separate catalog entries; stays provisioned
+# - DUT 2 (test): coredump and FOTA as separate catalog entries on the same rig; stays provisioned
 #
 # Runners (one rig per machine; register with distinct labels):
 # - self-hosted: build, plan, coredump, FOTA (DUT 2)
 # - self-hosted-provisioning: provisioning test only (DUT 1)
 #
 # CI scheduling:
-# - provision and coredump run in parallel (separate jobs on separate runners)
-# - FOTA runs after coredump finishes (even if coredump failed; see hardware_fota job)
+# - provision, coredump, and FOTA are sibling jobs after plan (all start together)
+# - provision uses self-hosted-provisioning (DUT 1); coredump and FOTA use self-hosted (DUT 2)
+# - coredump and FOTA share DUT 2; the self-hosted runner runs one job at a time
 #
 # Prerequisites:
 # - Two self-hosted Linux runners with USB access to their DK rig (container: --privileged -v /dev:/dev)
@@ -185,11 +186,8 @@ jobs:
           use_prebuilt_firmware: ${{ inputs.use_prebuilt_firmware }}
 
   hardware_fota:
-    needs: [plan, hardware_coredump]
-    if: >-
-      always() &&
-      needs.plan.outputs.run_fota == 'true' &&
-      needs.hardware_coredump.result != 'cancelled'
+    needs: plan
+    if: needs.plan.outputs.run_fota == 'true'
     name: 91m1_ppp-application-fota-nrf54l15-nrf91
     runs-on: self-hosted
     container:
