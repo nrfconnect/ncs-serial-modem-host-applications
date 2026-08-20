@@ -6,17 +6,21 @@
 #
 # When adding tests, update workflow_dispatch options below and .github/test/tests.yml.
 #
-# Hardware layout (91m1_ppp + nRF54L15 + nRF91 Serial Modem):
-# - DUT 1 (provision): provisioning test every CI (recover flash, full onboard)
-# - DUT 2 (test): coredump and FOTA as separate catalog entries on the same rig; stays provisioned
+# Hardware layout (91m1_ppp + nRF91 Serial Modem):
+# - DUT 1 (provision, nRF54L15): provisioning test every CI (recover flash, full onboard)
+# - DUT 2 (test, nRF54L15): coredump and FOTA as separate catalog entries on the same rig;
+#   stays provisioned
+# - DUT 3 (provision + location, nRF54LM20 DK + nRF7002-EB2): provisioning followed by
+#   Wi-Fi location verification (recover flash, full onboard)
 #
 # Runners (dedicated labels; do not rely on the default self-hosted label):
 # - self-hosted-build: firmware builds, compliance, SonarCloud (build-A/B/C)
 # - self-hosted-test: plan, coredump, and FOTA on DUT 2 (one runner, one job at a time)
-# - self-hosted-provisioning: provisioning test only on DUT 1
+# - self-hosted-provisioning: provisioning tests on DUT 1 and DUT 3
 #
 # CI scheduling:
-# - provision starts after plan on self-hosted-provisioning (DUT 1)
+# - provision and provision-location start after plan on self-hosted-provisioning
+#   (DUT 1 and DUT 3), queued one at a time on that runner
 # - coredump and FOTA start after plan on self-hosted-test (DUT 2)
 # - coredump and FOTA share one test runner, so GitHub queues them one at a time
 #
@@ -35,6 +39,11 @@
 #   CI_NRF54L15_SEGGER_SN
 #   CI_NRF54L15_DEVICE_ID
 #   CI_NRF54L15_SERIAL_PORT  (optional)
+#
+# GitHub variables (DUT 3 — provisioning + Wi-Fi location on nRF54LM20 DK):
+#   CI_NRF54LM20B_PROVISION_SEGGER_SN
+#   CI_NRF54LM20B_PROVISION_DEVICE_ID
+#   CI_NRF54LM20B_PROVISION_SERIAL_PORT  (optional)
 #
 # GitHub secrets:
 #   NRF_CLOUD_API_KEY, NRF_CLOUD_CA_CERT, NRF_CLOUD_CA_KEY, MEMFAULT_ORG_TOKEN
@@ -74,6 +83,7 @@ on:
         options:
           - all
           - 91m1_ppp-provision-nrf54l15-nrf91
+          - 91m1_ppp-provision-location-nrf54lm20b-nrf91
           - 91m1_ppp-memfault-coredump-nrf54l15-nrf91
           - 91m1_ppp-application-fota-nrf54l15-nrf91
       use_prebuilt_firmware:
@@ -97,6 +107,7 @@ jobs:
       image: ghcr.io/zephyrproject-rtos/ci:v0.29.2
     outputs:
       run_provision: ${{ steps.resolve.outputs.run_provision }}
+      run_provision_location: ${{ steps.resolve.outputs.run_provision_location }}
       run_coredump: ${{ steps.resolve.outputs.run_coredump }}
       run_fota: ${{ steps.resolve.outputs.run_fota }}
     steps:
@@ -148,6 +159,42 @@ jobs:
         uses: ./serial-modem-host-applications/.github/actions/run-hardware-test
         with:
           test_id: 91m1_ppp-provision-nrf54l15-nrf91
+          use_prebuilt_firmware: ${{ inputs.use_prebuilt_firmware }}
+
+  hardware_provision_location:
+    needs: plan
+    if: needs.plan.outputs.run_provision_location == 'true'
+    name: 91m1_ppp-provision-location-nrf54lm20b-nrf91
+    runs-on: self-hosted-provisioning
+    container:
+      image: ghcr.io/zephyrproject-rtos/ci:v0.29.2
+      options: --privileged -v /dev:/dev
+    env:
+      CMAKE_PREFIX_PATH: /opt/toolchains
+      NRFUTIL_HOME: /usr/local/share/nrfutil
+      CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
+      FIRMWARE_VERSION: ${{ inputs.firmware_version }}
+      NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
+      NRF_CLOUD_CA_CERT: ${{ secrets.NRF_CLOUD_CA_CERT }}
+      NRF_CLOUD_CA_KEY: ${{ secrets.NRF_CLOUD_CA_KEY }}
+      CI_NRF54LM20B_PROVISION_SEGGER_SN: ${{ vars.CI_NRF54LM20B_PROVISION_SEGGER_SN }}
+      CI_NRF54LM20B_PROVISION_SERIAL_PORT: ${{ vars.CI_NRF54LM20B_PROVISION_SERIAL_PORT }}
+      CI_NRF54LM20B_PROVISION_DEVICE_ID: ${{ vars.CI_NRF54LM20B_PROVISION_DEVICE_ID }}
+      MEMFAULT_ORG_TOKEN: ${{ secrets.MEMFAULT_ORG_TOKEN }}
+      MEMFAULT_ORG: ${{ vars.MEMFAULT_ORG }}
+      MEMFAULT_PROJECT: ${{ vars.MEMFAULT_PROJECT }}
+      MEMFAULT_COHORT: ${{ vars.MEMFAULT_COHORT }}
+      MEMFAULT_FLEET_SAMPLING_CONFIGURATION: ${{ vars.MEMFAULT_FLEET_SAMPLING_CONFIGURATION }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          path: serial-modem-host-applications
+
+      - name: Run hardware test
+        uses: ./serial-modem-host-applications/.github/actions/run-hardware-test
+        with:
+          test_id: 91m1_ppp-provision-location-nrf54lm20b-nrf91
           use_prebuilt_firmware: ${{ inputs.use_prebuilt_firmware }}
 
   hardware_coredump:

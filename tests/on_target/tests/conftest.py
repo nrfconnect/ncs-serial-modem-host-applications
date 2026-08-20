@@ -84,7 +84,11 @@ def _prepare_baseline_firmware(
     else:
         logger.info("Step 1/3 - Build baseline firmware %s", baseline_semver)
         write_app_version(app_dir, baseline_semver)
-        west_build(app_dir, board)
+        west_build(
+            app_dir,
+            board,
+            cmake_args=test_config.get("build", {}).get("cmake_args"),
+        )
 
     if recover:
         logger.info(
