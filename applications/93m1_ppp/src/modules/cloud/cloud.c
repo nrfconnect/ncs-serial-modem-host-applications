@@ -203,7 +203,7 @@ static int upload_diagnostics(void)
 		return err;
 	}
 
-	LOG_INF("Diagnostics uploaded");
+	LOG_DBG("Diagnostics uploaded");
 
 	return 0;
 }
@@ -269,7 +269,7 @@ static int ground_fix(const struct location_msg *msg)
 		return err;
 	}
 
-	LOG_INF("Location: %.7f,%.7f Uncertainty: %um Type: %s",
+	LOG_DBG("Location: %.7f,%.7f Uncertainty: %um Type: %s",
 		result.lat, result.lon, result.unc, fix_type_str(result.type));
 
 	return 0;
@@ -336,7 +336,7 @@ static void state_connecting_entry(void *obj)
 	LOG_DBG("%s", __func__);
 
 	if (!date_time_is_valid()) {
-		LOG_INF("Updating date/time for the CoAP JWT");
+		LOG_DBG("Updating date/time for the CoAP JWT");
 		date_time_update_async(date_time_evt_handler);
 
 		return;

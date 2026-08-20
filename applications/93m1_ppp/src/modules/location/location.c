@@ -174,7 +174,7 @@ static void scan_and_publish(enum location_mode mode)
 	static struct location_msg msg;
 	int err;
 
-	LOG_INF("Scanning for measurements (%s)",
+	LOG_DBG("Scanning for measurements (%s)",
 		((size_t)mode < ARRAY_SIZE(mode_str)) ? mode_str[mode] : "unknown mode");
 
 	memset(&msg, 0, sizeof(msg));
