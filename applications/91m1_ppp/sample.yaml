@@ -21,3 +21,16 @@ tests:
     extra_args: SHIELD=nrf7002eb2
     tags:
       - ci_build
+  serial_modem_host.applications.91m1_ppp.nrf54lm20b.location:
+    sysbuild: true
+    build_only: true
+    integration_platforms:
+      - nrf54lm20dk/nrf54lm20b/cpuapp/ns
+    platform_allow:
+      - nrf54lm20dk/nrf54lm20b/cpuapp/ns
+    extra_args:
+      - SHIELD=nrf7002eb2
+      - EXTRA_CONF_FILE=overlay-location.conf
+      - SB_EXTRA_CONF_FILE=sysbuild-location.conf
+    tags:
+      - ci_build

@@ -8,13 +8,14 @@ The application runs on the **nRF54L15** host MCU and treats the **nRF91M1 Seria
 
 ## Architecture
 
-Four cooperating modules run as dedicated threads (or a workqueue for periodic tasks). Each module owns an SMF state machine and publishes events on zbus channels:
+Cooperating modules run as dedicated threads (or a workqueue for periodic tasks). Each module owns an SMF state machine and publishes events on zbus channels:
 
 | Module | Channel | Responsibility |
 |--------|---------|----------------|
 | Network | `network_chan` | Bring PPP up/down via the connection manager; report L4 connect/disconnect |
 | Cloud | `cloud_chan` | Connect to nRF Cloud and send device messages |
 | FOTA | `fota_chan` | Poll nRF Cloud for updates, download via CoAP proxy, stage MCUboot images |
+| Location | `location_chan` | Scan for Wi-Fi access points on request (only with the location overlay) |
 | Main | `main_sync_chan` | Orchestrate cloud synchronization and coordinate FOTA with network teardown |
 
 On boards with a modem reset GPIO, `modem_reset.c` pulses the nRF91 reset line during host boot before modules start.
@@ -34,8 +35,11 @@ While nRF Cloud is connected, main keeps a periodic timer on a dedicated workque
 
 1. Publishes a demo JSON device message on `cloud_chan` (payload: `{"appId":"SMHA","messageType":"DATA","data":"hello"}`).
 2. Publishes `FOTA_POLL_REQUEST` on `fota_chan` to check for firmware updates.
+3. Publishes `LOCATION_SEARCH_TRIGGER` on `location_chan` when the application is built with the location overlay (`CONFIG_APP_LOCATION`).
 
 An initial synchronization runs immediately on cloud connect. The timer is cancelled when cloud disconnects.
+
+A location search runs asynchronously: the location module scans for Wi-Fi access points and publishes the result as `LOCATION_CLOUD_REQUEST`, which the cloud module resolves into a position with an nRF Cloud CoAP ground-fix request. nRF Cloud records the position for the device, so no coordinates are returned to it. A trigger that arrives while a search is still in progress is ignored, so a scan timeout longer than the synchronization period simply means fewer position updates.
 
 ## Memfault
 

@@ -1,0 +1,48 @@
+#
+# Copyright (c) 2026 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+#
+
+# CONFIG_LOCATION_DATA_DETAILS is deliberately not selected: it makes
+# <modem/location.h> include <nrf_modem_gnss.h>, which is only available when the
+# nRF Modem Library is built, and the modem is external on this host.
+menuconfig APP_LOCATION
+	bool "Location module"
+	default y if LOCATION
+
+if APP_LOCATION
+
+config APP_LOCATION_THREAD_STACK_SIZE
+	int "Thread stack size"
+	default 2560
+
+config APP_LOCATION_WATCHDOG_TIMEOUT_SECONDS
+	int "Watchdog timeout"
+	default 120
+	help
+	  Timeout in seconds for the location module watchdog.
+	  The timeout given in this option covers both:
+	    * Waiting for an incoming message in zbus_sub_wait_msg().
+	    * Time spent processing the message, defined by
+	      CONFIG_APP_LOCATION_MSG_PROCESSING_TIMEOUT_SECONDS.
+	  Ensure that this value exceeds CONFIG_APP_LOCATION_MSG_PROCESSING_TIMEOUT_SECONDS.
+
+config APP_LOCATION_MSG_PROCESSING_TIMEOUT_SECONDS
+	int "Maximum message processing time"
+	default 60
+	help
+	  Maximum time allowed for processing a single message in the module's state machine.
+	  The value must be smaller than CONFIG_APP_LOCATION_WATCHDOG_TIMEOUT_SECONDS.
+
+config APP_LOCATION_WIFI_APS_MAX
+	int "Maximum number of Wi-Fi APs"
+	default 10
+	help
+	  Maximum number of Wi-Fi access points to store in a location request.
+
+module = APP_LOCATION
+module-str = Location
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # APP_LOCATION

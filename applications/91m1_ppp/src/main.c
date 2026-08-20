@@ -18,6 +18,9 @@
 #include "modules/network/network.h"
 #include "modules/cloud/cloud.h"
 #include "modules/fota/fota.h"
+#if defined(CONFIG_APP_LOCATION)
+#include "modules/location/location.h"
+#endif /* CONFIG_APP_LOCATION */
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_MAIN_LOG_LEVEL);
 
@@ -162,9 +165,27 @@ static bool post_memfault_data(void)
 	return true;
 }
 
+#if defined(CONFIG_APP_LOCATION)
+static void request_location_search(void)
+{
+	struct location_msg msg = { .type = LOCATION_SEARCH_TRIGGER };
+	int err;
+
+	err = zbus_chan_pub(&location_chan, &msg, PUB_TIMEOUT);
+	if (err) {
+		LOG_ERR("zbus_chan_pub location_chan, error: %d", err);
+		FATAL_ERROR();
+	}
+}
+#endif /* CONFIG_APP_LOCATION */
+
 static void perform_cloud_synchronization(void)
 {
 	send_demo_cloud_message();
+
+#if defined(CONFIG_APP_LOCATION)
+	request_location_search();
+#endif /* CONFIG_APP_LOCATION */
 }
 
 static void request_fota_poll(void)
