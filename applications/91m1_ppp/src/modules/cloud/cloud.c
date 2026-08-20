@@ -20,6 +20,9 @@
 #include "app_common.h"
 #include "modules/network/network.h"
 #include "cloud.h"
+#if defined(CONFIG_APP_LOCATION)
+#include "cloud_location.h"
+#endif /* CONFIG_APP_LOCATION */
 
 LOG_MODULE_REGISTER(cloud, CONFIG_APP_CLOUD_LOG_LEVEL);
 
@@ -39,8 +42,21 @@ ZBUS_CHAN_DEFINE(cloud_chan,
 
 ZBUS_MSG_SUBSCRIBER_DEFINE(cloud);
 
-ZBUS_CHAN_ADD_OBS(network_chan, cloud, 0);
-ZBUS_CHAN_ADD_OBS(cloud_chan, cloud, 0);
+#if defined(CONFIG_APP_LOCATION)
+#define CHANNEL_LIST(X) \
+	X(network_chan, struct network_msg) \
+	X(cloud_chan, struct cloud_msg) \
+	X(location_chan, struct location_msg)
+#else
+#define CHANNEL_LIST(X) \
+	X(network_chan, struct network_msg) \
+	X(cloud_chan, struct cloud_msg)
+#endif /* CONFIG_APP_LOCATION */
+
+#define MAX_MSG_SIZE MAX_MSG_SIZE_FROM_LIST(CHANNEL_LIST)
+#define ADD_OBSERVERS(_chan, _type) ZBUS_CHAN_ADD_OBS(_chan, cloud, 0);
+
+CHANNEL_LIST(ADD_OBSERVERS)
 
 enum cloud_state {
 	STATE_DISCONNECTED,
@@ -51,8 +67,7 @@ enum cloud_state {
 struct cloud_state_object {
 	struct smf_ctx ctx;
 	const struct zbus_channel *chan;
-	uint8_t msg_buf[MAX(MAX(sizeof(struct network_msg),
-				sizeof(struct cloud_msg)), 1)];
+	uint8_t msg_buf[MAX_MSG_SIZE];
 };
 
 static struct cloud_state_object cloud_state;
@@ -276,6 +291,19 @@ static enum smf_state_result connected_run(void *obj)
 
 		return SMF_EVENT_HANDLED;
 	}
+
+#if defined(CONFIG_APP_LOCATION)
+	if (state_object->chan == &location_chan) {
+		const struct location_msg *msg =
+			(const struct location_msg *)state_object->msg_buf;
+
+		if (msg->type == LOCATION_CLOUD_REQUEST) {
+			cloud_location_request_handle(&msg->cloud_request);
+		}
+
+		return SMF_EVENT_HANDLED;
+	}
+#endif /* CONFIG_APP_LOCATION */
 
 	if (state_object->chan == &cloud_chan) {
 		const struct cloud_msg *msg = (const struct cloud_msg *)state_object->msg_buf;
