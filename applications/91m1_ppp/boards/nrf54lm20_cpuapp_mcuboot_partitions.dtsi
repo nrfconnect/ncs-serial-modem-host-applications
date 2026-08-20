@@ -1,0 +1,112 @@
+/*
+ * Copyright (c) 2026 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+ *
+ * RRAM layout (cpuapp_rram, 2036 KiB internal):
+ * |
+ * +-- 0x0000_0000 boot_partition              (  64 KiB) MCUboot
+ * |
+ * +-- 0x0001_0000 tfm_storage_partition       (  32 KiB) TF-M storage
+ * |   +-- 0x0001_0000 tfm_its_partition       (   8 KiB) TF-M ITS
+ * |   +-- 0x0001_2000 tfm_otp_partition       (   8 KiB) TF-M OTP
+ * |   +-- 0x0001_4000 tfm_ps_partition        (  16 KiB) TF-M PS
+ * |
+ * +-- 0x0001_8000 slot0_partition             (1772 KiB) image-0
+ * |   +-- 0x0001_8000 slot0_s_partition       ( 128 KiB) TF-M secure
+ * |   +-- 0x0003_8000 slot0_ns_partition      (1644 KiB) Zephyr/app non-secure
+ * |
+ * +-- 0x001F_3000 storage_partition           (  40 KiB) Zephyr settings
+ * |
+ * +-- 0x001F_D000 (reserved, unused)          (   4 KiB) free at end of RRAM
+ *
+ * External flash layout (mx25r64, 8 MiB):
+ * |
+ * +-- 0x0000_0000 slot1_partition             (1772 KiB) image-1 (matches slot0 for MCUboot)
+ * +-- 0x001B_B000 (remaining flash)           (~6.3 MiB) unused external flash
+ *
+ * Include after deleting the board default partition nodes.
+ */
+
+&cpuapp_rram {
+	partitions {
+		ranges;
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		boot_partition: partition@0 {
+			compatible = "zephyr,mapped-partition";
+			label = "mcuboot";
+			reg = <0x0 0x10000>;
+		};
+
+		tfm_storage_partition: partition@10000 {
+			compatible = "zephyr,mapped-partition";
+			label = "tfm-storage";
+			reg = <0x10000 DT_SIZE_K(32)>;
+			ranges = <0x0 0x10000 DT_SIZE_K(32)>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			tfm_its_partition: partition@0 {
+				compatible = "zephyr,mapped-partition";
+				label = "tfm-its";
+				reg = <0x0 DT_SIZE_K(8)>;
+			};
+
+			tfm_otp_partition: partition@2000 {
+				compatible = "zephyr,mapped-partition";
+				label = "tfm-otp";
+				reg = <0x2000 DT_SIZE_K(8)>;
+			};
+
+			tfm_ps_partition: partition@4000 {
+				compatible = "zephyr,mapped-partition";
+				label = "tfm-ps";
+				reg = <0x4000 DT_SIZE_K(16)>;
+			};
+		};
+
+		slot0_partition: partition@18000 {
+			compatible = "zephyr,mapped-partition";
+			label = "image-0";
+			reg = <0x18000 0x1bb000>;
+			ranges = <0x0 0x18000 0x1bb000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			slot0_s_partition: partition@0 {
+				compatible = "zephyr,mapped-partition";
+				label = "image-0-secure";
+				reg = <0x0 0x20000>;
+			};
+
+			slot0_ns_partition: partition@20000 {
+				compatible = "zephyr,mapped-partition";
+				label = "image-0-nonsecure";
+				reg = <0x20000 0x19b000>;
+			};
+		};
+
+		storage_partition: partition@1f3000 {
+			compatible = "zephyr,mapped-partition";
+			label = "storage";
+			reg = <0x1f3000 DT_SIZE_K(40)>;
+		};
+	};
+};
+
+&mx25r64 {
+	status = "okay";
+
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		slot1_partition: partition@0 {
+			label = "image-1";
+			reg = <0x0 0x1bb000>;
+		};
+	};
+};

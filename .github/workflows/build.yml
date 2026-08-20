@@ -50,6 +50,10 @@ jobs:
           - app: 91m1_ppp
             board: nrf54l15dk/nrf54l15/cpuapp/ns
             board_type: nrf54l15
+          - app: 91m1_ppp
+            board: nrf54lm20dk/nrf54lm20b/cpuapp/ns
+            board_type: nrf54lm20b
+            extra_args: -- -DSHIELD=nrf7002eb2
           - app: 93m1_ppp
             board: nrf93m1dk/nrf54l15/cpuapp/ns
             board_type: nrf93m1
@@ -78,7 +82,7 @@ jobs:
 
       - name: Build application
         working-directory: serial-modem-host-applications/applications/${{ matrix.app }}
-        run: west build -b ${{ matrix.board }} -p
+        run: west build -b ${{ matrix.board }} -p ${{ matrix.extra_args }}
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v7

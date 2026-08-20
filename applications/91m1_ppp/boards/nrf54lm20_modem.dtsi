@@ -1,0 +1,21 @@
+/*
+ * Copyright (c) 2026 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+ *
+ * Shared Serial Modem child node for nRF54LM20B DK + nRF9151 DK wiring.
+ * Control signals on P1 connector; UART instance is set by the board overlay.
+ */
+
+modem: modem {
+	compatible = "nordic,nrf91-sm-v2";
+	status = "okay";
+	mdm-reset-gpios = <&gpio1 10 (GPIO_ACTIVE_LOW | GPIO_OPEN_DRAIN)>;
+	mdm-ring-gpios = <&gpio1 12 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+	mdm-dtr-gpios = <&gpio1 11 GPIO_ACTIVE_LOW>;
+	zephyr,pm-device-runtime-auto;
+	cmux-enable-runtime-power-save;
+	cmux-close-pipe-on-power-save;
+	cmux-idle-timeout-ms = <5000>;
+	autostarts;
+};
