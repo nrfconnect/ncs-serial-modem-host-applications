@@ -191,7 +191,7 @@ static void publish_priv_fota(enum priv_fota_msg_type type)
 
 static void fota_reboot_handler(enum nrf_cloud_fota_reboot_status status)
 {
-	LOG_INF("FOTA reboot requested (status %d)", status);
+	LOG_DBG("FOTA reboot requested (status %d)", status);
 	publish_priv_fota(FOTA_PRIV_REBOOT_NEEDED);
 }
 
@@ -247,7 +247,7 @@ static void state_running_entry(void *obj)
 		if (err) {
 			LOG_ERR("boot_write_img_confirmed, error: %d", err);
 		} else {
-			LOG_INF("Running image confirmed");
+			LOG_DBG("Running image confirmed");
 		}
 	}
 #endif /* CONFIG_MCUBOOT_IMG_MANAGER */
