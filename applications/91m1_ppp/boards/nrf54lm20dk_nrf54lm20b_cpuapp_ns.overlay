@@ -1,0 +1,74 @@
+/*
+ * Copyright (c) 2026 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+ *
+ * nRF54LM20B DK + nRF9151 DK with nRF7002-EB2 on the P18 expansion header.
+ *
+ * Build with the nRF7002-EB2 shield enabled:
+ *   west build -b nrf54lm20dk/nrf54lm20b/cpuapp/ns -p -- -DSHIELD=nrf7002eb2
+ *
+ * The shield moves the console to uart30 (VCOM0, P0.06/P0.07). The Serial Modem
+ * link uses uart21 on P1.8–P1.9 (TX/RX, DK default) and P1.23–P1.24 (RTS/CTS).
+ * DTR/RI/reset use P1.11/P1.12/P1.10 (conflict with DK default uart21 HWFC).
+ *
+ * Disable VCOM1 in Board Configurator (required by the nRF7002-EB2 shield).
+ * Set matching VDD on both DKs (typically 1.8 V).
+ *
+ * Wiring: see doc/hardware-setup.md.
+ *
+ * RRAM/SRAM partitions: nrf54lm20_cpuapp_ns_partitions.dtsi (MCUboot + TF-M).
+ */
+
+#include "nrf54lm20_cpuapp_ns_partitions.dtsi"
+
+/ {
+	chosen {
+		nordic,pm-ext-flash = &mx25r64;
+	};
+
+	aliases {
+		modem = &modem;
+	};
+};
+
+&pinctrl {
+	uart21_default: uart21_default {
+		group1 {
+			psels = <NRF_PSEL(UART_TX, 1, 8)>,
+				<NRF_PSEL(UART_RTS, 1, 23)>;
+		};
+
+		group2 {
+			psels = <NRF_PSEL(UART_RX, 1, 9)>,
+				<NRF_PSEL(UART_CTS, 1, 24)>;
+			bias-pull-up;
+		};
+	};
+
+	uart21_sleep: uart21_sleep {
+		group1 {
+			psels = <NRF_PSEL(UART_TX, 1, 8)>,
+				<NRF_PSEL(UART_RX, 1, 9)>,
+				<NRF_PSEL(UART_RTS, 1, 23)>,
+				<NRF_PSEL(UART_CTS, 1, 24)>;
+			low-power-enable;
+		};
+	};
+};
+
+&uart21 {
+	status = "okay";
+	current-speed = <115200>;
+	pinctrl-0 = <&uart21_default>;
+	pinctrl-1 = <&uart21_sleep>;
+	pinctrl-names = "default", "sleep";
+	hw-flow-control;
+	zephyr,pm-device-runtime-auto;
+
+	#include "nrf54lm20_modem.dtsi"
+};
+
+&gpio1 {
+	status = "okay";
+};

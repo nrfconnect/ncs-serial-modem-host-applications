@@ -1,0 +1,43 @@
+/*
+ * Copyright (c) 2026 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+ *
+ * SRAM layout (cpuapp_sram, 508 KiB usable):
+ * |
+ * +-- 0x0000_0000 sram0_s                     (  48 KiB) TF-M secure
+ * +-- 0x0000_c000 sram0_ns                    ( 460 KiB) Zephyr/app non-secure
+ *
+ * RRAM and external flash layout: see nrf54lm20_cpuapp_mcuboot_partitions.dtsi.
+ * Memory-optimized SFN TF-M sizing (see board conf).
+ */
+
+/delete-node/ &slot0_partition;
+/delete-node/ &storage_partition;
+/delete-node/ &slot0_ns_partition;
+/delete-node/ &tfm_its_partition;
+/delete-node/ &tfm_otp_partition;
+/delete-node/ &tfm_ps_partition;
+/delete-node/ &sram0_s;
+/delete-node/ &sram0_ns;
+
+#include "nrf54lm20_cpuapp_mcuboot_partitions.dtsi"
+
+&cpuapp_sram {
+	reg = <0x20000000 0x7fe40>;
+	ranges = <0x0 0x20000000 0x7fe40>;
+
+	sram0_s: image_s@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		reg = <0x0 0xC000>;
+		ranges = <0x0 0x0 0xC000>;
+	};
+
+	sram0_ns: image_ns@c000 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		reg = <0xC000 0x73e40>;
+		ranges = <0x0 0xC000 0x73e40>;
+	};
+};

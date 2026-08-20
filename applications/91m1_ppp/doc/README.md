@@ -1,14 +1,16 @@
 # nRF91M1 Host Application Documentation
 
-End-to-end guide for the [91m1_ppp](../) host application on nRF54L15. Complete these steps in order to wire up the hardware, build and flash firmware, and connect the device to nRF Cloud over CoAP.
+End-to-end guide for the [91m1_ppp](../) host application on nRF54L15 or nRF54LM20B. Complete these steps in order to wire up the hardware, build and flash firmware, and connect the device to nRF Cloud over CoAP.
 
-The application connects to nRF Cloud over **CoAP/DTLS** from the host MCU (nRF54L15). Cellular data goes through the nRF91M1 Serial Modem via PPP; credentials are stored on the host using the TLS credentials shell and TF-M Protected Storage. Until onboarding is complete, `nrf_cloud_coap_connect()` will fail even if credentials are installed locally.
+The application connects to nRF Cloud over **CoAP/DTLS** from the host MCU (nRF54L15 or nRF54LM20B). Cellular data goes through the nRF91M1 Serial Modem via PPP; credentials are stored on the host using the TLS credentials shell and TF-M Protected Storage. Until onboarding is complete, `nrf_cloud_coap_connect()` will fail even if credentials are installed locally.
 
 ## Getting started
 
-1. **Wire up the development boards** — Connect the nRF54L15 DK (host) to the nRF9151 DK (Serial Modem). Configure both DKs in the Board Configurator and flash Serial Modem firmware with PPP and CMUX enabled on the nRF9151. The host application is tested with Serial Modem commit [`e23c2bde`](https://github.com/nrfconnect/ncs-serial-modem/commit/e23c2bde08a83e8a2908f78ee19f2b2ff5c6e46e). See [Hardware setup](hardware-setup.md) for wiring, pin assignments, and [how to flash Serial Modem on the nRF91](https://docs.nordicsemi.com/bundle/addon-serial_modem-latest/page/gsg_guide.html#building_and_running).
+1. **Wire up the development boards** — Connect the host DK (nRF54L15 or nRF54LM20B) to the nRF9151 DK (Serial Modem). Configure both DKs in the Board Configurator and flash Serial Modem firmware with PPP and CMUX enabled on the nRF9151. The host application is tested with Serial Modem commit [`e23c2bde`](https://github.com/nrfconnect/ncs-serial-modem/commit/e23c2bde08a83e8a2908f78ee19f2b2ff5c6e46e). See [Hardware setup](hardware-setup.md) for wiring, pin assignments, and [how to flash Serial Modem on the nRF91](https://docs.nordicsemi.com/bundle/addon-serial_modem-latest/page/gsg_guide.html#building_and_running).
 
-2. **Build and flash 91m1_ppp on the nRF54L15 DK**
+2. **Build and flash 91m1_ppp on the host DK**
+
+   **nRF54L15 DK:**
 
    ```shell
    cd applications/91m1_ppp
@@ -16,13 +18,21 @@ The application connects to nRF Cloud over **CoAP/DTLS** from the host MCU (nRF5
    west flash --recover
    ```
 
-3. **Verify the host application boots** — Open a serial terminal on the **nRF54L15 console** (uart20 — the DK USB port for the host shell, not the modem link on uart30). Confirm the application starts and note the **Device ID** from the boot log:
+   **nRF54LM20B DK** (with nRF7002-EB2 on P18):
+
+   ```shell
+   cd applications/91m1_ppp
+   west build -b nrf54lm20dk/nrf54lm20b/cpuapp/ns -p -- -DSHIELD=nrf7002eb2
+   west flash --recover
+   ```
+
+3. **Verify the host application boots** — Open a serial terminal on the host **console** port (see [Hardware setup](hardware-setup.md) for which VCOM to use on your board). Confirm the application starts and note the **Device ID** from the boot log:
 
    ```text
    <inf> nrf_cloud_info: Device ID: E4361AD8FD3E4554
    ```
 
-   This 16-character hex ID comes from the nRF54L15 SoC (`CONFIG_NRF_CLOUD_CLIENT_ID_SRC_HW_ID`). Use it for credential generation and portal onboarding — it is **not** the nRF91 modem UUID. The cloud module logs it again when connecting:
+   This 16-character hex ID comes from the host SoC HW ID (`CONFIG_NRF_CLOUD_CLIENT_ID_SRC_HW_ID`). Use it for credential generation and portal onboarding — it is **not** the nRF91 modem UUID. The cloud module logs it again when connecting:
 
    ```text
    <inf> cloud: nRF Cloud client ID: E4361AD8FD3E4554
@@ -50,7 +60,7 @@ The application connects to nRF Cloud over **CoAP/DTLS** from the host MCU (nRF5
 
    Keep the CA private key secure.
 
-6. **Install device credentials on the host** — Run `device_credentials_installer` from the directory containing your CA files, pointing at the nRF54L15 serial port and the device ID from step 3:
+6. **Install device credentials on the host** — Run `device_credentials_installer` from the directory containing your CA files, pointing at the host console serial port and the device ID from step 3:
 
    ```shell
    device_credentials_installer \
@@ -70,7 +80,7 @@ The application connects to nRF Cloud over **CoAP/DTLS** from the host MCU (nRF5
    - `-s` saves generated PEM files (`<device_id>_crt.pem`, `<device_id>_prv.pem`, etc.) in the current directory.
    - `-d` deletes any existing credentials in sec tag 16842753 before installing new ones.
    - `--verify` confirms credentials were written correctly.
-   - `--port` selects the nRF54L15 console serial port (adjust for your OS; omit if auto-detection works).
+   - `--port` selects the host console serial port (adjust for your OS; omit if auto-detection works). On nRF54LM20B, use **VCOM0** (primary port).
 
    On success you should see:
 
@@ -119,7 +129,7 @@ CoAP authentication uses a JWT signed with the installed private key. Only the *
 |---------|--------|
 | `Missing required nRF Cloud credentials` | Re-run `device_credentials_installer` with `--coap --cmd-type tls_cred_shell` |
 | `nrf_cloud_coap_connect` auth failure | Confirm the device is onboarded in the portal with the correct device ID |
-| Wrong device in portal | Use the nRF54L15 **Device ID** from boot log, not the modem `%DEVICEUUID` |
+| Wrong device in portal | Use the host **Device ID** from boot log, not the modem `%DEVICEUUID` |
 | JWT / time errors | After `Network connected`, run `net dns query time.google.com`. Ping to an IP does not prove DNS works. If logs show `getaddrinfo entries overflow`, ensure `CONFIG_DNS_RESOLVER_AI_MAX_ENTRIES=4` is set. If SNTP fails with `Not enough connection contexts`, increase `CONFIG_NET_MAX_CONN` (IPv4-only builds default to 4, which is too low once DNS + modem + SNTP + CoAP are active) |
 | `nrf_cloud_coap_connect` error -111 | Host-native CoAP needs DTLS sockets (`CONFIG_NET_SOCKETS_SOCKOPT_TLS`, `CONFIG_NET_SOCKETS_ENABLE_DTLS`). If enabling DTLS causes `RAM overflowed`, lower `CONFIG_MBEDTLS_SSL_IN/OUT_CONTENT_LEN` to 1024 (defaults are 16 KB each) and disable IPv6. Then run `net dns query coap.nrfcloud.com` after PPP is up |
 | `Failed to parse certificate` err `-0x2180` | Shell-provisioned credentials are PEM. Enable `CONFIG_MBEDTLS_PEM_PARSE_C=y` (see `nrf/samples/wifi/nrf_cloud/prj.conf`). Reinstall credentials if a prior install truncated them |
@@ -140,7 +150,7 @@ See [Memfault remote debugging](memfault.md) for how to open the Memfault dashbo
 | Guide | Description |
 |-------|-------------|
 | [Application behavior](application-behavior.md) | Module architecture, cloud sync, FOTA, and Memfault at runtime |
-| [Hardware setup](hardware-setup.md) | Two-DK wiring, board configurator, Serial Modem firmware version and flashing |
+| [Hardware setup](hardware-setup.md) | Host + Serial Modem wiring (nRF54L15, nRF54LM20B + nRF7002-EB2), board configurator, Serial Modem firmware |
 | [Memfault remote debugging](memfault.md) | Open Memfault from nRF Cloud, upload symbol files, view coredumps |
 
 ## References
