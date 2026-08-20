@@ -26,6 +26,41 @@ tests:
     provisioning:
       cleanup: false
 
+  - id: 91m1_ppp-provision-location-nrf54lm20b-nrf91
+    enabled: true
+    type: provision
+    pytest_dir: tests/on_target/tests/test_location/
+    app: 91m1_ppp
+    board: nrf54lm20dk/nrf54lm20b/cpuapp/ns
+    # Distinct from the plain nrf54lm20b build so the Build workflow artifact
+    # downloaded in CI is the one with Wi-Fi location enabled.
+    board_type: nrf54lm20b-location
+    build:
+      cmake_args:
+        - -DSHIELD=nrf7002eb2
+        - -DEXTRA_CONF_FILE=overlay-location.conf
+        - -DSB_EXTRA_CONF_FILE=sysbuild-location.conf
+    hardware:
+      segger_sn_var: CI_NRF54LM20B_PROVISION_SEGGER_SN
+      serial_port_var: CI_NRF54LM20B_PROVISION_SERIAL_PORT
+      # The nRF7002-EB2 shield moves the console to uart30, which is VCOM0.
+      console_vcom: 0
+      device_id_var: CI_NRF54LM20B_PROVISION_DEVICE_ID
+    nrf_cloud:
+      api_key_var: NRF_CLOUD_API_KEY
+      ca_cert_var: NRF_CLOUD_CA_CERT
+      ca_key_var: NRF_CLOUD_CA_KEY
+    memfault:
+      org_token_var: MEMFAULT_ORG_TOKEN
+      org_var: MEMFAULT_ORG
+      project_var: MEMFAULT_PROJECT
+      fleet_sampling_configuration_var: MEMFAULT_FLEET_SAMPLING_CONFIGURATION
+      cohort: ci-91m1-provision-location-nrf54lm20b-nrf91
+      cohort_name: CI 91m1 Provision Location nRF54LM20B nRF91
+      baseline_version: "1.0.0"  # local-dev fallback when FIRMWARE_VERSION is unset
+    provisioning:
+      cleanup: false
+
   - id: 91m1_ppp-memfault-coredump-nrf54l15-nrf91
     enabled: true
     type: memfault

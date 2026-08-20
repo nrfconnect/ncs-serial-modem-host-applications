@@ -30,15 +30,24 @@ Note that a device therefore reports its version as `1.2.3+0`, while Memfault st
 
 FOTA hardware tests on `main` use the same release semver as the baseline: CI passes `FIRMWARE_VERSION` to the Test workflow, flashes the Build artifact's `merged.hex` without rebuilding, then builds and deploys a patch-bumped update image (e.g. `1.2.3` → `1.2.4`) for OTA verification. Local runs fall back to `baseline_version` in [`.github/test/tests.yml`](../.github/test/tests.yml) and flash with `west flash --recover`.
 
-Hardware tests use two nRF54L15 + nRF91 rigs on two self-hosted runners (see [`.github/test/tests.yml`](../.github/test/tests.yml)):
+Hardware tests use three rigs on two self-hosted runners (see [`.github/test/tests.yml`](../.github/test/tests.yml)):
 
 | CI job | Runner | DUT | Every CI run |
 |--------|--------|-----|--------------|
 | `91m1_ppp-provision-nrf54l15-nrf91` | `self-hosted-provisioning` | Provisioning (`CI_NRF54L15_PROVISION_*`) | Recover flash, full nRF Cloud + Memfault onboard |
+| `91m1_ppp-provision-location-nrf54lm20b-nrf91` | `self-hosted-provisioning` | Location (`CI_NRF54LM20B_PROVISION_*`) | Recover flash, full onboard, then Wi-Fi location data |
 | `91m1_ppp-memfault-coredump-nrf54l15-nrf91` | `self-hosted-test` | Test (`CI_NRF54L15_*`) | Coredump (no re-provision) |
 | `91m1_ppp-application-fota-nrf54l15-nrf91` | `self-hosted-test` | Test (`CI_NRF54L15_*`) | FOTA (queued with coredump on same runner) |
 
-Provisioning runs in parallel with the first queued test job on the separate runners. Coredump and FOTA share the test runner and run one at a time; GitHub queues whichever job does not get the runner first.
+Provisioning runs in parallel with the first queued test job on the separate runners. Jobs sharing a runner run one at a time; GitHub queues whichever job does not get the runner first (coredump and FOTA on the test runner, the two provisioning jobs on the provisioning runner).
+
+The location DUT is an nRF54LM20 DK with an [nRF7002-EB2](../applications/91m1_ppp/doc/hardware-setup.md) shield, wired to an nRF91 Serial Modem like the other rigs. It is flashed with the Wi-Fi location build (`overlay-location.conf` and `sysbuild-location.conf`, built in CI as the `nrf54lm20b-location` artifact), and the test verifies that after provisioning completes the device scans Wi-Fi and nRF Cloud accepts the ground-fix request. The shield moves the console to VCOM0, which the catalog entry sets with `console_vcom: 0`. Local run:
+
+```shell
+export REPO_ROOT=$PWD
+export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load 91m1_ppp-provision-location-nrf54lm20b-nrf91)"
+PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_location/ -c tests/on_target/tests/pytest.ini -v
+```
 
 Build, compliance, and SonarCloud jobs use `self-hosted-build` (three runners for parallel matrix builds). Hardware tests and the test plan job use `self-hosted-test` on the DUT 2 rig.
 
@@ -50,7 +59,7 @@ Register runners with dedicated labels only. GitHub adds the default `self-hoste
 |--------|--------|---------|
 | `*-build-A/B/C` | `self-hosted-build` | Firmware builds, compliance, SonarCloud |
 | `*-host` | `self-hosted-test` | Coredump and FOTA on DUT 2 |
-| `*-prov` | `self-hosted-provisioning` | Provisioning test on DUT 1 |
+| `*-prov` | `self-hosted-provisioning` | Provisioning tests on DUT 1 and DUT 3 |
 
 Example registration for the provisioning rig:
 
@@ -78,7 +87,7 @@ Example for the test rig (DUT 2):
   --name smha-test --labels self-hosted-test,Linux,X64 --unattended
 ```
 
-Both runners need Docker and USB access to their DK (`--privileged -v /dev:/dev` in the test workflow containers). Set the GitHub repository variables for each rig on the same repo (`CI_NRF54L15_PROVISION_*` for DUT 1, `CI_NRF54L15_*` for DUT 2).
+Both runners need Docker and USB access to their DKs (`--privileged -v /dev:/dev` in the test workflow containers). Set the GitHub repository variables for each rig on the same repo (`CI_NRF54L15_PROVISION_*` for DUT 1, `CI_NRF54L15_*` for DUT 2, `CI_NRF54LM20B_PROVISION_*` for DUT 3). The provisioning runner needs access to both DUT 1 and DUT 3; tests select their board by SEGGER serial number, so both DKs can share one runner host.
 
 The test DUT must be provisioned once (manually or by running the provisioning flow locally against it). CI flashes baseline firmware without recover so TF-M credentials persist. FOTA and coredump do not remove the device from nRF Cloud or Memfault after each run.
 
@@ -102,7 +111,7 @@ export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load 91m1_p
 PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_fota/ -c tests/on_target/tests/pytest.ini -v
 ```
 
-Set `NRF_CLOUD_*`, `MEMFAULT_*`, and the `CI_NRF54L15_*` / `CI_NRF54L15_PROVISION_*` variables/secrets documented in [`.github/workflows/test.yml`](../.github/workflows/test.yml).
+Set `NRF_CLOUD_*`, `MEMFAULT_*`, and the `CI_NRF54L15_*` / `CI_NRF54L15_PROVISION_*` / `CI_NRF54LM20B_PROVISION_*` variables/secrets documented in [`.github/workflows/test.yml`](../.github/workflows/test.yml).
 
 ## Commit messages
 
