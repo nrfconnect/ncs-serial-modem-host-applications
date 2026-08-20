@@ -19,10 +19,8 @@
 #include "cloud.h"
 #if defined(CONFIG_APP_LOCATION)
 #include <net/nrf_cloud_location.h>
-#include <net/wifi_location_common.h>
-#include <modem/lte_lc.h>
-#include <zephyr/net/wifi_mgmt.h>
 #include "modules/location/location.h"
+#include "location_request.h"
 #define LOCATION_CHANNEL(X) X(location_chan, struct location_msg)
 #else
 #define LOCATION_CHANNEL(X)
@@ -225,40 +223,12 @@ static const char *fix_type_str(enum nrf_cloud_location_type type)
 
 static int ground_fix(const struct location_msg *msg)
 {
-	struct lte_lc_cells_info cells = {
-		.current_cell = {
-			.mcc = msg->cell.mcc,
-			.mnc = msg->cell.mnc,
-			.id = msg->cell.eci,
-			.tac = msg->cell.tac,
-			.earfcn = msg->cell.earfcn,
-			.phys_cell_id = (uint16_t)msg->cell.pci,
-			.timing_advance = LTE_LC_CELL_TIMING_ADVANCE_INVALID,
-			/* Codec applies RSRP_IDX_TO_DBM(); convert dBm back to the index. */
-			.rsrp = msg->cell.valid
-					? (int16_t)CLAMP(msg->cell.rsrp + 141, 0, 97)
-					: LTE_LC_CELL_RSRP_INVALID,
-		},
-	};
-	static struct wifi_scan_result coap_aps[CONFIG_APP_LOCATION_MAX_WIFI_APS];
-	struct wifi_scan_info wifi = { .ap_info = coap_aps, .cnt = 0 };
-	struct nrf_cloud_location_config config = { .do_reply = true, .fallback = true };
-	struct nrf_cloud_coap_location_request req = { .config = &config };
+	struct nrf_cloud_coap_location_request req;
 	struct nrf_cloud_location_result result;
 	int err;
 
-	for (uint8_t i = 0; i < msg->ap_count; i++) {
-		memcpy(coap_aps[wifi.cnt].mac, msg->aps[i].mac, WIFI_MAC_ADDR_LEN);
-		coap_aps[wifi.cnt].mac_length = WIFI_MAC_ADDR_LEN;
-		coap_aps[wifi.cnt].channel = msg->aps[i].channel;
-		coap_aps[wifi.cnt].rssi = msg->aps[i].rssi;
-		wifi.cnt++;
-	}
-
-	req.cell_info = msg->cell.valid ? &cells : NULL;
-	req.wifi_info = (wifi.cnt >= NRF_CLOUD_LOCATION_WIFI_AP_CNT_MIN) ? &wifi : NULL;
-
-	if (req.cell_info == NULL && req.wifi_info == NULL) {
+	err = location_request_build(msg, &req);
+	if (err) {
 		LOG_WRN("No usable measurements for ground-fix");
 		return 0;
 	}
