@@ -35,13 +35,20 @@ Hardware tests use three rigs on two self-hosted runners (see [`.github/test/tes
 | CI job | Runner | DUT | Every CI run |
 |--------|--------|-----|--------------|
 | `91m1_ppp-provision-nrf54l15-nrf91` | `self-hosted-provisioning` | Provisioning (`CI_NRF54L15_PROVISION_*`) | Recover flash, full nRF Cloud + Memfault onboard |
+| `91m1_ppp-provision-nrf54lm20b-nrf91` | `self-hosted-provisioning` | Location (`CI_NRF54LM20B_PROVISION_*`) | Recover flash, full nRF Cloud + Memfault onboard (plain build) |
 | `91m1_ppp-provision-location-nrf54lm20b-nrf91` | `self-hosted-provisioning` | Location (`CI_NRF54LM20B_PROVISION_*`) | Recover flash, full onboard, then Wi-Fi location data |
 | `91m1_ppp-memfault-coredump-nrf54l15-nrf91` | `self-hosted-test` | Test (`CI_NRF54L15_*`) | Coredump (no re-provision) |
 | `91m1_ppp-application-fota-nrf54l15-nrf91` | `self-hosted-test` | Test (`CI_NRF54L15_*`) | FOTA (queued with coredump on same runner) |
 
-Provisioning runs in parallel with the first queued test job on the separate runners. Jobs sharing a runner run one at a time; GitHub queues whichever job does not get the runner first (coredump and FOTA on the test runner, the two provisioning jobs on the provisioning runner).
+Provisioning runs in parallel with the first queued test job on the separate runners. Jobs sharing a runner run one at a time; GitHub queues whichever job does not get the runner first (coredump and FOTA on the test runner, the three provisioning jobs on the provisioning runner).
 
-The location DUT is an nRF54LM20 DK with an [nRF7002-EB2](../applications/91m1_ppp/doc/hardware-setup.md) shield, wired to an nRF91 Serial Modem like the other rigs. It is flashed with the Wi-Fi location build (`overlay-location.conf` and `sysbuild-location.conf`, built in CI as the `nrf54lm20b-location` artifact), and the test verifies that after provisioning completes the device scans Wi-Fi and nRF Cloud accepts the ground-fix request. The shield moves the console to VCOM0, which the catalog entry sets with `console_vcom: 0`. Local run:
+The nRF54LM20B DUT is an nRF54LM20 DK with an [nRF7002-EB2](../applications/91m1_ppp/doc/hardware-setup.md) shield, wired to an nRF91 Serial Modem like the other rigs. CI runs two provisioning tests on that board: `91m1_ppp-provision-nrf54lm20b-nrf91` flashes the plain `nrf54lm20b` build artifact and runs `test_cloud_provision` (console on VCOM1); `91m1_ppp-provision-location-nrf54lm20b-nrf91` flashes the Wi-Fi location build (`overlay-location.conf` and `sysbuild-location.conf`, artifact `nrf54lm20b-location`) and verifies Wi-Fi scan plus nRF Cloud ground-fix (console on VCOM0). Both use `CI_NRF54LM20B_PROVISION_*` and queue on the provisioning runner. Local runs:
+
+```shell
+export REPO_ROOT=$PWD
+export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load 91m1_ppp-provision-nrf54lm20b-nrf91)"
+PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_provision/ -c tests/on_target/tests/pytest.ini -v
+```
 
 ```shell
 export REPO_ROOT=$PWD

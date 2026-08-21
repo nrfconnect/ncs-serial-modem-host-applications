@@ -26,6 +26,33 @@ tests:
     provisioning:
       cleanup: false
 
+  - id: 91m1_ppp-provision-nrf54lm20b-nrf91
+    enabled: true
+    type: provision
+    pytest_dir: tests/on_target/tests/test_provision/
+    app: 91m1_ppp
+    board: nrf54lm20dk/nrf54lm20b/cpuapp/ns
+    board_type: nrf54lm20b
+    hardware:
+      segger_sn_var: CI_NRF54LM20B_PROVISION_SEGGER_SN
+      serial_port_var: CI_NRF54LM20B_PROVISION_SERIAL_PORT
+      console_vcom: 1
+      device_id_var: CI_NRF54LM20B_PROVISION_DEVICE_ID
+    nrf_cloud:
+      api_key_var: NRF_CLOUD_API_KEY
+      ca_cert_var: NRF_CLOUD_CA_CERT
+      ca_key_var: NRF_CLOUD_CA_KEY
+    memfault:
+      org_token_var: MEMFAULT_ORG_TOKEN
+      org_var: MEMFAULT_ORG
+      project_var: MEMFAULT_PROJECT
+      fleet_sampling_configuration_var: MEMFAULT_FLEET_SAMPLING_CONFIGURATION
+      cohort: ci-91m1-provision-nrf54lm20b-nrf91
+      cohort_name: CI 91m1 Provision nRF54LM20B nRF91
+      baseline_version: "1.0.0"  # local-dev fallback when FIRMWARE_VERSION is unset
+    provisioning:
+      cleanup: false
+
   - id: 91m1_ppp-provision-location-nrf54lm20b-nrf91
     enabled: true
     type: provision
