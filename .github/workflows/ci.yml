@@ -1,16 +1,16 @@
-# Push-to-main CI orchestrator.
+# Nightly build, test, and release orchestrator.
 #
 # Flow: resolve semver → build firmware → hardware test (prebuilt) → release on bump.
 #
 # SonarCloud and Markdown link checks run on pull requests only.
 # Individual workflows remain independently triggerable via workflow_dispatch.
 
-name: CI
+name: Build, Test, and Release
 
 on:
-  push:
-    branches:
-      - main
+  schedule:
+    - cron: "0 3 * * *"  # 03:00 UTC = 05:00 GMT+2 (CEST)
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.semver.outputs.version }}
-      is_bump: ${{ steps.semver.outputs.changed }}
+      is_bump: ${{ steps.semver.outputs.version_type != 'none' }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -36,6 +36,7 @@ jobs:
           tag_prefix: v
           major_pattern: BREAKING CHANGE
           minor_pattern: feat
+          ignore_commits_pattern: "/^(chore|docs|style|refactor|perf|test|build|ci)(\\(.+\\))?:/"
 
   build:
     needs: version

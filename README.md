@@ -1,6 +1,6 @@
 # Serial Modem Host Applications
 
-[![CI](https://img.shields.io/github/actions/workflow/status/nrfconnect/ncs-serial-modem-host-applications/ci.yml?event=push&branch=main&label=ci)](https://github.com/nrfconnect/ncs-serial-modem-host-applications/actions/workflows/ci.yml?query=branch%3Amain+event%3Apush)
+[![Build, Test, and Release](https://img.shields.io/github/actions/workflow/status/nrfconnect/ncs-serial-modem-host-applications/ci.yml?event=schedule&branch=main&label=Build%2C%20Test%2C%20and%20Release)](https://github.com/nrfconnect/ncs-serial-modem-host-applications/actions/workflows/ci.yml?query=branch%3Amain+event%3Aschedule)
 
 Host-side firmware for Nordic Smart Modem modules. This repository is built on [nRF Connect SDK](https://www.nordicsemi.com/Products/Development-software/nRF-Connect-SDK) (NCS) and follows the modular **zbus + SMF** architecture used by the [Asset Tracker Template](https://github.com/nrfconnect/Asset-Tracker-Template).
 

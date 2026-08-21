@@ -2,16 +2,16 @@
 
 ## Continuous integration
 
-Pushes to `main` run the [CI workflow](../.github/workflows/ci.yml):
+A nightly schedule on `main` runs the [Build, Test, and Release workflow](../.github/workflows/ci.yml) at 03:00 UTC (05:00 GMT+2 during CEST):
 
 1. Resolve the next semver from commit history since the last tag
 2. Build all applications and upload firmware artifacts
 3. Run on-target hardware tests against the prebuilt firmware
-4. Create a GitHub Release when commits warrant a version bump (`feat`, `fix`, or `BREAKING CHANGE`)
+4. Create a GitHub Release when commits since the last tag warrant a version bump (`feat`, `fix`, or `BREAKING CHANGE`)
 
-Individual workflows (`Build`, `Test`, `Release`) can also be triggered manually from the Actions tab.
+The full pipeline can also be triggered manually from the Actions tab (`workflow_dispatch`). Individual workflows (`Build`, `Test`, `Release`) remain independently triggerable.
 
-Pull requests run build, compliance, SonarCloud, and Markdown link checks. Releases are created only from pushes to `main`.
+Pull requests run build, compliance, SonarCloud, and Markdown link checks. Releases are created from the nightly run (or manual dispatch) only when releasable commits exist; `chore`, `docs`, `ci`, and similar commits are ignored.
 
 ## Releases
 
