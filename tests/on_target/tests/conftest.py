@@ -16,6 +16,7 @@ from utils.app_version import (
     resolve_fota_versions,
     write_app_version,
 )
+from utils.serial_modem_firmware import flash_serial_modem_firmware
 from utils.flash_tools import (
     flash_baseline_firmware,
     nrfutil_reset,
@@ -49,6 +50,18 @@ def _prepare_serial_log() -> None:
     SERIAL_LOG.write_text("", encoding="utf-8")
 
 
+def _flash_serial_modem_if_configured(test_config: dict) -> None:
+    serial_modem = test_config.get("serial_modem")
+    if not serial_modem:
+        return
+
+    segger_var = serial_modem["segger_sn_var"]
+    segger_sn = os.environ[segger_var]
+    logger.info("Step 0/4 - Flash Serial Modem firmware on nRF9151 DK (%s)", segger_sn)
+    flash_serial_modem_firmware(segger_sn)
+    time.sleep(2)
+
+
 def _prepare_baseline_firmware(
     test_config: dict,
     *,
@@ -56,6 +69,7 @@ def _prepare_baseline_firmware(
 ) -> types.SimpleNamespace:
     segger_sn, board, app_dir = _hardware_context(test_config)
     _prepare_serial_log()
+    _flash_serial_modem_if_configured(test_config)
 
     app_name = test_config["app"]
     prebuilt_metadata = None
@@ -78,11 +92,11 @@ def _prepare_baseline_firmware(
                 "FIRMWARE_VERSION."
             )
         logger.info(
-            "Step 1/3 - Using prebuilt CI baseline firmware %s (merged.hex)",
+            "Step 1/4 - Using prebuilt CI baseline firmware %s (merged.hex)",
             expected_baseline,
         )
     else:
-        logger.info("Step 1/3 - Build baseline firmware %s", baseline_semver)
+        logger.info("Step 1/4 - Build baseline firmware %s", baseline_semver)
         write_app_version(app_dir, baseline_semver)
         west_build(
             app_dir,
@@ -92,15 +106,15 @@ def _prepare_baseline_firmware(
 
     if recover:
         logger.info(
-            "Step 2/3 - Recover and flash firmware (clears all flash including TF-M storage)"
+            "Step 2/4 - Recover and flash firmware (clears all flash including TF-M storage)"
         )
     else:
         logger.info(
-            "Step 2/3 - Flash baseline firmware without recover (preserves credentials)"
+            "Step 2/4 - Flash baseline firmware without recover (preserves credentials)"
         )
     flash_baseline_firmware(app_dir, app_name, segger_sn, recover=recover)
 
-    logger.info("Step 3/3 - Start serial capture and reset device")
+    logger.info("Step 3/4 - Start serial capture and reset device")
     time.sleep(2)
     serial_port = resolve_serial_port(test_config)
     uart = Uart(serial_port, log_path=SERIAL_LOG)

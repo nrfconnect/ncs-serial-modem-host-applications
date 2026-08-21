@@ -1,0 +1,8 @@
+# Pinned Serial Modem firmware for 91m1 host + nRF9151 DK setups.
+# Used by on-target tests and copied into SMHA GitHub releases.
+
+release: v2.0.0-preview2
+bundle: serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip
+hex: serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.hex
+download_url: https://github.com/nrfconnect/ncs-serial-modem/releases/download/v2.0.0-preview2/serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip
+upstream_release_url: https://github.com/nrfconnect/ncs-serial-modem/releases/tag/v2.0.0-preview2

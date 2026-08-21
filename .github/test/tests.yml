@@ -11,6 +11,8 @@ tests:
       serial_port_var: CI_NRF54L15_PROVISION_SERIAL_PORT
       console_vcom: 1
       device_id_var: CI_NRF54L15_PROVISION_DEVICE_ID
+    serial_modem:
+      segger_sn_var: CI_NRF54L15_PROVISION_SERIAL_MODEM_SEGGER_SN
     nrf_cloud:
       api_key_var: NRF_CLOUD_API_KEY
       ca_cert_var: NRF_CLOUD_CA_CERT
@@ -36,8 +38,10 @@ tests:
     hardware:
       segger_sn_var: CI_NRF54LM20B_PROVISION_SEGGER_SN
       serial_port_var: CI_NRF54LM20B_PROVISION_SERIAL_PORT
-      console_vcom: 1
+      console_vcom: 0
       device_id_var: CI_NRF54LM20B_PROVISION_DEVICE_ID
+    serial_modem:
+      segger_sn_var: CI_NRF54LM20B_PROVISION_SERIAL_MODEM_SEGGER_SN
     nrf_cloud:
       api_key_var: NRF_CLOUD_API_KEY
       ca_cert_var: NRF_CLOUD_CA_CERT
@@ -70,9 +74,10 @@ tests:
     hardware:
       segger_sn_var: CI_NRF54LM20B_PROVISION_SEGGER_SN
       serial_port_var: CI_NRF54LM20B_PROVISION_SERIAL_PORT
-      # The nRF7002-EB2 shield moves the console to uart30, which is VCOM0.
       console_vcom: 0
       device_id_var: CI_NRF54LM20B_PROVISION_DEVICE_ID
+    serial_modem:
+      segger_sn_var: CI_NRF54LM20B_PROVISION_SERIAL_MODEM_SEGGER_SN
     nrf_cloud:
       api_key_var: NRF_CLOUD_API_KEY
       ca_cert_var: NRF_CLOUD_CA_CERT
@@ -100,6 +105,8 @@ tests:
       serial_port_var: CI_NRF54L15_SERIAL_PORT
       console_vcom: 1
       device_id_var: CI_NRF54L15_DEVICE_ID
+    serial_modem:
+      segger_sn_var: CI_NRF54L15_SERIAL_MODEM_SEGGER_SN
     nrf_cloud:
       api_key_var: NRF_CLOUD_API_KEY
       ca_cert_var: NRF_CLOUD_CA_CERT
@@ -127,6 +134,8 @@ tests:
       serial_port_var: CI_NRF54L15_SERIAL_PORT
       console_vcom: 1
       device_id_var: CI_NRF54L15_DEVICE_ID
+    serial_modem:
+      segger_sn_var: CI_NRF54L15_SERIAL_MODEM_SEGGER_SN
     nrf_cloud:
       api_key_var: NRF_CLOUD_API_KEY
       ca_cert_var: NRF_CLOUD_CA_CERT

@@ -15,7 +15,9 @@ Pull requests run build, compliance, SonarCloud, and Markdown link checks. Relea
 
 ## Releases
 
-Releases are tagged `vX.Y.Z` and include signed firmware binaries (`.signed.bin`) and ELF files (`.elf`) for each application. The version is derived from conventional commit prefixes in merged commits:
+Releases are tagged `vX.Y.Z` and publish one zip per CI build flavor (`{app}-{board_type}-v{version}.zip`), plus the pinned Serial Modem bundle `serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip` for 91m1 host + nRF9151 DK setups. See [Release artifacts](release-artifacts.md) for bundle names, file descriptions, and flashing instructions.
+
+The version is derived from conventional commit prefixes in merged commits:
 
 | Commit prefix | Version bump |
 |---------------|--------------|
@@ -42,13 +44,15 @@ Hardware tests use three rigs on two self-hosted runners (see [`.github/test/tes
 
 Provisioning runs in parallel with the first queued test job on the separate runners. Jobs sharing a runner run one at a time; GitHub queues whichever job does not get the runner first (coredump and FOTA on the test runner, the three provisioning jobs on the provisioning runner).
 
-The nRF54LM20B DUT is an nRF54LM20 DK with an [nRF7002-EB2](../applications/91m1_ppp/doc/hardware-setup.md) shield, wired to an nRF91 Serial Modem like the other rigs. CI runs two provisioning tests on that board: `91m1_ppp-provision-nrf54lm20b-nrf91` flashes the plain `nrf54lm20b` build artifact and runs `test_cloud_provision` (console on VCOM1); `91m1_ppp-provision-location-nrf54lm20b-nrf91` flashes the Wi-Fi location build (`overlay-location.conf` and `sysbuild-location.conf`, artifact `nrf54lm20b-location`) and verifies Wi-Fi scan plus nRF Cloud ground-fix (console on VCOM0). Both use `CI_NRF54LM20B_PROVISION_*` and queue on the provisioning runner. Local runs:
+DUT 3 is an nRF54LM20B DK with an [nRF7002-EB2](../applications/91m1_ppp/doc/hardware-setup.md) shield, wired to an nRF91 Serial Modem. Both lm20b tests use host console **VCOM0** (uart30): `91m1_ppp-provision-nrf54lm20b-nrf91` flashes the plain `nrf54lm20b` build and runs `test_cloud_provision`; `91m1_ppp-provision-location-nrf54lm20b-nrf91` flashes the Wi-Fi location build and verifies Wi-Fi scan plus nRF Cloud ground-fix. Local run for plain provisioning:
 
 ```shell
 export REPO_ROOT=$PWD
 export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load 91m1_ppp-provision-nrf54lm20b-nrf91)"
 PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_provision/ -c tests/on_target/tests/pytest.ini -v
 ```
+
+Local run for the location test:
 
 ```shell
 export REPO_ROOT=$PWD
@@ -66,7 +70,7 @@ Register runners with dedicated labels only. GitHub adds the default `self-hoste
 |--------|--------|---------|
 | `*-build-A/B/C` | `self-hosted-build` | Firmware builds, compliance, SonarCloud |
 | `*-host` | `self-hosted-test` | Coredump and FOTA on DUT 2 |
-| `*-prov` | `self-hosted-provisioning` | Provisioning tests on DUT 1 and DUT 3 |
+| `*-prov` | `self-hosted-provisioning` | Provisioning on DUT 1 and DUT 3 |
 
 Example registration for the provisioning rig:
 
@@ -94,7 +98,9 @@ Example for the test rig (DUT 2):
   --name smha-test --labels self-hosted-test,Linux,X64 --unattended
 ```
 
-Both runners need Docker and USB access to their DKs (`--privileged -v /dev:/dev` in the test workflow containers). Set the GitHub repository variables for each rig on the same repo (`CI_NRF54L15_PROVISION_*` for DUT 1, `CI_NRF54L15_*` for DUT 2, `CI_NRF54LM20B_PROVISION_*` for DUT 3). The provisioning runner needs access to both DUT 1 and DUT 3; tests select their board by SEGGER serial number, so both DKs can share one runner host.
+Both runners need Docker and USB access to their DKs (`--privileged -v /dev:/dev` in the test workflow containers). Set the GitHub repository variables for each rig on the same repo (`CI_NRF54L15_PROVISION_*` and `CI_NRF54L15_PROVISION_SERIAL_MODEM_*` for DUT 1, `CI_NRF54L15_*` and `CI_NRF54L15_SERIAL_MODEM_*` for DUT 2, `CI_NRF54LM20B_PROVISION_*` and `CI_NRF54LM20B_PROVISION_SERIAL_MODEM_*` for DUT 3). The provisioning runner needs access to both DUT 1 and DUT 3; tests select their board by SEGGER serial number, so both DKs can share one runner host.
+
+91m1 on-target tests flash the pinned Serial Modem release (`serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.hex`) on the nRF9151 DK before programming the host.
 
 The test DUT must be provisioned once (manually or by running the provisioning flow locally against it). CI flashes baseline firmware without recover so TF-M credentials persist. FOTA and coredump do not remove the device from nRF Cloud or Memfault after each run.
 
@@ -118,7 +124,7 @@ export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load 91m1_p
 PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_fota/ -c tests/on_target/tests/pytest.ini -v
 ```
 
-Set `NRF_CLOUD_*`, `MEMFAULT_*`, and the `CI_NRF54L15_*` / `CI_NRF54L15_PROVISION_*` / `CI_NRF54LM20B_PROVISION_*` variables/secrets documented in [`.github/workflows/test.yml`](../.github/workflows/test.yml).
+Set `NRF_CLOUD_*`, `MEMFAULT_*`, and the host plus Serial Modem `CI_NRF54L15_*` / `CI_NRF54L15_PROVISION_*` / `CI_NRF54LM20B_PROVISION_*` variables/secrets documented in [`.github/workflows/test.yml`](../.github/workflows/test.yml).
 
 ## Commit messages
 
