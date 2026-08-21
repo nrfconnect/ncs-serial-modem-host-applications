@@ -59,6 +59,8 @@ west update
 
 The repository is now cloned into the `smha-workspace/project` folder, the west modules are downloaded, and you are ready to build an application.
 
+Alternatively, download pre-built firmware from the [latest release](https://github.com/nrfconnect/ncs-serial-modem-host-applications/releases) and flash it directly. See [Release artifacts](doc/release-artifacts.md) for bundle names, file descriptions, and flash commands.
+
 ### Build and flash
 
 Follow the application documentation for hardware setup, build, flash, and (where applicable) cloud provisioning:
@@ -73,7 +75,7 @@ Follow the application documentation for hardware setup, build, flash, and (wher
 
 ## Contributing
 
-See [CI and contribution](doc/ci-and-contribution.md) for continuous integration, releases, and commit message guidelines.
+See [CI and contribution](doc/ci-and-contribution.md) for continuous integration, releases, and commit message guidelines. Pre-built firmware bundles are described in [Release artifacts](doc/release-artifacts.md).
 
 ## License
 

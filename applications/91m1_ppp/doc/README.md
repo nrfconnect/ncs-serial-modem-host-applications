@@ -6,7 +6,7 @@ The application connects to nRF Cloud over **CoAP/DTLS** from the host MCU (nRF5
 
 ## Getting started
 
-1. **Wire up the development boards** — Connect the host DK (nRF54L15 or nRF54LM20B) to the nRF9151 DK (Serial Modem). Configure both DKs in the Board Configurator and flash Serial Modem firmware with PPP and CMUX enabled on the nRF9151. The host application is tested with Serial Modem commit [`e23c2bde`](https://github.com/nrfconnect/ncs-serial-modem/commit/e23c2bde08a83e8a2908f78ee19f2b2ff5c6e46e). See [Hardware setup](hardware-setup.md) for wiring, pin assignments, and [how to flash Serial Modem on the nRF91](https://docs.nordicsemi.com/bundle/addon-serial_modem-latest/page/gsg_guide.html#building_and_running).
+1. **Wire up the development boards** — Connect the host DK (nRF54L15 or nRF54LM20B) to the nRF9151 DK (Serial Modem). Configure both DKs in the Board Configurator and flash Serial Modem firmware with PPP and CMUX enabled on the nRF9151. Use the pre-built [`serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip`](https://github.com/nrfconnect/ncs-serial-modem/releases/download/v2.0.0-preview2/serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip) bundle from [Serial Modem v2.0.0-preview2](https://github.com/nrfconnect/ncs-serial-modem/releases/tag/v2.0.0-preview2) (also attached to [SMHA releases](../../../doc/release-artifacts.md#serial-modem-firmware-nrf9151-dk)). See [Hardware setup](hardware-setup.md) for wiring, pin assignments, and how to flash the Serial Modem image.
 
 2. **Build and flash 91m1_ppp on the host DK**
 
@@ -82,7 +82,7 @@ The application connects to nRF Cloud over **CoAP/DTLS** from the host MCU (nRF5
    - `-s` saves generated PEM files (`<device_id>_crt.pem`, `<device_id>_prv.pem`, etc.) in the current directory.
    - `-d` deletes any existing credentials in sec tag 16842753 before installing new ones.
    - `--verify` confirms credentials were written correctly.
-   - `--port` selects the host console serial port (adjust for your OS; omit if auto-detection works). On nRF54LM20B, use **VCOM1** (secondary port); with the nRF7002-EB2 shield, use **VCOM0** instead.
+   - `--port` selects the host console serial port (adjust for your OS; omit if auto-detection works). On nRF54LM20B, use **VCOM0** (primary port) for both plain and nRF7002-EB2 builds.
 
    On success you should see:
 

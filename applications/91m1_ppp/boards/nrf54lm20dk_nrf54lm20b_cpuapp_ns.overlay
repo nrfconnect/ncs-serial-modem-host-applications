@@ -8,16 +8,15 @@
  * Default build (no shield):
  *   west build -b nrf54lm20dk/nrf54lm20b/cpuapp/ns -p
  *
- * Console uses the DK default (uart20 / VCOM1). Do not set zephyr,console here —
- * the nRF7002-EB2 shield overlay must be able to reroute it to uart30.
+ * Console uses uart30 (VCOM0) so plain and nRF7002-EB2 builds share the same
+ * USB serial port. Modem stays on uart21 (P1).
  *
  * The Serial Modem link uses uart21 on P1.8–P1.9 (TX/RX) and P1.23–P1.24
  * (RTS/CTS). DTR/RI/reset use P1.11/P1.12/P1.10 (conflict with DK default
  * uart21 HWFC).
  *
- * With nRF7002-EB2 on P18 (Wi-Fi location), pass -DSHIELD=nrf7002eb2; the
- * shield overlay moves the console to uart30 (VCOM0). Disable VCOM1 in Board
- * Configurator when the shield is attached.
+ * With nRF7002-EB2 on P18 (Wi-Fi location), pass -DSHIELD=nrf7002eb2 and disable
+ * VCOM1 in Board Configurator (uart20 pins conflict with the shield).
  *
  * Set matching VDD on both DKs (typically 1.8 V).
  *
@@ -30,12 +29,19 @@
 
 / {
 	chosen {
+		zephyr,console = &uart30;
+		zephyr,shell-uart = &uart30;
 		nordic,pm-ext-flash = &mx25r64;
 	};
 
 	aliases {
 		modem = &modem;
 	};
+};
+
+&uart30 {
+	status = "okay";
+	current-speed = <115200>;
 };
 
 &pinctrl {

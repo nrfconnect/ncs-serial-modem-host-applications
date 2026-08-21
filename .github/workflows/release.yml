@@ -38,7 +38,7 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           set -eu
-          mkdir -p release-assets
+          mkdir -p release-assets release-staging
 
           copy_release_file() {
             local src="$1"
@@ -61,15 +61,31 @@ jobs:
             board_type="${rest#*-}"
             root="$artifact_dir"
             zephyr="${root}/${app}/zephyr"
-            prefix="release-assets/${app}-${board_type}-v${VERSION}"
+            bundle_name="${app}-${board_type}-v${VERSION}"
+            bundle_dir="release-staging/${bundle_name}"
+            mkdir -p "$bundle_dir"
 
-            copy_release_file "${root}/merged.hex" "${prefix}.merged.hex"
-            copy_release_file "${zephyr}/zephyr.elf" "${prefix}.elf"
-            copy_release_file "${zephyr}/.config" "${prefix}.config"
+            copy_release_file "${root}/merged.hex" "${bundle_dir}/merged.hex"
+            copy_release_file "${zephyr}/zephyr.elf" "${bundle_dir}/zephyr.elf"
+            copy_release_file "${zephyr}/.config" "${bundle_dir}/.config"
             if [ "$app" != "93m1_at" ]; then
-              copy_release_file "${zephyr}/zephyr.signed.bin" "${prefix}.signed.bin"
+              copy_release_file "${zephyr}/zephyr.signed.bin" "${bundle_dir}/zephyr.signed.bin"
             fi
+
+            (
+              cd "$bundle_dir"
+              zip -r "../../release-assets/${bundle_name}.zip" .
+            )
           done
+
+          pip install --quiet pyyaml
+          REPO_ROOT=$PWD PYTHONPATH=tests/on_target python3 <<'PY'
+          from pathlib import Path
+
+          from utils.serial_modem_firmware import download_serial_modem_release_bundle
+
+          download_serial_modem_release_bundle(Path("release-assets"), root=Path("."))
+          PY
 
           ls -la release-assets/
 

@@ -67,7 +67,7 @@ Open a serial terminal on **VCOM1** (uart20 — the secondary USB serial port on
 
 Development setup: **nRF54LM20B DK** (host) wired to **nRF9151 DK** or **nRF9151 SMA DK** (Serial Modem).
 
-On the nRF54LM20B DK, no Board Configurator changes are required — both VCOM ports stay enabled.
+On the nRF54LM20B DK, no Board Configurator changes are required for the plain build — both VCOM ports may stay enabled. When the nRF7002-EB2 shield is attached, disable **VCOM1** (see [Wi-Fi location setup](#nrf54lm20b-dk--nrf7002-eb2-wi-fi-location)).
 
 ### Wiring
 
@@ -105,7 +105,7 @@ west build -b nrf54lm20dk/nrf54lm20b/cpuapp/ns -p
 
 ### Console
 
-Open a serial terminal on **VCOM1** (uart20 — the secondary USB serial port on the nRF54LM20B DK).
+Open a serial terminal on **VCOM0** (uart30 — the primary USB serial port on the nRF54LM20B DK).
 
 Serial Modem logs appear on **VCOM1 of the nRF9151 / SMA DK** (uart1, P0.28/P0.29). Keep that terminal open alongside the host console when bringing up the link.
 
@@ -126,7 +126,7 @@ On the nRF54LM20B DK:
 
 ### Wiring
 
-The shield moves the host console to **uart30** (VCOM0). Serial Modem wiring is the same as the [plain nRF54LM20B setup](#wiring-1) above (uart21 on P1).
+The shield shares the same host console as the plain build (**uart30** / **VCOM0**). Serial Modem wiring is the same as the [plain nRF54LM20B setup](#wiring-1) above (uart21 on P1).
 
 ### Build
 
@@ -142,7 +142,7 @@ west build -b nrf54lm20dk/nrf54lm20b/cpuapp/ns -p -- \
 
 [`boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.overlay`](../boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.overlay)
 
-The Zephyr `nrf7002eb2` shield overlay provides the Wi-Fi companion IC devicetree and moves the console to uart30.
+The Zephyr `nrf7002eb2` shield overlay provides the Wi-Fi companion IC devicetree. The base board overlay already routes the console to uart30.
 
 ### Console
 
@@ -158,7 +158,23 @@ On host boot, [`src/modem_reset.c`](../src/modem_reset.c) pulses nRESET (500 ms)
 
 ## Serial Modem firmware
 
-The 91m1_ppp host application is tested with Serial Modem firmware at commit [`e23c2bde08a83e8a2908f78ee19f2b2ff5c6e46e`](https://github.com/nrfconnect/ncs-serial-modem/commit/e23c2bde08a83e8a2908f78ee19f2b2ff5c6e46e). Check out that commit in the [ncs-serial-modem](https://github.com/nrfconnect/ncs-serial-modem) repository, then build from the Serial Modem application directory:
+The 91m1_ppp host application is tested with Serial Modem release [`v2.0.0-preview2`](https://github.com/nrfconnect/ncs-serial-modem/releases/tag/v2.0.0-preview2). Download the external-MCU bundle for the nRF9151 / SMA DK:
+
+[`serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip`](https://github.com/nrfconnect/ncs-serial-modem/releases/download/v2.0.0-preview2/serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip)
+
+This build enables PPP and CMUX on **uart2** routed to the host (P0.02/P0.03 TX/RX, P0.06/P0.07 RTS/CTS, DTR/RI on P0.31/P0.30). Without the external-MCU variant, the modem listens on the USB VCOM UART instead — the host will see `init_chat_script: timed out`.
+
+Extract the zip and flash `serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.hex` on the nRF9151 / SMA DK:
+
+```shell
+nrfutil device program --firmware serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.hex --recover
+```
+
+The same bundle is attached to every [SMHA release](../../../doc/release-artifacts.md#serial-modem-firmware-nrf9151-dk). CI on-target tests flash this image automatically before each 91m1 run.
+
+### Building Serial Modem from source (optional)
+
+To match an unreleased Serial Modem commit, check out the desired revision in the [ncs-serial-modem](https://github.com/nrfconnect/ncs-serial-modem) repository and build from the Serial Modem application directory:
 
 ```shell
 west build -p -b nrf9151dk/nrf9151/ns -- \
@@ -167,6 +183,4 @@ west build -p -b nrf9151dk/nrf9151/ns -- \
   -DCONFIG_SM_LOG_LEVEL_DBG=y
 ```
 
-The `overlay-external-mcu.overlay` file routes Serial Modem to **uart2** on P0.02/P0.03 (TX/RX) and P0.06/P0.07 (RTS/CTS), with DTR/RI on P0.31/P0.30. Without this overlay, the modem listens on the USB VCOM UART instead — the host will see `init_chat_script: timed out`.
-
-See the [Serial Modem getting started guide](https://docs.nordicsemi.com/bundle/addon-serial_modem-latest/page/gsg_guide.html#building_and_running) for workspace setup and how to flash Serial Modem firmware on the nRF9151 / SMA DK.
+See the [Serial Modem getting started guide](https://docs.nordicsemi.com/bundle/addon-serial_modem-latest/page/gsg_guide.html#building_and_running) for workspace setup.

@@ -15,6 +15,12 @@ MERGED_HEX_PROGRAM_OPTIONS = (
     "verify=VERIFY_READ"
 )
 
+FULL_FLASH_PROGRAM_OPTIONS = (
+    "chip_erase_mode=ERASE_ALL,"
+    "ext_mem_erase_mode=ERASE_RANGES_TOUCHED_BY_FIRMWARE,"
+    "verify=VERIFY_READ"
+)
+
 
 def west_build(
     app_dir: Path,
@@ -78,10 +84,16 @@ def west_flash(app_dir: Path, serial: str, *, recover: bool = False) -> None:
     subprocess.run(command, cwd=app_dir, check=True, env=os.environ.copy())
 
 
-def flash_merged_hex(merged_hex: Path, serial: str, *, recover: bool = True) -> None:
-    """Flash a sysbuild merged.hex image with nrfutil."""
-    if not merged_hex.is_file():
-        raise FileNotFoundError(f"merged.hex not found: {merged_hex}")
+def flash_firmware_hex(
+    firmware_hex: Path,
+    serial: str,
+    *,
+    recover: bool = True,
+    program_options: str = MERGED_HEX_PROGRAM_OPTIONS,
+) -> None:
+    """Flash an Intel HEX image with nrfutil."""
+    if not firmware_hex.is_file():
+        raise FileNotFoundError(f"Firmware hex not found: {firmware_hex}")
 
     if recover:
         recover_cmd = ["nrfutil", "device", "recover", "--serial-number", serial]
@@ -93,15 +105,20 @@ def flash_merged_hex(merged_hex: Path, serial: str, *, recover: bool = True) -> 
         "device",
         "program",
         "--firmware",
-        str(merged_hex),
+        str(firmware_hex),
         "--serial-number",
         serial,
         "--options",
-        MERGED_HEX_PROGRAM_OPTIONS,
+        program_options,
     ]
-    logger.info("Flashing merged.hex to %s: %s", serial, " ".join(program_cmd))
+    logger.info("Flashing %s to %s: %s", firmware_hex.name, serial, " ".join(program_cmd))
     subprocess.run(program_cmd, check=True, env=os.environ.copy())
     nrfutil_reset(serial)
+
+
+def flash_merged_hex(merged_hex: Path, serial: str, *, recover: bool = True) -> None:
+    """Flash a sysbuild merged.hex image with nrfutil."""
+    flash_firmware_hex(merged_hex, serial, recover=recover)
 
 
 def flash_baseline_firmware(
