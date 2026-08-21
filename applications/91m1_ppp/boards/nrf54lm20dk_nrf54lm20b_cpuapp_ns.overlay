@@ -3,16 +3,22 @@
  *
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  *
- * nRF54LM20B DK + nRF9151 DK with nRF7002-EB2 on the P18 expansion header.
+ * nRF54LM20B DK + nRF9151 DK.
  *
- * Build with the nRF7002-EB2 shield enabled:
- *   west build -b nrf54lm20dk/nrf54lm20b/cpuapp/ns -p -- -DSHIELD=nrf7002eb2
+ * Default build (no shield):
+ *   west build -b nrf54lm20dk/nrf54lm20b/cpuapp/ns -p
  *
- * The shield moves the console to uart30 (VCOM0, P0.06/P0.07). The Serial Modem
- * link uses uart21 on P1.8–P1.9 (TX/RX, DK default) and P1.23–P1.24 (RTS/CTS).
- * DTR/RI/reset use P1.11/P1.12/P1.10 (conflict with DK default uart21 HWFC).
+ * Console uses the DK default (uart20 / VCOM1). Do not set zephyr,console here —
+ * the nRF7002-EB2 shield overlay must be able to reroute it to uart30.
  *
- * Disable VCOM1 in Board Configurator (required by the nRF7002-EB2 shield).
+ * The Serial Modem link uses uart21 on P1.8–P1.9 (TX/RX) and P1.23–P1.24
+ * (RTS/CTS). DTR/RI/reset use P1.11/P1.12/P1.10 (conflict with DK default
+ * uart21 HWFC).
+ *
+ * With nRF7002-EB2 on P18 (Wi-Fi location), pass -DSHIELD=nrf7002eb2; the
+ * shield overlay moves the console to uart30 (VCOM0). Disable VCOM1 in Board
+ * Configurator when the shield is attached.
+ *
  * Set matching VDD on both DKs (typically 1.8 V).
  *
  * Wiring: see doc/hardware-setup.md.

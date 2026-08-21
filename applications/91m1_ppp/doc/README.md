@@ -18,13 +18,15 @@ The application connects to nRF Cloud over **CoAP/DTLS** from the host MCU (nRF5
    west flash --recover
    ```
 
-   **nRF54LM20B DK** (with nRF7002-EB2 on P18):
+   **nRF54LM20B DK:**
 
    ```shell
    cd applications/91m1_ppp
-   west build -b nrf54lm20dk/nrf54lm20b/cpuapp/ns -p -- -DSHIELD=nrf7002eb2
+   west build -b nrf54lm20dk/nrf54lm20b/cpuapp/ns -p
    west flash --recover
    ```
+
+   For Wi-Fi location with the nRF7002-EB2 shield, see [Hardware setup — Wi-Fi location](hardware-setup.md#nrf54lm20b-dk--nrf7002-eb2-wi-fi-location).
 
 3. **Verify the host application boots** — Open a serial terminal on the host **console** port (see [Hardware setup](hardware-setup.md) for which VCOM to use on your board). Confirm the application starts and note the **Device ID** from the boot log:
 
@@ -80,7 +82,7 @@ The application connects to nRF Cloud over **CoAP/DTLS** from the host MCU (nRF5
    - `-s` saves generated PEM files (`<device_id>_crt.pem`, `<device_id>_prv.pem`, etc.) in the current directory.
    - `-d` deletes any existing credentials in sec tag 16842753 before installing new ones.
    - `--verify` confirms credentials were written correctly.
-   - `--port` selects the host console serial port (adjust for your OS; omit if auto-detection works). On nRF54LM20B, use **VCOM0** (primary port).
+   - `--port` selects the host console serial port (adjust for your OS; omit if auto-detection works). On nRF54LM20B, use **VCOM1** (secondary port); with the nRF7002-EB2 shield, use **VCOM0** instead.
 
    On success you should see:
 
@@ -150,7 +152,7 @@ See [Memfault remote debugging](memfault.md) for how to open the Memfault dashbo
 | Guide | Description |
 |-------|-------------|
 | [Application behavior](application-behavior.md) | Module architecture, cloud sync, FOTA, and Memfault at runtime |
-| [Hardware setup](hardware-setup.md) | Host + Serial Modem wiring (nRF54L15, nRF54LM20B + nRF7002-EB2), board configurator, Serial Modem firmware |
+| [Hardware setup](hardware-setup.md) | Host + Serial Modem wiring (nRF54L15, nRF54LM20B, optional nRF7002-EB2 for Wi-Fi location), board configurator, Serial Modem firmware |
 | [Memfault remote debugging](memfault.md) | Open Memfault from nRF Cloud, upload symbol files, view coredumps |
 
 ## References

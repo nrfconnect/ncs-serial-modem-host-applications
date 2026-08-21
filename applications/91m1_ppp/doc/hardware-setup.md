@@ -9,7 +9,8 @@ Supported host boards:
 | Host DK | Serial Modem wiring |
 |---|---|
 | [nRF54L15 DK](#nrf54l15-dk--nrf9151-dk) | P0 connector (uart30) |
-| [nRF54LM20B DK + nRF7002-EB2](#nrf54lm20b-dk--nrf7002-eb2--nrf9151-dk) | P1/P2 connector (uart21) |
+| [nRF54LM20B DK](#nrf54lm20b-dk--nrf9151-dk) | P1/P2 connector (uart21) |
+| [nRF54LM20B DK + nRF7002-EB2 (Wi-Fi location)](#nrf54lm20b-dk--nrf7002-eb2-wi-fi-location) | P1/P2 connector (uart21) |
 
 ## Board Configurator
 
@@ -62,22 +63,15 @@ Open a serial terminal on **VCOM1** (uart20 — the secondary USB serial port on
 
 ---
 
-## nRF54LM20B DK + nRF7002-EB2 + nRF9151 / SMA DK
+## nRF54LM20B DK + nRF9151 / SMA DK
 
-Development setup: **nRF54LM20B DK** with **nRF7002-EB II** (EB2) on the **P18 expansion header**, wired to **nRF9151 DK** or **nRF9151 SMA DK** (Serial Modem).
+Development setup: **nRF54LM20B DK** (host) wired to **nRF9151 DK** or **nRF9151 SMA DK** (Serial Modem).
 
-### nRF7002-EB2 mounting
-
-Mount the nRF7002-EB2 on the **P18 expansion header** on the nRF54LM20B DK. The expansion interface uses **P17** for GPIO/SPI signals and **P18** for 5 V power when the shield is plugged in.
-
-On the nRF54LM20B DK:
-
-- Disable **VCOM1** in Board Configurator (required by the nRF7002-EB2 shield — uart20 pins conflict with the expansion header).
-- Keep **VCOM0** enabled for the shell console (uart30 on P0.06/P0.07).
+On the nRF54LM20B DK, no Board Configurator changes are required — both VCOM ports stay enabled.
 
 ### Wiring
 
-The shield moves the host console to **uart30** (VCOM0). The Serial Modem link uses **uart21** on the P1 connector (P1.8/P1.9 for TX/RX, P1.23/P1.24 for RTS/CTS).
+The Serial Modem link uses **uart21** on the P1 connector (P1.8/P1.9 for TX/RX, P1.23/P1.24 for RTS/CTS).
 
 | nRF54LM20B DK | nRF9151 / SMA DK | Signal |
 |---|---|---|
@@ -102,7 +96,46 @@ The shield moves the host console to **uart30** (VCOM0). The Serial Modem link u
 
 ```shell
 cd applications/91m1_ppp
-west build -b nrf54lm20dk/nrf54lm20b/cpuapp/ns -p -- -DSHIELD=nrf7002eb2
+west build -b nrf54lm20dk/nrf54lm20b/cpuapp/ns -p
+```
+
+### Devicetree
+
+[`boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.overlay`](../boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.overlay)
+
+### Console
+
+Open a serial terminal on **VCOM1** (uart20 — the secondary USB serial port on the nRF54LM20B DK).
+
+Serial Modem logs appear on **VCOM1 of the nRF9151 / SMA DK** (uart1, P0.28/P0.29). Keep that terminal open alongside the host console when bringing up the link.
+
+---
+
+## nRF54LM20B DK + nRF7002-EB2 (Wi-Fi location)
+
+Development setup: **nRF54LM20B DK** with **nRF7002-EB II** (EB2) on the **P18 expansion header**, wired to **nRF9151 DK** or **nRF9151 SMA DK** (Serial Modem). Use this configuration only when building with Wi-Fi location support — the EB2 shield is not required for the base PPP application.
+
+### nRF7002-EB2 mounting
+
+Mount the nRF7002-EB2 on the **P18 expansion header** on the nRF54LM20B DK. The expansion interface uses **P17** for GPIO/SPI signals and **P18** for 5 V power when the shield is plugged in.
+
+On the nRF54LM20B DK:
+
+- Disable **VCOM1** in Board Configurator (required by the nRF7002-EB2 shield — uart20 pins conflict with the expansion header).
+- Keep **VCOM0** enabled for the shell console (uart30 on P0.06/P0.07).
+
+### Wiring
+
+The shield moves the host console to **uart30** (VCOM0). Serial Modem wiring is the same as the [plain nRF54LM20B setup](#wiring-1) above (uart21 on P1).
+
+### Build
+
+```shell
+cd applications/91m1_ppp
+west build -b nrf54lm20dk/nrf54lm20b/cpuapp/ns -p -- \
+  -DSHIELD=nrf7002eb2 \
+  -DEXTRA_CONF_FILE=overlay-location.conf \
+  -DSB_EXTRA_CONF_FILE=sysbuild-location.conf
 ```
 
 ### Devicetree
