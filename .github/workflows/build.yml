@@ -53,8 +53,6 @@ jobs:
           - app: 91m1_ppp
             board: nrf54lm20dk/nrf54lm20b/cpuapp/ns
             board_type: nrf54lm20b
-            extra_args: -- -DSHIELD=nrf7002eb2
-          # Wi-Fi location build flashed by the location hardware test.
           - app: 91m1_ppp
             board: nrf54lm20dk/nrf54lm20b/cpuapp/ns
             board_type: nrf54lm20b-location
@@ -68,7 +66,7 @@ jobs:
           - app: 93m1_at
             board: nrf93m1dk/nrf54l15/cpuapp/ns
             board_type: nrf93m1
-    name: Build ${{ matrix.app }} (${{ matrix.board }})
+    name: Build ${{ matrix.app }} [${{ matrix.board_type }}]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -90,7 +88,10 @@ jobs:
 
       - name: Build application
         working-directory: serial-modem-host-applications/applications/${{ matrix.app }}
-        run: west build -b ${{ matrix.board }} -p ${{ matrix.extra_args }}
+        run: |
+          echo "Flavor: ${{ matrix.board_type }}"
+          echo "Board:  ${{ matrix.board }}"
+          west build -b ${{ matrix.board }} -p ${{ matrix.extra_args }}
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v7
