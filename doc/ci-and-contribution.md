@@ -39,8 +39,9 @@ Hardware tests use three rigs on two self-hosted runners (see [`.github/test/tes
 | `91m1_ppp-provision-location-nrf54lm20b-nrf91` | `self-hosted-provisioning` | Location (`CI_NRF54LM20B_PROVISION_*`) | Recover flash, full onboard, then Wi-Fi location data |
 | `91m1_ppp-memfault-coredump-nrf54l15-nrf91` | `self-hosted-test` | Test (`CI_NRF54L15_*`) | Coredump (no re-provision) |
 | `91m1_ppp-application-fota-nrf54l15-nrf91` | `self-hosted-test` | Test (`CI_NRF54L15_*`) | FOTA (queued with coredump on same runner) |
+| `91m1_ppp-application-fota-nrf54lm20b-nrf91` | `self-hosted-provisioning` | Location (`CI_NRF54LM20B_PROVISION_*`) | FOTA (queued with provision jobs on same runner) |
 
-Provisioning runs in parallel with the first queued test job on the separate runners. Jobs sharing a runner run one at a time; GitHub queues whichever job does not get the runner first (coredump and FOTA on the test runner, the three provisioning jobs on the provisioning runner).
+Provisioning runs in parallel with the first queued test job on the separate runners. Jobs sharing a runner run one at a time; GitHub queues whichever job does not get the runner first (coredump and FOTA on the test runner; the three provisioning jobs plus LM20B FOTA on the provisioning runner).
 
 DUT 3 is an nRF54LM20B DK with an [nRF7002-EB2](../applications/91m1_ppp/doc/hardware-setup.md) shield, wired to an nRF91 Serial Modem. Both lm20b tests use host console **VCOM0** (uart30): `91m1_ppp-provision-nrf54lm20b-nrf91` flashes the plain `nrf54lm20b` build and runs `test_cloud_provision`; `91m1_ppp-provision-location-nrf54lm20b-nrf91` flashes the Wi-Fi location build and verifies Wi-Fi scan plus nRF Cloud ground-fix. Local run for plain provisioning:
 
@@ -68,7 +69,7 @@ Register runners with dedicated labels only. GitHub adds the default `self-hoste
 |--------|--------|---------|
 | `*-build-A/B/C` | `self-hosted-build` | Firmware builds, compliance, SonarCloud |
 | `*-host` | `self-hosted-test` | Coredump and FOTA on DUT 2 |
-| `*-prov` | `self-hosted-provisioning` | Provisioning on DUT 1 and DUT 3 |
+| `*-prov` | `self-hosted-provisioning` | Provisioning on DUT 1 and DUT 3, FOTA on DUT 3 |
 
 Example registration for the provisioning rig:
 
@@ -104,6 +105,8 @@ The test DUT must be provisioned once (manually or by running the provisioning f
 
 First-time setup for the test DUT (`CI_NRF54L15_*`): follow [91m1_ppp cloud provisioning](../applications/91m1_ppp/doc/README.md) steps 3–6 on that board, or run the provisioning test locally with `TEST_JSON` from `91m1_ppp-provision-nrf54l15-nrf91` while pointing the `CI_NRF54L15_PROVISION_*` variables at the test board (once only). Register the device in the shared Memfault cohort `ci-91m1-test-nrf54l15-nrf91` (used by both coredump and FOTA tests).
 
+The nRF54LM20B FOTA test reuses DUT 3 (`CI_NRF54LM20B_PROVISION_*`) on the provisioning runner. The device must reach cloud connect before CI; the test calls `ensure_provisioned()` on first run if credentials are missing, and assigns the DUT to Memfault cohort `ci-91m1-test-nrf54lm20b-nrf91` (separate from the provision cohort). When provision and FOTA run in the same CI batch, the FOTA test moves the device into the test cohort automatically.
+
 Memfault coredump tests connect to nRF Cloud, trigger `mflt test busfault` over the shell, and verify a new bus fault coredump for the device appears in the Memfault Traces REST API. "New" means newer than the device's newest coredump recorded before the fault, so the check does not depend on the device clock agreeing with the runner. A bus fault is used because TF-M traps HardFaults before Memfault's handler runs. Local run:
 
 ```shell
@@ -119,6 +122,14 @@ export REPO_ROOT=$PWD
 export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load 91m1_ppp-memfault-coredump-nrf54l15-nrf91)"
 PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_memfault/ -c tests/on_target/tests/pytest.ini -v
 export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load 91m1_ppp-application-fota-nrf54l15-nrf91)"
+PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_fota/ -c tests/on_target/tests/pytest.ini -v
+```
+
+Local run for nRF54LM20B FOTA (plain `nrf54lm20b` build, same DUT as provision tests):
+
+```shell
+export REPO_ROOT=$PWD
+export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load 91m1_ppp-application-fota-nrf54lm20b-nrf91)"
 PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_fota/ -c tests/on_target/tests/pytest.ini -v
 ```
 
