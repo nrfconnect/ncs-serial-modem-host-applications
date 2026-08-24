@@ -119,6 +119,7 @@ def test_application_fota_via_cloud_sync(
         session.ensure_provisioned(
             hardware_version=baseline_metadata["hardware_version"],
         )
+        ensure_cohort_exists(session.memfault_env)
         ensure_device_in_cohort(
             session.memfault_env,
             session.device_id,
@@ -131,8 +132,6 @@ def test_application_fota_via_cloud_sync(
         update_binary = signed_image_path(dut.app_dir, app_name)
         update_metadata = read_build_metadata(dut.app_dir, app_name)
         update_version = update_metadata["software_version"]
-
-        ensure_cohort_exists(session.memfault_env)
 
         logger.info("Upload and deploy Memfault OTA release before cloud connect")
         upload_mcu_symbols(
