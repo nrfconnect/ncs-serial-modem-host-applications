@@ -107,6 +107,8 @@ First-time setup for the test DUT (`CI_NRF54L15_*`): follow [91m1_ppp cloud prov
 
 The nRF54LM20B FOTA test reuses DUT 3 (`CI_NRF54LM20B_PROVISION_*`) on the provisioning runner. The device must reach cloud connect before CI; the test calls `ensure_provisioned()` on first run if credentials are missing, and assigns the DUT to Memfault cohort `ci-91m1-test-nrf54lm20b-nrf91` (separate from the provision cohort). When provision and FOTA run in the same CI batch, the FOTA test moves the device into the test cohort automatically.
 
+The nRF54LM20B build reports Memfault hardware version `smha-nrf54lm20dk` instead of the NCS default board name (see [`boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.conf`](../applications/91m1_ppp/boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.conf)). The shared Memfault project binds `nrf54lm20dk` to another software type, so OTA payloads for `smha-91m1` are rejected under that name.
+
 Memfault coredump tests connect to nRF Cloud, trigger `mflt test busfault` over the shell, and verify a new bus fault coredump for the device appears in the Memfault Traces REST API. "New" means newer than the device's newest coredump recorded before the fault, so the check does not depend on the device clock agreeing with the runner. A bus fault is used because TF-M traps HardFaults before Memfault's handler runs. Local run:
 
 ```shell
