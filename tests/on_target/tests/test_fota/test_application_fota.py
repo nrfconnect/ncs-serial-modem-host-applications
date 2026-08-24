@@ -19,6 +19,7 @@ from utils.memfault_ota import (
     deactivate_release,
     deploy_release,
     ensure_cohort_exists,
+    ensure_device_in_cohort,
     read_build_metadata,
     set_device_release_override,
     upload_mcu_symbols,
@@ -116,6 +117,11 @@ def test_application_fota_via_cloud_sync(
 
     try:
         session.ensure_provisioned(
+            hardware_version=baseline_metadata["hardware_version"],
+        )
+        ensure_device_in_cohort(
+            session.memfault_env,
+            session.device_id,
             hardware_version=baseline_metadata["hardware_version"],
         )
 
