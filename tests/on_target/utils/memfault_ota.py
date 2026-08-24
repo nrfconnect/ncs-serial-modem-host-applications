@@ -14,7 +14,6 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 
-from utils.app_version import memfault_software_versions_match
 from utils.helpers import assert_dut_device_id
 from utils.logger import get_logger
 
@@ -776,8 +775,8 @@ def wait_for_device_version(
             version,
             expected_version,
         )
-        if memfault_software_versions_match(expected_version, version):
-            return version or expected_version
+        if version == expected_version:
+            return version
         time.sleep(poll_interval)
 
     payload = get_device_payload(env, device_id)
