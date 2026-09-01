@@ -12,7 +12,10 @@ from utils.logger import get_logger
 logger = get_logger()
 
 ENABLE_LOGS_AT_COMMAND = "AT#XLOG=1"
-ENABLE_LOGS_SHELL_COMMAND = f'modem at "{ENABLE_LOGS_AT_COMMAND}"'
+# Reports the mode the modem believes it is in. Worth recording because Serial
+# Modem answers OK without touching the backend when the mode asked for already
+# matches the one it recorded, so an OK alone does not pin down the state.
+QUERY_LOGS_AT_COMMAND = "AT#XLOG?"
 
 # Responses from the in-tree `modem at` shell when the CMUX AT pipe is not
 # usable. CMUX runtime power save closes the pipe after the idle timeout, so
@@ -29,6 +32,7 @@ SHELL_MISSING_RESPONSE = "command not found"
 _ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;?]*[a-zA-Z]")
 _SHELL_PROMPT = re.compile(r"uart:~\$\s*")
 _OK_RESPONSE = re.compile(r"^OK\s*$", re.MULTILINE)
+_XLOG_STATE = re.compile(r"#XLOG:\s*(\d)")
 
 
 class _ShellCommandMissing(Exception):
@@ -44,24 +48,32 @@ def _readable(text: str) -> str:
     return _SHELL_PROMPT.sub("", _ANSI_ESCAPE.sub("", text))
 
 
-def _send_and_confirm(dut: types.SimpleNamespace, *, timeout: float) -> bool:
+def _send_at(
+    dut: types.SimpleNamespace, at_command: str, *, timeout: float
+) -> str | None:
+    """Run *at_command* through the host's `modem at` shell.
+
+    Returns the modem's response once it ends in `OK`, or None if the AT pipe is
+    unavailable or no verdict arrives within *timeout*.
+    """
+    shell_command = f'modem at "{at_command}"'
     offset = len(dut.uart.snapshot_log())
 
     try:
-        dut.uart.write_line(ENABLE_LOGS_SHELL_COMMAND)
+        dut.uart.write_line(shell_command)
     except (OSError, RuntimeError, TimeoutError) as exc:
         # OSError covers serial.SerialException from a closed or lost port.
-        logger.warning("Could not send %r: %s", ENABLE_LOGS_SHELL_COMMAND, exc)
-        return False
+        logger.warning("Could not send %r: %s", shell_command, exc)
+        return None
 
     deadline = time.monotonic() + timeout
     response = ""
     while time.monotonic() < deadline:
         tail = _readable(dut.uart.snapshot_log()[offset:])
         # Everything from the shell's echo onwards is the response to our command.
-        echo_index = tail.rfind(ENABLE_LOGS_AT_COMMAND)
+        echo_index = tail.rfind(at_command)
         if echo_index >= 0:
-            response = tail[echo_index + len(ENABLE_LOGS_AT_COMMAND):]
+            response = tail[echo_index + len(at_command):]
             if SHELL_MISSING_RESPONSE in response:
                 raise _ShellCommandMissing(
                     next(
@@ -72,18 +84,43 @@ def _send_and_confirm(dut: types.SimpleNamespace, *, timeout: float) -> bool:
                 )
             if any(text in response for text in PIPE_UNAVAILABLE_RESPONSES):
                 logger.debug("Serial Modem AT pipe unavailable: %s", response.strip())
-                return False
+                return None
             if _OK_RESPONSE.search(response):
-                return True
+                return response
         time.sleep(0.5)
 
     logger.debug(
         "No verdict for %s within %.0fs; response so far: %r",
-        ENABLE_LOGS_AT_COMMAND,
+        at_command,
         timeout,
         response.strip(),
     )
-    return False
+    return None
+
+
+def _log_reported_state(dut: types.SimpleNamespace, *, timeout: float) -> None:
+    """Record whether the modem itself considers logging active.
+
+    Purely diagnostic. It separates the two ways the modem log can come back
+    holding only boot output: state 0 means the enable did not stick, while
+    state 1 means the backend is on and the console path is where to look next.
+    """
+    response = _send_at(dut, QUERY_LOGS_AT_COMMAND, timeout=timeout)
+    if response is None:
+        logger.info("Serial Modem did not answer %s", QUERY_LOGS_AT_COMMAND)
+        return
+
+    match = _XLOG_STATE.search(response)
+    if match is None:
+        logger.info("Unparsed %s response: %r", QUERY_LOGS_AT_COMMAND, response.strip())
+    elif match.group(1) == "1":
+        logger.info("Serial Modem reports logging active (#XLOG: 1)")
+    else:
+        logger.warning(
+            "Serial Modem reports logging inactive (#XLOG: %s) despite acknowledging %s",
+            match.group(1),
+            ENABLE_LOGS_AT_COMMAND,
+        )
 
 
 def enable_modem_application_logs(
@@ -101,6 +138,9 @@ def enable_modem_application_logs(
     travels over the host's CMUX AT pipe, which only exists once the modem has
     attached, so call this after the host reports a cloud connection.
 
+    Once the modem acknowledges, ``AT#XLOG?`` records the state it reports, so a
+    console that stays silent can be attributed rather than guessed at.
+
     Returns True once the modem acknowledges. Modem logs are a diagnostic aid,
     so failure is warned about rather than raised: it must not fail a test whose
     functional assertions all pass.
@@ -110,7 +150,7 @@ def enable_modem_application_logs(
 
     for attempt in range(1, attempts + 1):
         try:
-            confirmed = _send_and_confirm(dut, timeout=timeout)
+            confirmed = _send_at(dut, ENABLE_LOGS_AT_COMMAND, timeout=timeout) is not None
         except _ShellCommandMissing as exc:
             logger.warning(
                 "Host firmware has no `modem at` shell command (%s); it predates "
@@ -121,6 +161,7 @@ def enable_modem_application_logs(
 
         if confirmed:
             logger.info("Serial Modem application logs enabled (%s)", ENABLE_LOGS_AT_COMMAND)
+            _log_reported_state(dut, timeout=timeout)
             return True
         if attempt < attempts:
             logger.info(
