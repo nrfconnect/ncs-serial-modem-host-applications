@@ -27,6 +27,7 @@ from utils.memfault_ota import (
     wait_for_cohort_release_deployed,
     wait_for_device_version,
 )
+from utils.modem_logs import enable_modem_application_logs
 from utils.uart import Uart
 
 logger = get_logger()
@@ -162,6 +163,7 @@ def test_application_fota_via_cloud_sync(
 
         logger.info("Wait for cloud connect and automatic FOTA via cloud sync")
         dut.uart.wait_for_substring(CLOUD_CONNECTED_LOG, timeout=CLOUD_CONNECT_TIMEOUT)
+        enable_modem_application_logs(dut)
         _wait_for_fota_log_after_cloud_connect(
             dut.uart,
             FOTA_DOWNLOAD_STARTING_LOG,
@@ -188,6 +190,8 @@ def test_application_fota_via_cloud_sync(
             after=FOTA_REBOOT_LOG,
             timeout=POST_REBOOT_CONNECT_TIMEOUT,
         )
+        # The host reboot pulsed modem nRESET, so AT#XLOG has to be reissued.
+        enable_modem_application_logs(dut)
         _assert_no_fota_redownload(dut.uart)
         wait_for_device_version(
             session.memfault_env,

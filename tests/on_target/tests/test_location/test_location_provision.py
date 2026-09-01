@@ -7,6 +7,7 @@ import pytest
 from utils.location_data import wait_for_wifi_location_sent
 from utils.logger import get_logger
 from utils.memfault_ota import read_build_metadata
+from utils.modem_logs import enable_modem_application_logs
 
 logger = get_logger()
 
@@ -38,6 +39,7 @@ def test_location_wifi_data_after_provisioning(
 
     logger.info("Verify cloud connect after provisioning")
     dut.uart.wait_for_substring(CLOUD_CONNECTED_LOG, timeout=CLOUD_CONNECT_TIMEOUT)
+    enable_modem_application_logs(dut)
 
     logger.info("Verify Wi-Fi location data is sent on cloud synchronization")
     access_points = wait_for_wifi_location_sent(

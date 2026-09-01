@@ -148,9 +148,24 @@ Every hardware test captures two consoles in parallel and uploads both in the `h
 
 When a test fails, the last 200 lines of both logs are also printed into the job log, so triage needs no artifact download.
 
-The Serial Modem console runs at **1000000 baud**, not the usual 115200, and `uart0` (VCOM0) is disabled by the external-MCU overlay so VCOM0 stays silent. Both facts come from the pinned bundle's `.dts` and are recorded in [`tests/on_target/ci/serial_modem_firmware.yml`](../tests/on_target/ci/serial_modem_firmware.yml) — re-check them when bumping the pinned release, because a mismatch produces an empty log rather than an error.
+#### Why the modem console needs `AT#XLOG=1`
 
-Modem capture also requires **VCOM1 enabled** in Board Configurator on the nRF9151 / SMA DK, which is the documented [hardware setup](../applications/91m1_ppp/doc/hardware-setup.md). The port is resolved from the rig's `CI_*_SERIAL_MODEM_SEGGER_SN`; set the matching `CI_*_SERIAL_MODEM_SERIAL_PORT` variable to pin it explicitly. Capture is best-effort and never fails a test: if the port cannot be resolved, or resolves but stays silent, the run logs a warning and continues with host logs only.
+Serial Modem prints its bootloader and application banners over `uart1` and then **suspends the log backend and the UART** to avoid the roughly 700 uA overhead of keeping it active. Without further action the modem log therefore stops after about 0.65 s of uptime and contains nothing from the phase a test actually exercises.
+
+`AT#XLOG=1` resumes it. The tests issue that command through the host's `modem at` shell once the host reports `Cloud connected`, so the modem console keeps logging for the rest of the test. Two consequences worth knowing:
+
+- The command needs the CMUX AT pipe, which only exists after the modem attaches, and which CMUX runtime power save closes again after its idle timeout. `enable_modem_application_logs()` therefore retries and confirms the modem replied `OK`, warning if it never succeeds.
+- Anything that reboots the host also pulses modem nRESET, which resets the modem and turns logging back off, so the command is reissued after each reboot (for example after a FOTA update is applied).
+
+#### Requirements and failure modes
+
+The Serial Modem console runs at **1000000 baud**, not the usual 115200 — it is sized for modem traces — and `uart0` (VCOM0) is disabled by the external-MCU overlay so VCOM0 stays silent. Both facts are recorded in [`tests/on_target/ci/serial_modem_firmware.yml`](../tests/on_target/ci/serial_modem_firmware.yml); re-check them when bumping the pinned release, because a baud mismatch produces an empty log rather than an error.
+
+Modem capture also requires **VCOM1 enabled** in Board Configurator on the nRF9151 / SMA DK, which is the documented [hardware setup](../applications/91m1_ppp/doc/hardware-setup.md). The port is resolved from the rig's `CI_*_SERIAL_MODEM_SEGGER_SN`; set the matching `CI_*_SERIAL_MODEM_SERIAL_PORT` variable to pin it explicitly.
+
+Capture starts immediately after the modem is programmed, so the boot that programming triggers is always recorded even on rigs where the host nRESET line is not wired. Everything here is best-effort and never fails a test: if the port cannot be resolved, stays silent, or the modem never accepts `AT#XLOG=1`, the run warns and continues with host logs only. Use those warnings to tell the cases apart — a completely empty `modem-serial.log` points at VCOM1 or the baud rate, while a log holding only boot output points at `AT#XLOG=1` not getting through.
+
+Full LTE and IP-level modem traces (`AT#XTRACE=1`) are a further step that the pinned release does not support: it needs Serial Modem rebuilt with `overlay-trace-backend-uart.conf`.
 
 ## Commit messages
 

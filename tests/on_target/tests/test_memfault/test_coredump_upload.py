@@ -12,6 +12,7 @@ from utils.memfault_ota import (
     wait_for_new_device_coredump,
 )
 from utils.flash_tools import elf_image_path
+from utils.modem_logs import enable_modem_application_logs
 from utils.shell import send_shell_command
 from utils.uart import Uart
 
@@ -79,6 +80,7 @@ def test_memfault_coredump_upload_via_cloud_sync(
         after=BOOT_BANNER_LOG,
         timeout=CLOUD_CONNECT_TIMEOUT,
     )
+    enable_modem_application_logs(dut)
     dut.uart.wait_for_substring_after(
         MEMFAULT_DATA_POSTED_LOG,
         after=CLOUD_CONNECTED_LOG,
