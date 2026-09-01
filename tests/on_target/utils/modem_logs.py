@@ -16,6 +16,11 @@ ENABLE_LOGS_AT_COMMAND = "AT#XLOG=1"
 # Modem answers OK without touching the backend when the mode asked for already
 # matches the one it recorded, so an OK alone does not pin down the state.
 QUERY_LOGS_AT_COMMAND = "AT#XLOG?"
+# IMEI of the modem the host is actually attached to. Compared against the IMEI
+# the captured console printed at boot, because a rig wired to a different
+# nRF91 DK than the configured SEGGER SN looks exactly like a modem that
+# acknowledges AT#XLOG=1 and then logs nothing.
+QUERY_IMEI_AT_COMMAND = "AT+CGSN=1"
 
 # Responses from the in-tree `modem at` shell when the CMUX AT pipe is not
 # usable. CMUX runtime power save closes the pipe after the idle timeout, so
@@ -33,6 +38,9 @@ _ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;?]*[a-zA-Z]")
 _SHELL_PROMPT = re.compile(r"uart:~\$\s*")
 _OK_RESPONSE = re.compile(r"^OK\s*$", re.MULTILINE)
 _XLOG_STATE = re.compile(r"#XLOG:\s*(\d)")
+_CGSN_IMEI = re.compile(r"\+CGSN:\s*\"?(\d{15})\"?")
+# Serial Modem prints this once during boot, before it suspends the console.
+_CONSOLE_IMEI = re.compile(r"IMEI:\s*(\d{15})")
 
 
 class _ShellCommandMissing(Exception):
@@ -112,6 +120,37 @@ def _reopen_modem_capture(dut: types.SimpleNamespace) -> None:
         logger.warning("Could not reopen the Serial Modem console: %s", exc)
 
 
+def _verify_captured_console(dut: types.SimpleNamespace, *, timeout: float) -> None:
+    """Check the captured console belongs to the modem the host is attached to.
+
+    Several nRF91 DKs sit on a CI runner, so a rig whose configured SEGGER SN
+    points at the wrong one is programmed and captured while the host talks to a
+    different board entirely. That reads as a modem which acknowledges
+    AT#XLOG=1 and then never logs, so compare identities rather than guess.
+    """
+    response = _send_at(dut, QUERY_IMEI_AT_COMMAND, timeout=timeout)
+    if response is None:
+        return
+
+    attached = _CGSN_IMEI.search(response)
+    captured = _CONSOLE_IMEI.search(dut.modem_uart.snapshot_log())
+    if attached is None or captured is None:
+        return
+
+    if attached.group(1) == captured.group(1):
+        logger.info("Captured console belongs to the attached modem (IMEI %s)", attached.group(1))
+        return
+
+    logger.error(
+        "Serial Modem console capture is on the wrong nRF91 DK: the host is attached to "
+        "IMEI %s but the captured console reports IMEI %s. The configured SEGGER SN "
+        "points at a different board, so its log holds only the boot triggered by "
+        "programming. Correct the rig's *_SERIAL_MODEM_SEGGER_SN variable.",
+        attached.group(1),
+        captured.group(1),
+    )
+
+
 def _log_reported_state(dut: types.SimpleNamespace, *, timeout: float) -> None:
     """Record whether the modem itself considers logging active.
 
@@ -152,8 +191,9 @@ def enable_modem_application_logs(
     travels over the host's CMUX AT pipe, which only exists once the modem has
     attached, so call this after the host reports a cloud connection.
 
-    Once the modem acknowledges, ``AT#XLOG?`` records the state it reports, so a
-    console that stays silent can be attributed rather than guessed at.
+    Once the modem acknowledges, ``AT#XLOG?`` records the state it reports and
+    ``AT+CGSN=1`` checks that the console being captured belongs to that same
+    modem, so a silent console can be attributed rather than guessed at.
 
     Returns True once the modem acknowledges. Modem logs are a diagnostic aid,
     so failure is warned about rather than raised: it must not fail a test whose
@@ -177,6 +217,7 @@ def enable_modem_application_logs(
             logger.info("Serial Modem application logs enabled (%s)", ENABLE_LOGS_AT_COMMAND)
             _reopen_modem_capture(dut)
             _log_reported_state(dut, timeout=timeout)
+            _verify_captured_console(dut, timeout=timeout)
             return True
         if attempt < attempts:
             logger.info(
