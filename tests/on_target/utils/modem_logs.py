@@ -98,6 +98,20 @@ def _send_at(
     return None
 
 
+def _reopen_modem_capture(dut: types.SimpleNamespace) -> None:
+    """Reopen the modem console now that the modem should be driving it again.
+
+    The modem holds that UART suspended from init until this point, and a
+    debugger's USB-serial bridge is not guaranteed to keep forwarding across a
+    gap that long. A fresh open costs nothing and removes the question.
+    Best-effort: modem logs must not fail a test.
+    """
+    try:
+        dut.modem_uart.reopen()
+    except (OSError, TimeoutError) as exc:
+        logger.warning("Could not reopen the Serial Modem console: %s", exc)
+
+
 def _log_reported_state(dut: types.SimpleNamespace, *, timeout: float) -> None:
     """Record whether the modem itself considers logging active.
 
@@ -161,6 +175,7 @@ def enable_modem_application_logs(
 
         if confirmed:
             logger.info("Serial Modem application logs enabled (%s)", ENABLE_LOGS_AT_COMMAND)
+            _reopen_modem_capture(dut)
             _log_reported_state(dut, timeout=timeout)
             return True
         if attempt < attempts:
