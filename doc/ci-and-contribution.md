@@ -156,10 +156,11 @@ Serial Modem prints its bootloader and application banners over `uart1` and then
 
 Resuming the UART is necessary but not sufficient, which is why tests flash a debug build (below). Log levels are build-time, and the release leaves every layer at `INF`, where the modem emits almost nothing while merely running — in practice only occasional events such as `dtr_uart: DTR deasserted`.
 
-Two further consequences worth knowing:
+Three further consequences worth knowing:
 
 - The command needs the CMUX AT pipe, which only exists after the modem attaches, and which CMUX runtime power save closes again after its idle timeout. `enable_modem_application_logs()` therefore retries and confirms the modem replied `OK`, warning if it never succeeds.
 - Anything that reboots the host also pulses modem nRESET, which resets the modem and turns logging back off, so the command is reissued after each reboot (for example after a FOTA update is applied).
+- Reissuing it only works if the image now running has the command. FOTA tests update to a *released* build, and one produced before `CONFIG_MODEM_AT_SHELL` was enabled answers `modem: command not found`, so those runs log a warning and their modem console holds nothing after the update. That resolves itself once a release containing the option exists.
 
 #### Requirements and failure modes
 
