@@ -75,7 +75,8 @@ def resolve_serial_modem_hex(*, root: Path | None = None) -> tuple[Path, bool]:
     """Return the image to flash, and whether it is the debug-logging build.
 
     Prefers the debug build: the released image logs almost nothing at runtime
-    even after AT#XLOG=1, because SM_LOG_LEVEL is build-time.
+    even after AT#XLOG=1, because log levels are build-time and it leaves every
+    layer at INF.
     """
     debug_hex = serial_modem_debug_hex(root)
     if debug_hex is not None:
@@ -87,7 +88,7 @@ def flash_serial_modem_firmware(segger_sn: str, *, root: Path | None = None) -> 
     """Program the Serial Modem image on the nRF9151 / SMA DK."""
     hex_path, is_debug_build = resolve_serial_modem_hex(root=root)
     if is_debug_build:
-        logger.info("Using Serial Modem debug-logging build (SM_LOG_LEVEL_DBG)")
+        logger.info("Using Serial Modem debug-logging build (sm + dtr_uart + cmux at DBG)")
     else:
         logger.warning(
             "No Serial Modem debug build found; flashing the pinned release, whose "

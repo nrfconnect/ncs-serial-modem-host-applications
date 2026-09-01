@@ -170,7 +170,7 @@ Extract the zip and flash `serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.hex` on
 nrfutil device program --firmware serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.hex --recover
 ```
 
-The same bundle is attached to every [SMHA release](../../../doc/release-artifacts.md#serial-modem-firmware-nrf9151-dk). CI on-target tests flash this image automatically before each 91m1 run.
+The same bundle is attached to every [SMHA release](../../../doc/release-artifacts.md#serial-modem-firmware-nrf9151-dk). CI on-target tests flash a debug-logging build of the same revision before each 91m1 run, falling back to this bundle when that build is unavailable — see [Serial logs](../../../doc/ci-and-contribution.md#serial-logs).
 
 ### Building Serial Modem from source (optional)
 
@@ -180,7 +180,12 @@ To match an unreleased Serial Modem commit, check out the desired revision in th
 west build -p -b nrf9151dk/nrf9151/ns -- \
   -DEXTRA_CONF_FILE="overlay-ppp.conf;overlay-cmux.conf" \
   -DEXTRA_DTC_OVERLAY_FILE="overlay-external-mcu.overlay" \
-  -DCONFIG_SM_LOG_LEVEL_DBG=y
+  -DCONFIG_SM_LOG_LEVEL_DBG=y \
+  -DCONFIG_DTR_UART_LOG_LEVEL_DBG=y \
+  -DCONFIG_MODEM_MODULES_LOG_LEVEL_DBG=y \
+  -DCONFIG_LOG_BUFFER_SIZE=16384
 ```
+
+The three `_LOG_LEVEL_DBG` options cover separate layers: the Serial Modem application, the UART link to the host, and CMUX. Raising only `SM_LOG_LEVEL` leaves the link and CMUX quiet, which matters because those are what report a stalled transfer. Revisions after `v2.0.0-preview2` drop the `overlay-` filename prefix, so use `ppp.conf`, `cmux.conf`, and `external-mcu.overlay` there.
 
 See the [Serial Modem getting started guide](https://docs.nordicsemi.com/bundle/addon-serial_modem-latest/page/gsg_guide.html#building_and_running) for workspace setup.
