@@ -31,6 +31,8 @@ class Uart:
         self.log = ""
         self.whole_log = ""
         self._log_lock = threading.Lock()
+        self._serial: serial.Serial | None = None
+        self._serial_open = threading.Event()
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._reader, daemon=True)
         self._watchdog = threading.Timer(timeout, self._timeout_stop)
@@ -67,6 +69,9 @@ class Uart:
                     ser.in_waiting,
                 )
                 ser.reset_input_buffer()
+
+            self._serial = ser
+            self._serial_open.set()
 
             line = ""
             while not self._stop.is_set():
@@ -139,12 +144,32 @@ class Uart:
             f"{needle!r} after {after!r}"
         )
 
+    def write_line(self, text: str, *, timeout: float = 30.0) -> None:
+        """Write *text* plus CRLF to the captured port, without pausing capture.
+
+        Lets a test drive the Zephyr shell while the log keeps streaming, so
+        waits that already matched earlier output stay valid.
+        """
+        if not self._serial_open.wait(timeout):
+            raise TimeoutError(
+                f"Timed out after {timeout:.0f}s waiting for {self.port} to open"
+            )
+
+        ser = self._serial
+        if ser is None:
+            raise RuntimeError(f"Capture on {self.port} is no longer running")
+
+        ser.write(f"{text}\r\n".encode("utf-8"))
+        ser.flush()
+
     def stop(self) -> None:
         self._watchdog.cancel()
         self._stop.set()
         self._thread.join(timeout=5)
         if self._thread.is_alive():
             logger.warning("UART reader thread did not stop within timeout")
+        self._serial_open.clear()
+        self._serial = None
 
     def _timeout_stop(self) -> None:
         logger.error("UART capture timed out on %s", self.port)

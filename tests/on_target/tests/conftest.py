@@ -54,16 +54,39 @@ def _prepare_serial_log() -> None:
         log_path.write_text("", encoding="utf-8")
 
 
-def _flash_serial_modem_if_configured(test_config: dict) -> None:
+def _start_modem_capture(test_config: dict) -> tuple[Uart | None, str | None]:
+    modem_serial_port = resolve_modem_serial_port(test_config)
+    if not modem_serial_port:
+        return None, None
+
+    baudrate = serial_modem_console_baudrate()
+    logger.info(
+        "Capturing Serial Modem logs from %s at %d baud",
+        modem_serial_port,
+        baudrate,
+    )
+    modem_uart = Uart(modem_serial_port, log_path=MODEM_SERIAL_LOG, baudrate=baudrate)
+    return modem_uart, modem_serial_port
+
+
+def _flash_serial_modem_if_configured(
+    test_config: dict,
+) -> tuple[Uart | None, str | None]:
     serial_modem = test_config.get("serial_modem")
     if not serial_modem:
-        return
+        return None, None
 
     segger_var = serial_modem["segger_sn_var"]
     segger_sn = os.environ[segger_var]
     logger.info("Step 0/4 - Flash Serial Modem firmware on nRF9151 DK (%s)", segger_sn)
     flash_serial_modem_firmware(segger_sn)
+
+    # Capture starts before the settle delay so the boot that programming
+    # triggers is recorded. Later boots come from the host pulsing modem
+    # nRESET, which not every rig has wired.
+    modem_capture = _start_modem_capture(test_config)
     time.sleep(2)
+    return modem_capture
 
 
 def _prepare_baseline_firmware(
@@ -73,7 +96,7 @@ def _prepare_baseline_firmware(
 ) -> types.SimpleNamespace:
     segger_sn, board, app_dir = _hardware_context(test_config)
     _prepare_serial_log()
-    _flash_serial_modem_if_configured(test_config)
+    modem_uart, modem_serial_port = _flash_serial_modem_if_configured(test_config)
 
     app_name = test_config["app"]
     prebuilt_metadata = None
@@ -122,24 +145,6 @@ def _prepare_baseline_firmware(
     time.sleep(2)
     serial_port = resolve_serial_port(test_config)
     uart = Uart(serial_port, log_path=SERIAL_LOG)
-
-    # The host pulses modem nRESET on boot, so starting modem capture before the
-    # host reset also captures the Serial Modem reboot.
-    modem_uart = None
-    modem_serial_port = resolve_modem_serial_port(test_config)
-    if modem_serial_port:
-        modem_baudrate = serial_modem_console_baudrate()
-        logger.info(
-            "Capturing Serial Modem logs from %s at %d baud",
-            modem_serial_port,
-            modem_baudrate,
-        )
-        modem_uart = Uart(
-            modem_serial_port,
-            log_path=MODEM_SERIAL_LOG,
-            baudrate=modem_baudrate,
-        )
-
     nrfutil_reset(segger_sn)
 
     return types.SimpleNamespace(
