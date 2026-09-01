@@ -167,7 +167,13 @@ The Serial Modem console runs at **1000000 baud**, not the usual 115200 — it i
 
 Modem capture also requires **VCOM1 enabled** in Board Configurator on the nRF9151 / SMA DK, which is the documented [hardware setup](../applications/91m1_ppp/doc/hardware-setup.md). The port is resolved from the rig's `CI_*_SERIAL_MODEM_SEGGER_SN`; set the matching `CI_*_SERIAL_MODEM_SERIAL_PORT` variable to pin it explicitly.
 
-Capture starts immediately after the modem is programmed, so the boot that programming triggers is always recorded even on rigs where the host nRESET line is not wired. Everything here is best-effort and never fails a test: if the port cannot be resolved, stays silent, or the modem never accepts `AT#XLOG=1`, the run warns and continues with host logs only. Use those warnings to tell the cases apart — a completely empty `modem-serial.log` points at VCOM1 or the baud rate, while a log holding only boot output points at `AT#XLOG=1` not getting through.
+Capture starts immediately after the modem is programmed, so the boot that programming triggers is always recorded even on rigs where the host nRESET line is not wired. Everything here is best-effort and never fails a test: if the port cannot be resolved, stays silent, or the modem never accepts `AT#XLOG=1`, the run warns and continues with host logs only. Use those warnings to tell the cases apart — a completely empty `modem-serial.log` points at VCOM1 or the baud rate, while a log holding only boot output means either `AT#XLOG=1` never got through or the captured board is not the one the host is talking to, which the next section covers.
+
+#### The wrong nRF91 DK
+
+Several nRF91 DKs share a runner, so a rig whose `CI_*_SERIAL_MODEM_SEGGER_SN` names the wrong board is the hardest failure to spot: nothing errors. That board is programmed and captured while the host talks to a different one, so the log holds the boot that programming triggered and then nothing. `AT#XLOG=1` is still acknowledged and `AT#XLOG?` still reads back `1`, because both travel over the host's CMUX pipe to the board actually attached, and the test passes because that board does the work. Two nRF54L15 rigs had their SEGGER SNs swapped this way, which is why they never logged past boot while the nRF54LM20 rig did.
+
+Identities are therefore compared rather than assumed. `AT+CGSN=1` gives the IMEI of the modem the host is attached to, Serial Modem prints its own IMEI during boot before suspending the console, and a mismatch logs an error naming both IMEIs and the variable to correct. When that fires, find the right serial number by matching the IMEI the host reports against the boot output each candidate DK produces.
 
 #### Serial Modem debug build
 
