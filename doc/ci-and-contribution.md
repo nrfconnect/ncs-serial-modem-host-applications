@@ -154,7 +154,7 @@ Serial Modem prints its bootloader and application banners over `uart1` and then
 
 `AT#XLOG=1` resumes it, and the tests issue that command through the host's `modem at` shell once the host reports `Cloud connected`.
 
-Be aware of what this does and does not buy you. Resuming the UART is necessary but not sufficient: at the pinned release's default `CONFIG_SM_LOG_LEVEL_INF`, Serial Modem emits almost nothing while simply running. In practice the resumed console adds only occasional events such as `dtr_uart: DTR deasserted`. Diagnosing modem-side behaviour during a transfer needs Serial Modem rebuilt with `CONFIG_SM_LOG_LEVEL_DBG=y`, which the pinned prebuilt release cannot provide.
+Resuming the UART is necessary but not sufficient, which is why tests flash a debug build (below): `SM_LOG_LEVEL` is build-time, and at the release's default `INF` the modem emits almost nothing while merely running — in practice only occasional events such as `dtr_uart: DTR deasserted`.
 
 Two further consequences worth knowing:
 
@@ -169,7 +169,22 @@ Modem capture also requires **VCOM1 enabled** in Board Configurator on the nRF91
 
 Capture starts immediately after the modem is programmed, so the boot that programming triggers is always recorded even on rigs where the host nRESET line is not wired. Everything here is best-effort and never fails a test: if the port cannot be resolved, stays silent, or the modem never accepts `AT#XLOG=1`, the run warns and continues with host logs only. Use those warnings to tell the cases apart — a completely empty `modem-serial.log` points at VCOM1 or the baud rate, while a log holding only boot output points at `AT#XLOG=1` not getting through.
 
-Full LTE and IP-level modem traces (`AT#XTRACE=1`) are a further step that the pinned release does not support: it needs Serial Modem rebuilt with `overlay-trace-backend-uart.conf`.
+#### Serial Modem debug build
+
+Because verbosity is build-time, hardware tests do not flash the released image. [`scripts/ci/build_serial_modem.sh`](../scripts/ci/build_serial_modem.sh) builds the Serial Modem application from source with `CONFIG_SM_LOG_LEVEL_DBG=y`, using the same board and overlays as the pinned release's extmcu variant. The Build workflow publishes it as the `firmware-serial-modem-dbg` artifact; a standalone `workflow_dispatch` Test run has no such artifact and builds it in the test job instead. If neither is present — a local run, say — tests fall back to the pinned release and log a warning saying the console will be near-silent.
+
+Source for that build comes from the `serial-modem` west project. It sits in a **disabled west group**, because it is a Zephyr module and fetching it would add its include path and CMake subdirectories to every application build. Only the build script enables the group, and it restores the previous filter afterwards so a shared runner's workspace is left as it was.
+
+To move to a different Serial Modem version, bump the tag in **both** places:
+
+| File | Field | Used for |
+|------|-------|----------|
+| [`west.yml`](../west.yml) | `serial-modem` project `revision` | Source of the debug build that tests flash |
+| [`tests/on_target/ci/serial_modem_firmware.yml`](../tests/on_target/ci/serial_modem_firmware.yml) | `release`, `bundle`, `hex`, `download_url` | Prebuilt bundle attached to SMHA releases, and the fallback image |
+
+The build script compares the two and fails with an explicit message if they drift, so a half-finished bump cannot pass silently. Also re-check `console_baudrate` when bumping, since a mismatch yields an empty log rather than an error.
+
+Full LTE and IP-level modem traces (`AT#XTRACE=1`) are a further step still: that needs `overlay-trace-backend-uart.conf` added to the build, and a trace database to decode the result.
 
 ## Commit messages
 

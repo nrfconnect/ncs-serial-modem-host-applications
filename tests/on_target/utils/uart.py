@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 from __future__ import annotations
 
+import codecs
 import threading
 import time
 from pathlib import Path
@@ -39,13 +40,17 @@ class Uart:
         self._thread.start()
         self._watchdog.start()
 
-    def _append_line(self, line: str) -> None:
+    def _append_lines(self, lines: list[str]) -> None:
+        if not lines:
+            return
+
+        blob = "".join(line + "\n" for line in lines)
         with self._log_lock:
-            self.log = self.log + "\n" + line
-            self.whole_log = self.whole_log + "\n" + line
+            self.log += blob
+            self.whole_log += blob
         if self.log_path is not None:
             with self.log_path.open("a", encoding="utf-8", errors="replace") as log_file:
-                log_file.write(line + "\n")
+                log_file.write(blob)
                 log_file.flush()
 
     def snapshot_log(self) -> str:
@@ -73,10 +78,16 @@ class Uart:
             self._serial = ser
             self._serial_open.set()
 
-            line = ""
+            # Buffers a character whose bytes straddle two reads, which a plain
+            # bytes.decode() per read would turn into replacement characters.
+            decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+            pending = ""
             while not self._stop.is_set():
                 try:
-                    data = ser.read(1)
+                    # Drain whatever is buffered. One syscall per byte cannot
+                    # keep up with the modem console at 1 Mbaud once debug
+                    # logging is on, and the kernel buffer then overflows.
+                    data = ser.read(max(ser.in_waiting, 1))
                 except serial.SerialException as exc:
                     logger.error("Serial read failed on %s: %s", self.port, exc)
                     time.sleep(0.5)
@@ -85,17 +96,11 @@ class Uart:
                 if not data:
                     continue
 
-                try:
-                    char = data.decode("utf-8")
-                except UnicodeDecodeError:
-                    continue
+                pending += decoder.decode(data)
 
-                line += char
-                if char != "\n":
-                    continue
-
-                self._append_line(line.strip())
-                line = ""
+                lines = pending.split("\n")
+                pending = lines.pop()
+                self._append_lines([line.strip() for line in lines])
 
     def wait_for_substring(
         self,
