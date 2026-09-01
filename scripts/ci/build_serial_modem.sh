@@ -5,10 +5,14 @@
 # Build a Serial Modem image with debug logging for on-target tests.
 #
 # The released image logs almost nothing once running: it suspends its log
-# backend after init, and even with AT#XLOG=1 the default SM_LOG_LEVEL_INF
-# emits next to no runtime detail. CONFIG_SM_LOG_LEVEL_DBG is build-time only,
-# hence this build. Configuration matches the pinned release's extmcu variant
-# (see applications/91m1_ppp/doc/hardware-setup.md).
+# backend after init, and the levels below are build-time only, hence this build.
+# Configuration matches the pinned release's extmcu variant (see
+# applications/91m1_ppp/doc/hardware-setup.md).
+#
+# Verbosity is per layer, and SM_LOG_LEVEL only reaches the application's own
+# sm_* modules, which log on state changes and so stay silent through a steady
+# transfer. The host link and CMUX carry their own levels, and those are the ones
+# that narrate a stall.
 #
 # Usage: build_serial_modem.sh [output_dir]
 #
@@ -64,13 +68,36 @@ west update --narrow -o=--depth=1 "$PROJECT"
 app_dir="$(west topdir)/$(west list -f '{path}' "$PROJECT")/app"
 build_dir="$REPO_ROOT/build/serial-modem-dbg-build"
 
-echo "Building Serial Modem $manifest_revision for $BOARD with SM_LOG_LEVEL_DBG"
+# Serial Modem dropped the `overlay-` prefix after v2.0.0-preview2, so accept
+# either spelling and say which names were tried, rather than failing later as a
+# CMake error about a missing file.
+resolve_overlay() {
+	local name="$1" candidate
+	for candidate in "overlay-$name" "$name"; do
+		if [ -f "$app_dir/$candidate" ]; then
+			printf '%s' "$candidate"
+			return 0
+		fi
+	done
+	echo "Found neither 'overlay-$name' nor '$name' in $app_dir." \
+		"The Serial Modem overlay may have been renamed again; update this script." >&2
+	return 1
+}
+
+ppp_conf="$(resolve_overlay ppp.conf)"
+cmux_conf="$(resolve_overlay cmux.conf)"
+extmcu_overlay="$(resolve_overlay external-mcu.overlay)"
+
+echo "Building Serial Modem $manifest_revision for $BOARD with debug logging"
 west build -p -b "$BOARD" -d "$build_dir" "$app_dir" -- \
-	-DEXTRA_CONF_FILE="overlay-ppp.conf;overlay-cmux.conf" \
-	-DEXTRA_DTC_OVERLAY_FILE="overlay-external-mcu.overlay" \
-	-DCONFIG_SM_LOG_LEVEL_DBG=y
+	-DEXTRA_CONF_FILE="$ppp_conf;$cmux_conf" \
+	-DEXTRA_DTC_OVERLAY_FILE="$extmcu_overlay" \
+	-DCONFIG_SM_LOG_LEVEL_DBG=y \
+	-DCONFIG_DTR_UART_LOG_LEVEL_DBG=y \
+	-DCONFIG_MODEM_MODULES_LOG_LEVEL_DBG=y \
+	-DCONFIG_LOG_BUFFER_SIZE=16384
 
 mkdir -p "$OUTPUT_DIR"
 cp "$build_dir/merged.hex" "$OUTPUT_DIR/merged.hex"
 printf '%s\n' "$manifest_revision" > "$OUTPUT_DIR/revision.txt"
-echo "Wrote $OUTPUT_DIR/merged.hex ($manifest_revision, SM_LOG_LEVEL_DBG)"
+echo "Wrote $OUTPUT_DIR/merged.hex ($manifest_revision, DBG for sm + dtr_uart + cmux)"
