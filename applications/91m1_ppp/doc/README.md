@@ -140,6 +140,18 @@ CoAP authentication uses a JWT signed with the installed private key. Only the *
 | FOTA download `Failed to create socket, errno 12` while cloud is connected | The CoAP cloud session and the FOTA CoAP downloader each need a DTLS context. Ensure `CONFIG_NET_SOCKETS_TLS_MAX_CONTEXTS` is at least **2** and increase `CONFIG_MBEDTLS_HEAP_SIZE` if needed (see `93m1_ppp/prj.conf`) |
 | Boot loop (~6 s) | Usually a hard fault from stack overflow. Increase `CONFIG_APP_CLOUD_THREAD_STACK_SIZE` (default 10240) if cloud connect faults; keep `CONFIG_MODEM_DEDICATED_WORKQUEUE=y`. To capture the fault, temporarily set `CONFIG_RESET_ON_FATAL_ERROR=n` and check for `fatal_error: Resetting system` or stack traces |
 | `device_credentials_installer` cannot connect | Confirm the shell prompt (`uart:~$`) is visible on the selected serial port |
+| Serial Modem console silent after its boot banners | Expected: Serial Modem suspends its log UART after init. Run `modem at "AT#XLOG=1"` to resume it (see below) |
+
+### Reaching Serial Modem AT commands
+
+`CONFIG_MODEM_AT_SHELL` exposes the modem's AT interface over the host shell using the CMUX user pipe, for Serial Modem commands that have no host-side equivalent:
+
+```shell
+uart:~$ modem at "AT#XLOG=1"
+OK
+```
+
+This is how you get Serial Modem logs during operation. The modem prints its bootloader and application banners over VCOM1 at 1000000 baud and then suspends the log backend and the UART, so the console stays silent until `AT#XLOG=1` resumes it. Note that the pipe only exists once the modem has attached, CMUX runtime power save closes it again when idle (the command then answers `modem is not ready`, so retry), and any host reboot resets the modem and turns logging back off.
 
 ## Memfault
 
