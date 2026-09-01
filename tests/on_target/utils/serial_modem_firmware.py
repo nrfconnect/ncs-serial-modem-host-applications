@@ -22,6 +22,12 @@ def load_serial_modem_firmware_config(root: Path | None = None) -> dict:
     return yaml.safe_load(config_path.read_text(encoding="utf-8"))
 
 
+def serial_modem_console_baudrate(root: Path | None = None) -> int:
+    """Baud rate of the pinned Serial Modem console (uart1), not the usual 115200."""
+    config = load_serial_modem_firmware_config(root)
+    return int(config["console_baudrate"])
+
+
 def serial_modem_cache_dir(config: dict, *, root: Path | None = None) -> Path:
     repo_root = root or REPO_ROOT
     return repo_root / "build" / "serial-modem-firmware" / config["release"]

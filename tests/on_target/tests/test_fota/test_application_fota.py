@@ -55,17 +55,16 @@ FOTA_DIAGNOSTIC_MARKERS = (
 
 
 def _log_fota_timeout_diagnostics(uart: Uart, needle: str) -> None:
-    """Log serial-log hints when a FOTA wait times out."""
+    """Log FOTA-specific serial-log hints when a wait times out.
+
+    Host and modem log tails are printed for every failing test by the
+    pytest_runtest_makereport hook in conftest.
+    """
     logger.error("Timed out waiting for serial log line containing %r", needle)
     captured = uart.snapshot_log()
     for marker in FOTA_DIAGNOSTIC_MARKERS:
         if marker in captured:
             logger.error("Serial log contains diagnostic marker: %r", marker)
-    tail = captured.splitlines()[-20:]
-    if tail:
-        logger.error("Last %d serial log lines before timeout:", len(tail))
-        for line in tail:
-            logger.error("%s", line)
 
 
 def _assert_no_fota_redownload(uart: Uart) -> None:

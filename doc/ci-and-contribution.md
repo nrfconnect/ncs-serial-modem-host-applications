@@ -137,6 +137,21 @@ PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_fota/ -c tests/on_t
 
 Set `NRF_CLOUD_*`, `MEMFAULT_*`, and the host plus Serial Modem `CI_NRF54L15_*` / `CI_NRF54L15_PROVISION_*` / `CI_NRF54LM20B_PROVISION_*` variables/secrets documented in [`.github/workflows/test.yml`](../.github/workflows/test.yml).
 
+### Serial logs
+
+Every hardware test captures two consoles in parallel and uploads both in the `hardware-serial-log-{test_id}-{run_id}` artifact:
+
+| File | Source |
+|------|--------|
+| `hardware-serial.log` | Host DK console (VCOM1 on nRF54L15, VCOM0 on nRF54LM20B) |
+| `modem-serial.log` | Serial Modem console on the nRF9151 / SMA DK (uart1, **VCOM1**, **1000000 baud**) |
+
+When a test fails, the last 200 lines of both logs are also printed into the job log, so triage needs no artifact download.
+
+The Serial Modem console runs at **1000000 baud**, not the usual 115200, and `uart0` (VCOM0) is disabled by the external-MCU overlay so VCOM0 stays silent. Both facts come from the pinned bundle's `.dts` and are recorded in [`tests/on_target/ci/serial_modem_firmware.yml`](../tests/on_target/ci/serial_modem_firmware.yml) — re-check them when bumping the pinned release, because a mismatch produces an empty log rather than an error.
+
+Modem capture also requires **VCOM1 enabled** in Board Configurator on the nRF9151 / SMA DK, which is the documented [hardware setup](../applications/91m1_ppp/doc/hardware-setup.md). The port is resolved from the rig's `CI_*_SERIAL_MODEM_SEGGER_SN`; set the matching `CI_*_SERIAL_MODEM_SERIAL_PORT` variable to pin it explicitly. Capture is best-effort and never fails a test: if the port cannot be resolved, or resolves but stays silent, the run logs a warning and continues with host logs only.
+
 ## Commit messages
 
 We use a title format that combines [Conventional Commits](https://www.conventionalcommits.org/) semver types with [Zephyr-style](https://docs.zephyrproject.org/latest/contribute/guidelines.html#commit-guidelines) subsystem prefixes:
