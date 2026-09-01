@@ -16,7 +16,10 @@ from utils.app_version import (
     resolve_fota_versions,
     write_app_version,
 )
-from utils.serial_modem_firmware import flash_serial_modem_firmware
+from utils.serial_modem_firmware import (
+    flash_serial_modem_firmware,
+    serial_modem_console_baudrate,
+)
 from utils.flash_tools import (
     flash_baseline_firmware,
     nrfutil_reset,
@@ -25,10 +28,10 @@ from utils.flash_tools import (
 )
 from utils.dut_lifecycle import CloudDutSession
 from utils.memfault_ota import read_build_metadata
-from utils.helpers import REPO_ROOT, SERIAL_LOG, load_test_config
+from utils.helpers import MODEM_SERIAL_LOG, REPO_ROOT, SERIAL_LOG, load_test_config
 from utils.logger import get_logger
 from utils.provisioning_config import flash_recover_enabled, nrf_cloud_cleanup_enabled
-from utils.serial_port import resolve_serial_port
+from utils.serial_port import resolve_modem_serial_port, resolve_serial_port
 from utils.uart import Uart
 
 logger = get_logger()
@@ -46,8 +49,9 @@ def _hardware_context(test_config: dict) -> tuple[str, str, Path]:
 
 
 def _prepare_serial_log() -> None:
-    SERIAL_LOG.parent.mkdir(parents=True, exist_ok=True)
-    SERIAL_LOG.write_text("", encoding="utf-8")
+    for log_path in (SERIAL_LOG, MODEM_SERIAL_LOG):
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        log_path.write_text("", encoding="utf-8")
 
 
 def _flash_serial_modem_if_configured(test_config: dict) -> None:
@@ -118,17 +122,57 @@ def _prepare_baseline_firmware(
     time.sleep(2)
     serial_port = resolve_serial_port(test_config)
     uart = Uart(serial_port, log_path=SERIAL_LOG)
+
+    # The host pulses modem nRESET on boot, so starting modem capture before the
+    # host reset also captures the Serial Modem reboot.
+    modem_uart = None
+    modem_serial_port = resolve_modem_serial_port(test_config)
+    if modem_serial_port:
+        modem_baudrate = serial_modem_console_baudrate()
+        logger.info(
+            "Capturing Serial Modem logs from %s at %d baud",
+            modem_serial_port,
+            modem_baudrate,
+        )
+        modem_uart = Uart(
+            modem_serial_port,
+            log_path=MODEM_SERIAL_LOG,
+            baudrate=modem_baudrate,
+        )
+
     nrfutil_reset(segger_sn)
 
     return types.SimpleNamespace(
         uart=uart,
+        modem_uart=modem_uart,
         segger_sn=segger_sn,
         serial_port=serial_port,
+        modem_serial_port=modem_serial_port,
         app_dir=app_dir,
         board=board,
         serial_log=SERIAL_LOG,
+        modem_serial_log=MODEM_SERIAL_LOG,
         baseline_version=baseline_semver,
     )
+
+
+def _stop_capture(request: pytest.FixtureRequest, dut: types.SimpleNamespace) -> None:
+    dut.uart.stop()
+    request.node.user_properties.append(("serial_log", str(SERIAL_LOG)))
+    if dut.modem_uart is None:
+        return
+
+    dut.modem_uart.stop()
+    request.node.user_properties.append(("modem_serial_log", str(MODEM_SERIAL_LOG)))
+    if not MODEM_SERIAL_LOG.stat().st_size:
+        # Passing tests would otherwise hide a broken capture: a silent port
+        # (wrong VCOM, or VCOM1 disabled in Board Configurator) reads as success.
+        logger.warning(
+            "Serial Modem capture on %s produced no output; check that VCOM1 is "
+            "enabled on the nRF9151 / SMA DK and that the console baud rate in "
+            "tests/on_target/ci/serial_modem_firmware.yml matches the release",
+            dut.modem_serial_port,
+        )
 
 
 @pytest.fixture(scope="session")
@@ -143,8 +187,7 @@ def provision_dut(request: pytest.FixtureRequest, test_config: dict) -> types.Si
 
     yield dut
 
-    dut.uart.stop()
-    request.node.user_properties.append(("serial_log", str(SERIAL_LOG)))
+    _stop_capture(request, dut)
 
 
 @pytest.fixture(scope="function")
@@ -166,8 +209,7 @@ def fota_dut(request: pytest.FixtureRequest, test_config: dict) -> types.SimpleN
 
     yield dut
 
-    dut.uart.stop()
-    request.node.user_properties.append(("serial_log", str(SERIAL_LOG)))
+    _stop_capture(request, dut)
 
 
 @pytest.fixture(scope="function")
@@ -178,8 +220,7 @@ def coredump_dut(request: pytest.FixtureRequest, test_config: dict) -> types.Sim
 
     yield dut
 
-    dut.uart.stop()
-    request.node.user_properties.append(("serial_log", str(SERIAL_LOG)))
+    _stop_capture(request, dut)
 
 
 @pytest.fixture(scope="function")
@@ -219,9 +260,21 @@ def nrf_cloud_env(test_config: dict) -> dict:
     }
 
 
+def _log_serial_tail(log_path: Path, label: str, *, lines: int = 20) -> None:
+    if not log_path.is_file():
+        return
+    tail = log_path.read_text(encoding="utf-8", errors="replace").splitlines()[-lines:]
+    if not tail:
+        return
+    logger.error("Last %d %s log lines (%s):", len(tail), label, log_path)
+    for line in tail:
+        logger.error("%s", line)
+
+
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_runtest_makereport(item, call):
     outcome = yield
     report = outcome.get_result()
-    if report.when == "call" and report.failed and SERIAL_LOG.is_file():
-        logger.error("Test failed; serial log saved to %s", SERIAL_LOG)
+    if report.when == "call" and report.failed:
+        _log_serial_tail(SERIAL_LOG, "host serial")
+        _log_serial_tail(MODEM_SERIAL_LOG, "Serial Modem")

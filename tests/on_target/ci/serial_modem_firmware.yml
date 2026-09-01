@@ -6,3 +6,9 @@ bundle: serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip
 hex: serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.hex
 download_url: https://github.com/nrfconnect/ncs-serial-modem/releases/download/v2.0.0-preview2/serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip
 upstream_release_url: https://github.com/nrfconnect/ncs-serial-modem/releases/tag/v2.0.0-preview2
+
+# Log capture reads zephyr,console = &uart1 (P0.28/P0.29 -> VCOM1), which the
+# bundle's .dts sets to current-speed = <1000000> rather than the usual 115200.
+# uart0 (VCOM0) is disabled by the external-MCU overlay, so VCOM0 stays silent.
+# Re-check this when bumping the release above.
+console_baudrate: 1000000

@@ -91,6 +91,21 @@ runs:
           --self-contained-html \
           -v
 
+    - name: Dump serial logs on failure
+      if: failure()
+      shell: bash
+      working-directory: serial-modem-host-applications
+      run: |
+        for log in build/hardware-serial.log build/modem-serial.log; do
+          echo "::group::tail -n 200 $log"
+          if [ -s "$log" ]; then
+            tail -n 200 "$log"
+          else
+            echo "(not captured)"
+          fi
+          echo "::endgroup::"
+        done
+
     - name: Upload DuT firmware artifacts
       if: always() && inputs.use_prebuilt_firmware != 'true'
       uses: actions/upload-artifact@v7
@@ -100,12 +115,14 @@ runs:
         retention-days: 7
         if-no-files-found: ignore
 
-    - name: Upload serial log
+    - name: Upload serial logs
       if: always()
       uses: actions/upload-artifact@v7
       with:
         name: hardware-serial-log-${{ inputs.test_id }}-${{ github.run_id }}
-        path: serial-modem-host-applications/build/hardware-serial.log
+        path: |
+          serial-modem-host-applications/build/hardware-serial.log
+          serial-modem-host-applications/build/modem-serial.log
         if-no-files-found: ignore
 
     - name: Upload pytest report

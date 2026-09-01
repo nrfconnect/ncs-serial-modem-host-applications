@@ -10,6 +10,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(os.environ["REPO_ROOT"])
 SERIAL_LOG = REPO_ROOT / "build" / "hardware-serial.log"
+MODEM_SERIAL_LOG = REPO_ROOT / "build" / "modem-serial.log"
 
 # nRF54L15 host client ID from CONFIG_NRF_CLOUD_CLIENT_ID_SRC_HW_ID.
 DUT_DEVICE_ID_RE = re.compile(r"^[0-9A-F]{16}$")
