@@ -6,6 +6,7 @@ import pytest
 
 from utils.logger import get_logger
 from utils.memfault_ota import read_build_metadata
+from utils.modem_logs import enable_modem_application_logs
 
 logger = get_logger()
 
@@ -32,3 +33,4 @@ def test_cloud_provision(
 
     logger.info("Verify cloud connect after provisioning")
     dut.uart.wait_for_substring(CLOUD_CONNECTED_LOG, timeout=CLOUD_CONNECT_TIMEOUT)
+    enable_modem_application_logs(dut)
