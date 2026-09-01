@@ -34,6 +34,8 @@ class Uart:
         self._log_lock = threading.Lock()
         self._serial: serial.Serial | None = None
         self._serial_open = threading.Event()
+        self._reopen = threading.Event()
+        self._open_count = 0
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._reader, daemon=True)
         self._watchdog = threading.Timer(timeout, self._timeout_stop)
@@ -58,16 +60,33 @@ class Uart:
             return self.whole_log
 
     def _reader(self) -> None:
+        while not self._stop.is_set():
+            self._reopen.clear()
+            try:
+                self._capture_until_reopen()
+            except OSError as exc:
+                # Covers serial.SerialException and bare ioctl failures alike;
+                # letting either escape would end capture for the whole run.
+                logger.error("Capture on %s failed: %s", self.port, exc)
+                time.sleep(1.0)
+
+    def _capture_until_reopen(self) -> None:
+        """Hold the port open, returning when capture stops or a reopen is asked for."""
         with serial.Serial(
             self.port,
             baudrate=self.baudrate,
             timeout=self.serial_timeout,
         ) as ser:
             # nRF DK debuggers tri-state UART lines until the host asserts DTR.
-            ser.dtr = True
-            ser.rts = True
+            try:
+                ser.dtr = True
+                ser.rts = True
+            except OSError as exc:
+                logger.warning("Could not assert DTR/RTS on %s: %s", self.port, exc)
 
-            if ser.in_waiting:
+            # Only on the very first open: anything buffered later is capture
+            # data that a reopen must not throw away.
+            if self._open_count == 0 and ser.in_waiting:
                 logger.warning(
                     "Serial port %s had %d buffered bytes; discarding before capture",
                     self.port,
@@ -76,13 +95,15 @@ class Uart:
                 ser.reset_input_buffer()
 
             self._serial = ser
+            with self._log_lock:
+                self._open_count += 1
             self._serial_open.set()
 
             # Buffers a character whose bytes straddle two reads, which a plain
             # bytes.decode() per read would turn into replacement characters.
             decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
             pending = ""
-            while not self._stop.is_set():
+            while not self._stop.is_set() and not self._reopen.is_set():
                 try:
                     # Drain whatever is buffered. One syscall per byte cannot
                     # keep up with the modem console at 1 Mbaud once debug
@@ -101,6 +122,11 @@ class Uart:
                 lines = pending.split("\n")
                 pending = lines.pop()
                 self._append_lines([line.strip() for line in lines])
+
+            self._serial_open.clear()
+            self._serial = None
+            if pending.strip():
+                self._append_lines([pending.strip()])
 
     def wait_for_substring(
         self,
@@ -166,6 +192,33 @@ class Uart:
 
         ser.write(f"{text}\r\n".encode("utf-8"))
         ser.flush()
+
+    def reopen(self, *, timeout: float = 30.0) -> None:
+        """Close and reopen the port, keeping everything captured so far.
+
+        Lets a caller re-establish the connection after the target has held its
+        UART suspended for a long stretch, which not every debugger's
+        USB-serial bridge is guaranteed to forward across.
+        """
+        if not self._serial_open.wait(timeout):
+            raise TimeoutError(
+                f"Timed out after {timeout:.0f}s waiting for {self.port} to open"
+            )
+
+        with self._log_lock:
+            opens_before = self._open_count
+        self._reopen.set()
+
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            with self._log_lock:
+                reopened = self._open_count > opens_before
+            if reopened and self._serial_open.is_set():
+                logger.info("Reopened %s", self.port)
+                return
+            time.sleep(0.1)
+
+        raise TimeoutError(f"Timed out after {timeout:.0f}s reopening {self.port}")
 
     def stop(self) -> None:
         self._watchdog.cancel()
