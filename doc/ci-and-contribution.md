@@ -152,7 +152,11 @@ When a test fails, the last 200 lines of both logs are also printed into the job
 
 Serial Modem prints its bootloader and application banners over `uart1` and then **suspends the log backend and the UART** to avoid the roughly 700 uA overhead of keeping it active. Without further action the modem log therefore stops after about 0.65 s of uptime and contains nothing from the phase a test actually exercises.
 
-`AT#XLOG=1` resumes it. The tests issue that command through the host's `modem at` shell once the host reports `Cloud connected`, so the modem console keeps logging for the rest of the test. Two consequences worth knowing:
+`AT#XLOG=1` resumes it, and the tests issue that command through the host's `modem at` shell once the host reports `Cloud connected`.
+
+Be aware of what this does and does not buy you. Resuming the UART is necessary but not sufficient: at the pinned release's default `CONFIG_SM_LOG_LEVEL_INF`, Serial Modem emits almost nothing while simply running. In practice the resumed console adds only occasional events such as `dtr_uart: DTR deasserted`. Diagnosing modem-side behaviour during a transfer needs Serial Modem rebuilt with `CONFIG_SM_LOG_LEVEL_DBG=y`, which the pinned prebuilt release cannot provide.
+
+Two further consequences worth knowing:
 
 - The command needs the CMUX AT pipe, which only exists after the modem attaches, and which CMUX runtime power save closes again after its idle timeout. `enable_modem_application_logs()` therefore retries and confirms the modem replied `OK`, warning if it never succeeds.
 - Anything that reboots the host also pulses modem nRESET, which resets the modem and turns logging back off, so the command is reissued after each reboot (for example after a FOTA update is applied).

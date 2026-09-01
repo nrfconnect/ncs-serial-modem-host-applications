@@ -16,13 +16,32 @@ ENABLE_LOGS_SHELL_COMMAND = f'modem at "{ENABLE_LOGS_AT_COMMAND}"'
 
 # Responses from the in-tree `modem at` shell when the CMUX AT pipe is not
 # usable. CMUX runtime power save closes the pipe after the idle timeout, so
-# this is an expected transient rather than an error.
+# this is an expected transient worth retrying.
 PIPE_UNAVAILABLE_RESPONSES = (
     "modem is not ready",
     "AT pipe busy",
     "AT command failed",
 )
+# The running image predates CONFIG_MODEM_AT_SHELL. Retrying cannot help; a FOTA
+# update payload built before that option was added behaves this way.
+SHELL_MISSING_RESPONSE = "command not found"
+
+_ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;?]*[a-zA-Z]")
+_SHELL_PROMPT = re.compile(r"uart:~\$\s*")
 _OK_RESPONSE = re.compile(r"^OK\s*$", re.MULTILINE)
+
+
+class _ShellCommandMissing(Exception):
+    """The running firmware does not have the `modem at` shell command."""
+
+
+def _readable(text: str) -> str:
+    """Strip ANSI escapes and shell prompts interleaved into captured output.
+
+    The shell reprints its prompt around streaming log lines, so a bare `OK`
+    reaches the log as `\x1b[1;32muart:~$ \x1b[m\x1b[8D\x1b[JOK`.
+    """
+    return _SHELL_PROMPT.sub("", _ANSI_ESCAPE.sub("", text))
 
 
 def _send_and_confirm(dut: types.SimpleNamespace, *, timeout: float) -> bool:
@@ -36,18 +55,34 @@ def _send_and_confirm(dut: types.SimpleNamespace, *, timeout: float) -> bool:
         return False
 
     deadline = time.monotonic() + timeout
+    response = ""
     while time.monotonic() < deadline:
-        tail = dut.uart.snapshot_log()[offset:]
+        tail = _readable(dut.uart.snapshot_log()[offset:])
         # Everything from the shell's echo onwards is the response to our command.
         echo_index = tail.rfind(ENABLE_LOGS_AT_COMMAND)
         if echo_index >= 0:
-            response = tail[echo_index:]
+            response = tail[echo_index + len(ENABLE_LOGS_AT_COMMAND):]
+            if SHELL_MISSING_RESPONSE in response:
+                raise _ShellCommandMissing(
+                    next(
+                        line.strip()
+                        for line in response.splitlines()
+                        if SHELL_MISSING_RESPONSE in line
+                    )
+                )
             if any(text in response for text in PIPE_UNAVAILABLE_RESPONSES):
+                logger.debug("Serial Modem AT pipe unavailable: %s", response.strip())
                 return False
             if _OK_RESPONSE.search(response):
                 return True
         time.sleep(0.5)
 
+    logger.debug(
+        "No verdict for %s within %.0fs; response so far: %r",
+        ENABLE_LOGS_AT_COMMAND,
+        timeout,
+        response.strip(),
+    )
     return False
 
 
@@ -74,7 +109,17 @@ def enable_modem_application_logs(
         return False
 
     for attempt in range(1, attempts + 1):
-        if _send_and_confirm(dut, timeout=timeout):
+        try:
+            confirmed = _send_and_confirm(dut, timeout=timeout)
+        except _ShellCommandMissing as exc:
+            logger.warning(
+                "Host firmware has no `modem at` shell command (%s); it predates "
+                "CONFIG_MODEM_AT_SHELL, so Serial Modem logs stay at boot output only",
+                exc,
+            )
+            return False
+
+        if confirmed:
             logger.info("Serial Modem application logs enabled (%s)", ENABLE_LOGS_AT_COMMAND)
             return True
         if attempt < attempts:
