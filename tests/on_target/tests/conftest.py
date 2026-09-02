@@ -174,7 +174,7 @@ def _stop_capture(request: pytest.FixtureRequest, dut: types.SimpleNamespace) ->
         # (wrong VCOM, or VCOM1 disabled in Board Configurator) reads as success.
         logger.warning(
             "Serial Modem capture on %s produced no output; check that VCOM1 is "
-            "enabled on the nRF9151 / SMA DK and that the console baud rate in "
+            "enabled on the nRF9151 / SMA DK and that console_baudrate in "
             "tests/on_target/ci/serial_modem_firmware.yml matches the release",
             dut.modem_serial_port,
         )

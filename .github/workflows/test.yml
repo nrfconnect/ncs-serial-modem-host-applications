@@ -80,6 +80,11 @@ on:
         required: false
         type: string
         default: ""
+      serial_modem_release:
+        description: Upstream Serial Modem release tag to test (empty = resolve latest)
+        required: false
+        type: string
+        default: ""
   workflow_dispatch:
     inputs:
       test:
@@ -149,6 +154,7 @@ jobs:
       NRFUTIL_HOME: /usr/local/share/nrfutil
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
+      SERIAL_MODEM_RELEASE: ${{ inputs.serial_modem_release }}
       NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
       NRF_CLOUD_CA_CERT: ${{ secrets.NRF_CLOUD_CA_CERT }}
       NRF_CLOUD_CA_KEY: ${{ secrets.NRF_CLOUD_CA_KEY }}
@@ -187,6 +193,7 @@ jobs:
       NRFUTIL_HOME: /usr/local/share/nrfutil
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
+      SERIAL_MODEM_RELEASE: ${{ inputs.serial_modem_release }}
       NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
       NRF_CLOUD_CA_CERT: ${{ secrets.NRF_CLOUD_CA_CERT }}
       NRF_CLOUD_CA_KEY: ${{ secrets.NRF_CLOUD_CA_KEY }}
@@ -225,6 +232,7 @@ jobs:
       NRFUTIL_HOME: /usr/local/share/nrfutil
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
+      SERIAL_MODEM_RELEASE: ${{ inputs.serial_modem_release }}
       NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
       NRF_CLOUD_CA_CERT: ${{ secrets.NRF_CLOUD_CA_CERT }}
       NRF_CLOUD_CA_KEY: ${{ secrets.NRF_CLOUD_CA_KEY }}
@@ -263,6 +271,7 @@ jobs:
       NRFUTIL_HOME: /usr/local/share/nrfutil
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
+      SERIAL_MODEM_RELEASE: ${{ inputs.serial_modem_release }}
       NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
       NRF_CLOUD_CA_CERT: ${{ secrets.NRF_CLOUD_CA_CERT }}
       NRF_CLOUD_CA_KEY: ${{ secrets.NRF_CLOUD_CA_KEY }}
@@ -301,6 +310,7 @@ jobs:
       NRFUTIL_HOME: /usr/local/share/nrfutil
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
+      SERIAL_MODEM_RELEASE: ${{ inputs.serial_modem_release }}
       NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
       NRF_CLOUD_CA_CERT: ${{ secrets.NRF_CLOUD_CA_CERT }}
       NRF_CLOUD_CA_KEY: ${{ secrets.NRF_CLOUD_CA_KEY }}
@@ -339,6 +349,7 @@ jobs:
       NRFUTIL_HOME: /usr/local/share/nrfutil
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
+      SERIAL_MODEM_RELEASE: ${{ inputs.serial_modem_release }}
       NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
       NRF_CLOUD_CA_CERT: ${{ secrets.NRF_CLOUD_CA_CERT }}
       NRF_CLOUD_CA_KEY: ${{ secrets.NRF_CLOUD_CA_KEY }}

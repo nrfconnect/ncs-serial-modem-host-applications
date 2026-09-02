@@ -1,18 +1,13 @@
-# Pinned Serial Modem firmware for 91m1 host + nRF9151 DK setups.
+# Serial Modem firmware settings for 91m1 host + nRF9151 DK setups.
 #
-# The single pin for the modem side: on-target tests flash this release on the
-# nRF9151 DK, and the same images are copied into SMHA GitHub releases. Tests
-# resume its log output with AT#XLOG=1 (see the Serial logs section in
-# doc/ci-and-contribution.md).
+# CI resolves the newest upstream release that ships the extmcu zip (including
+# prereleases) and locks that tag for the whole pipeline run. Tests flash it on
+# the nRF9151 DK; release bundles copy the same archive. Override locally with
+# SERIAL_MODEM_RELEASE when you need a specific tag.
+#
+# Log capture reads zephyr,console = &uart1 (P0.28/P0.29 -> VCOM1). Re-check
+# console_baudrate when upstream changes the external-MCU overlay.
 
-release: v2.0.0-preview2
-bundle: serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip
-hex: serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.hex
-download_url: https://github.com/nrfconnect/ncs-serial-modem/releases/download/v2.0.0-preview2/serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip
-upstream_release_url: https://github.com/nrfconnect/ncs-serial-modem/releases/tag/v2.0.0-preview2
-
-# Log capture reads zephyr,console = &uart1 (P0.28/P0.29 -> VCOM1), which the
-# bundle's .dts sets to current-speed = <1000000> rather than the usual 115200.
-# uart0 (VCOM0) is disabled by the external-MCU overlay, so VCOM0 stays silent.
-# Re-check this when bumping the release above.
+upstream_repo: nrfconnect/ncs-serial-modem
+asset_suffix: _nrf9151dk_extmcu.zip
 console_baudrate: 1000000

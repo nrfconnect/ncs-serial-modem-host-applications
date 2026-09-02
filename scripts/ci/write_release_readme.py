@@ -8,11 +8,7 @@ import argparse
 import sys
 from pathlib import Path
 
-import yaml
-
 ROOT = Path(__file__).resolve().parents[2]
-SERIAL_MODEM_CONFIG = ROOT / "tests/on_target/ci/serial_modem_firmware.yml"
-
 REPO_URL = "https://github.com/nrfconnect/ncs-serial-modem-host-applications"
 
 # Ordered as the table should read. Entries missing from a bundle are skipped,
@@ -35,10 +31,14 @@ CONSOLE_PORTS = {
 
 
 def _modem_config(app: str) -> dict | None:
-    """Pinned Serial Modem release, for the 91m1 bundles that carry it."""
+    """Resolved Serial Modem release, for the 91m1 bundles that carry it."""
     if not app.startswith("91m1"):
         return None
-    return yaml.safe_load(SERIAL_MODEM_CONFIG.read_text(encoding="utf-8"))
+
+    sys.path.insert(0, str(ROOT / "tests/on_target"))
+    from utils.serial_modem_firmware import load_serial_modem_firmware_config
+
+    return load_serial_modem_firmware_config(ROOT)
 
 
 def _modem_entry(modem: dict) -> tuple[str, str]:

@@ -5,9 +5,10 @@
 A nightly schedule on `main` runs the [Build, Test, and Release workflow](../.github/workflows/ci.yml) at 03:00 UTC (05:00 GMT+2 during CEST):
 
 1. Resolve the next semver from commit history since the last tag
-2. Build all applications and upload firmware artifacts
-3. Run on-target hardware tests against the prebuilt firmware
-4. Create a GitHub Release when commits since the last tag warrant a version bump (`feat`, `fix`, or `BREAKING CHANGE`)
+2. Resolve the newest upstream Serial Modem release that ships the external-MCU zip
+3. Build all applications and upload firmware artifacts
+4. Run on-target hardware tests against the prebuilt firmware and locked Serial Modem tag
+5. Create a GitHub Release when commits since the last tag warrant a version bump (`feat`, `fix`, or `BREAKING CHANGE`)
 
 The full pipeline can also be triggered manually from the Actions tab (`workflow_dispatch`). Individual workflows (`Build`, `Test`, `Release`) remain independently triggerable.
 
@@ -15,7 +16,7 @@ Pull requests run build, compliance, SonarCloud, and Markdown link checks. Relea
 
 ## Releases
 
-Releases are tagged `vX.Y.Z` and publish one zip per CI build flavor (`{app}-{board_type}-v{version}.zip`). Each is flat: the images most people need, a generated `README.md` describing them, and for 91m1 the pinned Serial Modem archive as published upstream. See [Release artifacts](release-artifacts.md) for bundle names, file descriptions, and flashing instructions.
+Releases are tagged `vX.Y.Z` and publish one zip per CI build flavor (`{app}-{board_type}-v{version}.zip`). Each is flat: the images most people need, a generated `README.md` describing them, and for 91m1 the Serial Modem archive CI tested that night. See [Release artifacts](release-artifacts.md) for bundle names, file descriptions, and flashing instructions.
 
 The version is derived from conventional commit prefixes in merged commits:
 
@@ -99,7 +100,7 @@ Example for the test rig (DUT 2):
 
 Both runners need Docker and USB access to their DKs (`--privileged -v /dev:/dev` in the test workflow containers). Set the GitHub repository variables for each rig on the same repo (`CI_NRF54L15_PROVISION_*` and `CI_NRF54L15_PROVISION_SERIAL_MODEM_*` for DUT 1, `CI_NRF54L15_*` and `CI_NRF54L15_SERIAL_MODEM_*` for DUT 2, `CI_NRF54LM20B_PROVISION_*` and `CI_NRF54LM20B_PROVISION_SERIAL_MODEM_*` for DUT 3). The provisioning runner needs access to both DUT 1 and DUT 3; tests select their board by SEGGER serial number, so both DKs can share one runner host.
 
-91m1 on-target tests flash the pinned Serial Modem release (`serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.hex`) on the nRF9151 DK before programming the host.
+91m1 on-target tests flash the newest upstream Serial Modem release that ships the external-MCU zip on the nRF9151 DK before programming the host.
 
 The test DUT must be provisioned once (manually or by running the provisioning flow locally against it). CI flashes baseline firmware without recover so TF-M credentials persist. FOTA and coredump do not remove the device from nRF Cloud or Memfault after each run.
 
@@ -162,7 +163,7 @@ Three further consequences worth knowing:
 
 #### Requirements and failure modes
 
-The Serial Modem console runs at **1000000 baud**, not the usual 115200 — it is sized for modem traces — and `uart0` (VCOM0) is disabled by the external-MCU overlay so VCOM0 stays silent. Both facts are recorded in [`tests/on_target/ci/serial_modem_firmware.yml`](../tests/on_target/ci/serial_modem_firmware.yml); re-check them when bumping the pinned release, because a baud mismatch produces an empty log rather than an error.
+The Serial Modem console runs at **1000000 baud**, not the usual 115200 — it is sized for modem traces — and `uart0` (VCOM0) is disabled by the external-MCU overlay so VCOM0 stays silent. `console_baudrate` is recorded in [`tests/on_target/ci/serial_modem_firmware.yml`](../tests/on_target/ci/serial_modem_firmware.yml); re-check it when upstream changes the overlay, because a baud mismatch produces an empty log rather than an error.
 
 Modem capture also requires **VCOM1 enabled** in Board Configurator on the nRF9151 / SMA DK, which is the documented [hardware setup](../applications/91m1_ppp/doc/hardware-setup.md). The port is resolved from the rig's `CI_*_SERIAL_MODEM_SEGGER_SN`; set the matching `CI_*_SERIAL_MODEM_SERIAL_PORT` variable to pin it explicitly.
 
@@ -174,11 +175,11 @@ Several nRF91 DKs share a runner, so a rig whose `CI_*_SERIAL_MODEM_SEGGER_SN` n
 
 Identities are therefore compared rather than assumed. `AT+CGSN=1` gives the IMEI of the modem the host is attached to, Serial Modem prints its own IMEI during boot before suspending the console, and a mismatch logs an error naming both IMEIs and the variable to correct. When that fires, find the right serial number by matching the IMEI the host reports against the boot output each candidate DK produces.
 
-#### Pinned Serial Modem release
+#### Serial Modem release
 
-The modem image is never built from source here. [`tests/on_target/ci/serial_modem_firmware.yml`](../tests/on_target/ci/serial_modem_firmware.yml) pins one upstream release, and its `release`, `bundle`, `hex`, and `download_url` fields are the only place to change when moving to a different Serial Modem version. Tests download that archive, cache it under `build/serial-modem-firmware/`, and flash the `.hex` from it; the Release workflow copies the same archive unextracted into every `91m1_ppp` bundle, so what ships is what CI tested.
+The modem image is never built from source here. Nightly CI resolves the newest published [ncs-serial-modem](https://github.com/nrfconnect/ncs-serial-modem/releases) release that ships the `*_nrf9151dk_extmcu.zip` asset (including prereleases), locks that tag for the whole pipeline run, and passes it to every 91m1 hardware test and to the Release workflow. Tests download the archive, cache it under `build/serial-modem-firmware/<tag>/`, and flash the `.hex` from it; release bundles copy the same archive unextracted into every `91m1_ppp` zip, so what ships is what CI tested that night.
 
-Re-check `console_baudrate` in the same file when bumping, since a mismatch yields an empty log rather than an error.
+Set `SERIAL_MODEM_RELEASE` to pin a specific upstream tag when running tests or the release workflow locally. Static settings such as `console_baudrate` live in [`tests/on_target/ci/serial_modem_firmware.yml`](../tests/on_target/ci/serial_modem_firmware.yml).
 
 Full LTE and IP-level modem traces (`AT#XTRACE=1`) are a further step still, and they need a trace database to decode. Note that the UART trace backend shares `uart1` with the log backend and the two are mutually exclusive, so capturing traces that way costs the application log; `overlay-trace-backend-cmux.conf` routes traces over a dedicated CMUX channel instead and leaves `AT#XLOG=1` usable.
 
