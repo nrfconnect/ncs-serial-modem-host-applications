@@ -61,6 +61,16 @@ jobs:
             board_type="${rest#*-}"
             root="$artifact_dir"
             zephyr="${root}/${app}/zephyr"
+
+            # An application build always has <app>/zephyr in its artifact.
+            # Anything else carries a name this loop cannot parse, and zipping
+            # it would ship a bogus asset: v0.5.0 gained a serial-modem-dbg zip
+            # that way, from a test-only artifact then named firmware-*.
+            if [ ! -d "$zephyr" ]; then
+              echo "::warning title=Not an application build, skipping::${artifact_dir}"
+              continue
+            fi
+
             bundle_name="${app}-${board_type}-v${VERSION}"
             bundle_dir="release-staging/${bundle_name}"
             mkdir -p "$bundle_dir"

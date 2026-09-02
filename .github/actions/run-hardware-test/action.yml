@@ -52,7 +52,7 @@ runs:
       continue-on-error: true
       uses: actions/download-artifact@v7
       with:
-        name: firmware-serial-modem-dbg
+        name: serial-modem-dbg
         path: serial-modem-host-applications/build/serial-modem-dbg
 
     - name: Build Serial Modem firmware

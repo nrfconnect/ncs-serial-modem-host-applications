@@ -103,6 +103,8 @@ jobs:
 
   # Debug-logging Serial Modem image for on-target tests. Built once here rather
   # than per test job; test jobs without this artifact build it themselves.
+  # Deliberately not named firmware-*: the Release workflow collects everything
+  # matching that prefix and reads the name as firmware-<app>-<board_type>.
   serial-modem:
     needs: cleanup
     runs-on: self-hosted-build
@@ -126,6 +128,6 @@ jobs:
       - name: Upload Serial Modem firmware artifact
         uses: actions/upload-artifact@v7
         with:
-          name: firmware-serial-modem-dbg
+          name: serial-modem-dbg
           path: serial-modem-host-applications/build/serial-modem-dbg/
           retention-days: 14
