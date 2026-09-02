@@ -15,7 +15,7 @@ Pull requests run build, compliance, SonarCloud, and Markdown link checks. Relea
 
 ## Releases
 
-Releases are tagged `vX.Y.Z` and publish one zip per CI build flavor (`{app}-{board_type}-v{version}.zip`), plus the pinned Serial Modem bundle `serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip` for 91m1 host + nRF9151 DK setups. See [Release artifacts](release-artifacts.md) for bundle names, file descriptions, and flashing instructions.
+Releases are tagged `vX.Y.Z` and publish one zip per CI build flavor (`{app}-{board_type}-v{version}.zip`). Each is flat: the images most people need, a generated `README.md` describing them, and for 91m1 the pinned Serial Modem archive as published upstream. See [Release artifacts](release-artifacts.md) for bundle names, file descriptions, and flashing instructions.
 
 The version is derived from conventional commit prefixes in merged commits:
 
@@ -176,7 +176,7 @@ Identities are therefore compared rather than assumed. `AT+CGSN=1` gives the IME
 
 #### Pinned Serial Modem release
 
-The modem image is never built from source here. [`tests/on_target/ci/serial_modem_firmware.yml`](../tests/on_target/ci/serial_modem_firmware.yml) pins one upstream release, and its `release`, `bundle`, `hex`, and `download_url` fields are the only place to change when moving to a different Serial Modem version. Tests download that bundle, cache it under `build/serial-modem-firmware/`, and flash its `.hex`; the Release workflow copies the same images into every `91m1_ppp` bundle, so what ships is what CI tested.
+The modem image is never built from source here. [`tests/on_target/ci/serial_modem_firmware.yml`](../tests/on_target/ci/serial_modem_firmware.yml) pins one upstream release, and its `release`, `bundle`, `hex`, and `download_url` fields are the only place to change when moving to a different Serial Modem version. Tests download that archive, cache it under `build/serial-modem-firmware/`, and flash the `.hex` from it; the Release workflow copies the same archive unextracted into every `91m1_ppp` bundle, so what ships is what CI tested.
 
 Re-check `console_baudrate` in the same file when bumping, since a mismatch yields an empty log rather than an error.
 

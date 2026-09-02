@@ -38,7 +38,7 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           set -eu
-          mkdir -p release-assets release-staging release-meta
+          mkdir -p release-assets release-staging
 
           copy_release_file() {
             local src="$1"
@@ -50,21 +50,17 @@ jobs:
             fi
           }
 
-          # Attaches the pinned Serial Modem bundle as a release asset, and
-          # writes the note the 91m1 bundles below carry. Runs first so the
-          # note exists before any bundle is zipped.
+          # Fetched once, before any bundle is zipped. Ships as published
+          # upstream rather than extracted, so the archive people download
+          # here is the one the Serial Modem release page serves.
           pip install --quiet pyyaml
-          REPO_ROOT=$PWD PYTHONPATH=tests/on_target python3 <<'PY'
+          modem_zip="$(REPO_ROOT=$PWD PYTHONPATH=tests/on_target python3 -c "
           from pathlib import Path
 
-          from utils.serial_modem_firmware import (
-              download_serial_modem_release_bundle,
-              write_serial_modem_version_note,
-          )
+          from utils.serial_modem_firmware import download_serial_modem_bundle
 
-          download_serial_modem_release_bundle(Path("release-assets"), root=Path("."))
-          write_serial_modem_version_note(Path("release-meta"), root=Path("."))
-          PY
+          print(download_serial_modem_bundle(root=Path('.')))
+          ")"
 
           for artifact_dir in firmware/firmware-*; do
             [ -d "$artifact_dir" ] || continue
@@ -94,18 +90,24 @@ jobs:
             copy_release_file "${root}/merged.hex" "${bundle_dir}/merged.hex"
             copy_release_file "${zephyr}/zephyr.elf" "${bundle_dir}/zephyr.elf"
             copy_release_file "${zephyr}/.config" "${bundle_dir}/.config"
+            # 93m1_at ships neither an update payload nor the signed image it
+            # is built from.
             if [ "$app" != "93m1_at" ]; then
               copy_release_file "${zephyr}/zephyr.signed.bin" "${bundle_dir}/zephyr.signed.bin"
+              copy_release_file "${root}/dfu_application.zip" "${bundle_dir}/dfu_application.zip"
             fi
 
             # Only 91m1 hosts pair with a Serial Modem DK. A 93m1 board has an
-            # integrated modem, so the note would misinform there.
+            # integrated modem, so the modem archive does not belong in its
+            # bundle.
             case "$app" in
             91m1_*)
-              copy_release_file "release-meta/serial-modem-version.txt" \
-                "${bundle_dir}/serial-modem-version.txt"
+              cp "$modem_zip" "${bundle_dir}/"
               ;;
             esac
+
+            python3 scripts/ci/write_release_readme.py "$bundle_dir" \
+              --app "$app" --board-type "$board_type" --version "$VERSION"
 
             (
               cd "$bundle_dir"

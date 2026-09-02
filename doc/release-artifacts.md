@@ -28,17 +28,34 @@ Replace `{VERSION}` with the release tag without the `v` prefix (for example `1.
 
 91m1 host setups also require Serial Modem firmware on the nRF9151 / SMA DK — see [Serial Modem firmware (nRF9151 DK)](#serial-modem-firmware-nrf9151-dk) below.
 
-## Files inside each zip
+## Inside each zip
 
-Bundles share a logical file set, apart from the two application-specific entries noted below. File names are fixed so scripts and documentation stay valid after extraction.
+Everything sits at the top level, with no nested directories:
+
+```text
+91m1_ppp-nrf54l15-v1.2.3/
+├── README.md                                          what each file here is for
+├── merged.hex                                         flash this on the host DK
+├── zephyr.elf
+├── zephyr.signed.bin
+├── dfu_application.zip
+├── .config
+└── serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip  firmware for the companion nRF9151 / SMA DK
+```
+
+`93m1_ppp` bundles carry no modem archive, their board having an integrated modem, and `93m1_at` additionally has neither `zephyr.signed.bin` nor `dfu_application.zip`. File names are fixed so scripts and documentation stay valid after extraction.
+
+### Top-level files
 
 | **File** | **Description** | **Use case** |
 |----------|-----------------|--------------|
+| `README.md` | Generated per bundle: the files it contains, flash commands, and console port | Flashing a downloaded zip without opening this page |
 | `merged.hex` | Full sysbuild image (TF-M, MCUboot where applicable, signed application, partition layout). Same contents as `build/merged.hex` from a local sysbuild. | Programming the device with a J-Link debugger or `nrfutil` |
 | `zephyr.elf` | ELF file with debug symbols | Debugging, coredump analysis, Memfault symbol upload, `addr2line` |
+| `zephyr.signed.bin` | MCUboot-signed application image | FOTA through Memfault (not included in `93m1_at` bundles) |
+| `dfu_application.zip` | DFU package wrapping the signed image with its manifest | nRF Cloud FOTA jobs (not included in `93m1_at` bundles) |
 | `.config` | Kconfig snapshot from the release build | Inspecting which options were enabled without rebuilding |
-| `zephyr.signed.bin` | MCUboot-signed application image | FOTA through Memfault / nRF Cloud (not included in `93m1_at` bundles) |
-| `serial-modem-version.txt` | Serial Modem revision this host build was tested against, with the bundle name and upstream link | Knowing which modem image to flash on the companion DK (`91m1_ppp` bundles only) |
+| `serial_modem_*_nrf9151dk_extmcu.zip` | Pinned Serial Modem release, exactly as published upstream | Programming the companion DK (`91m1_ppp` bundles only) |
 
 ### `merged.hex`
 
@@ -62,38 +79,28 @@ Useful when comparing behavior between releases or confirming that a feature (lo
 
 Signed application-only payload for over-the-air updates. CI FOTA tests build a patch-bumped copy locally; production OTA is typically managed through Memfault releases linked to your nRF Cloud project. Not produced for `93m1_at`, which does not ship a signed update image in CI.
 
-### `serial-modem-version.txt`
+### `dfu_application.zip`
 
-Present only in `91m1_ppp` bundles, which need Serial Modem firmware on the wired nRF9151 / SMA DK. It names the revision the host build was released and tested against, so the pairing survives extraction instead of living only on the release page. The matching bundle is attached to the same release — see [Serial Modem firmware (nRF9151 DK)](#serial-modem-firmware-nrf9151-dk).
+The same signed image packaged with the manifest an nRF Cloud FOTA job expects, so a release can be deployed without rebuilding. Not produced for `93m1_at`.
 
-On-target tests flash exactly the attached image on the companion DK, so the revision named here is what CI verified. `93m1_ppp` and `93m1_at` bundles omit the file, their boards having an integrated modem.
+### Everything else from the build
+
+Only the files above ship. Per-domain MCUboot and TF-M output, `.map` and `.dts` files, and the partition metadata are not included — build the same tag locally when you need them, as described in [Building locally instead](#building-locally-instead).
 
 ## Serial Modem firmware (nRF9151 DK)
 
-91m1 host applications (`91m1_ppp` on nRF54L15 or nRF54LM20B) need a separate Serial Modem image on the wired nRF9151 / SMA DK. Each SMHA release includes the pinned upstream bundle:
-
-| **Release asset** | **Hardware** | **Description** |
-|-------------------|--------------|-----------------|
-| [`serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip`](https://github.com/nrfconnect/ncs-serial-modem/releases/download/v2.0.0-preview2/serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip) | nRF9151 / SMA DK | PPP + CMUX on uart2 for an external host MCU |
+91m1 host applications (`91m1_ppp` on nRF54L15 or nRF54LM20B) need a separate Serial Modem image on the wired nRF9151 / SMA DK, configured for PPP + CMUX on uart2 for an external host MCU. Every `91m1_ppp` bundle carries the pinned upstream archive as published, so there is no separate asset to download — and on-target tests flash that same archive, so what ships beside the host build is what CI verified against it.
 
 Source release: [ncs-serial-modem v2.0.0-preview2](https://github.com/nrfconnect/ncs-serial-modem/releases/tag/v2.0.0-preview2). The pin is recorded in [`tests/on_target/ci/serial_modem_firmware.yml`](../tests/on_target/ci/serial_modem_firmware.yml).
 
-### Files inside the Serial Modem zip
+Besides the full-flash `.hex`, the archive holds the ELF with debug symbols, a Kconfig snapshot, the signed application and MCUboot slot images, DFU packages for programming without a debugger, and a devicetree snapshot.
 
-| **File** | **Description** | **Use case** |
-|----------|-----------------|--------------|
-| `serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.hex` | Full flash image for the external-MCU variant | Program the nRF9151 / SMA DK before bringing up the host |
-| `serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.elf` | ELF with debug symbols | Modem-side debugging and trace decode |
-| `serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.config` | Kconfig snapshot | Inspect modem build options |
-| `serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.signed.bin` | Signed application image | MCUboot application updates on the modem |
-| `serial_modem_v2.0.0-preview2_nrf9151dk_extmcu_mcuboot_s0.signed.bin`, `..._s1.signed.bin` | MCUboot slot images | Bootloader maintenance |
-| `serial_modem_v2.0.0-preview2_nrf9151dk_extmcu_dfu_*.zip` | DFU packages | USB serial DFU without a debugger |
-| `serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.dts` | Devicetree snapshot | Reference for pin and partition layout |
-
-Flash the `.hex` on the **Serial Modem DK** first, then flash the host bundle (`91m1_ppp-*`) on the **host DK**:
+Extract it, flash the `.hex` on the **Serial Modem DK** first, then flash the host bundle's `merged.hex` on the **host DK**:
 
 ```shell
-nrfutil device program --firmware serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.hex --recover
+unzip serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip
+nrfutil device program \
+  --firmware serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.hex --recover
 ```
 
 See [91m1_ppp hardware setup](../applications/91m1_ppp/doc/hardware-setup.md#serial-modem-firmware) for wiring and Board Configurator settings.
@@ -116,7 +123,7 @@ nrfutil device program --firmware merged.hex --recover
 
 Use `--recover` on first flash or when TF-M / credential storage must be reset. For routine re-flash during development, omit `--recover` if you want to keep TF-M Protected Storage credentials.
 
-For 91m1 two-board setups, flash the Serial Modem `.hex` on the nRF9151 DK before programming the host `merged.hex`.
+For 91m1 two-board setups, extract the bundled Serial Modem archive and flash its `.hex` on the nRF9151 DK before programming the host `merged.hex`.
 
 ### Console port after flashing
 
