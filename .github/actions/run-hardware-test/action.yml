@@ -82,6 +82,10 @@ runs:
       env:
         REPO_ROOT: ${{ github.workspace }}/serial-modem-host-applications
         TEST_JSON: ${{ steps.config.outputs.test_json }}
+        # Resolving the Serial Modem release reads the GitHub API, whose
+        # anonymous quota is 60 requests/hour shared by every runner on the
+        # host. Exhausting it fails the run before the modem is even flashed.
+        GITHUB_TOKEN: ${{ github.token }}
       run: |
         pip install --quiet -r tests/on_target/requirements.txt
         PYTHONPATH=tests/on_target python3 -m pytest \

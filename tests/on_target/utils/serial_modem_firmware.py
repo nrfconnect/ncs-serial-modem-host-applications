@@ -20,6 +20,15 @@ logger = get_logger()
 
 GITHUB_API = "https://api.github.com"
 
+# A single test flashes the modem, reads the console baud rate, and may extract
+# the bundle, each of which needs the resolved release. Without this the same
+# lookup runs three or four times per test and burns the API quota.
+_release_cache: dict[tuple[str, str, str | None], dict] = {}
+
+
+def clear_serial_modem_release_cache() -> None:
+    _release_cache.clear()
+
 
 def load_serial_modem_static_config(root: Path | None = None) -> dict:
     repo_root = root or REPO_ROOT
@@ -89,6 +98,16 @@ def resolve_serial_modem_release(
     repo = static["upstream_repo"]
     asset_suffix = static["asset_suffix"]
 
+    cache_key = (repo, asset_suffix, tag)
+    if cache_key in _release_cache:
+        return dict(_release_cache[cache_key])
+
+    resolved = _resolve_uncached(repo, asset_suffix, tag)
+    _release_cache[cache_key] = resolved
+    return dict(resolved)
+
+
+def _resolve_uncached(repo: str, asset_suffix: str, tag: str | None) -> dict:
     if tag:
         release = _github_api_request(f"{GITHUB_API}/repos/{repo}/releases/tags/{tag}")
         return _release_config_from_payload(release, asset_suffix=asset_suffix)
