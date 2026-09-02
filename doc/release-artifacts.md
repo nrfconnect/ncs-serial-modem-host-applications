@@ -30,7 +30,7 @@ Replace `{VERSION}` with the release tag without the `v` prefix (for example `1.
 
 ## Files inside each zip
 
-Every bundle contains the same logical file set. File names are fixed so scripts and documentation stay valid after extraction.
+Bundles share a logical file set, apart from the two application-specific entries noted below. File names are fixed so scripts and documentation stay valid after extraction.
 
 | **File** | **Description** | **Use case** |
 |----------|-----------------|--------------|
@@ -38,6 +38,7 @@ Every bundle contains the same logical file set. File names are fixed so scripts
 | `zephyr.elf` | ELF file with debug symbols | Debugging, coredump analysis, Memfault symbol upload, `addr2line` |
 | `.config` | Kconfig snapshot from the release build | Inspecting which options were enabled without rebuilding |
 | `zephyr.signed.bin` | MCUboot-signed application image | FOTA through Memfault / nRF Cloud (not included in `93m1_at` bundles) |
+| `serial-modem-version.txt` | Serial Modem revision this host build was tested against, with the bundle name and upstream link | Knowing which modem image to flash on the companion DK (`91m1_ppp` bundles only) |
 
 ### `merged.hex`
 
@@ -60,6 +61,12 @@ Useful when comparing behavior between releases or confirming that a feature (lo
 ### `zephyr.signed.bin`
 
 Signed application-only payload for over-the-air updates. CI FOTA tests build a patch-bumped copy locally; production OTA is typically managed through Memfault releases linked to your nRF Cloud project. Not produced for `93m1_at`, which does not ship a signed update image in CI.
+
+### `serial-modem-version.txt`
+
+Present only in `91m1_ppp` bundles, which need Serial Modem firmware on the wired nRF9151 / SMA DK. It names the revision the host build was released and tested against, so the pairing survives extraction instead of living only on the release page. The matching bundle is attached to the same release — see [Serial Modem firmware (nRF9151 DK)](#serial-modem-firmware-nrf9151-dk).
+
+The revision is what CI verified, but not byte-for-byte the image you download: on-target tests flash a debug-logging build of that same revision, so the two differ in log verbosity only. `93m1_ppp` and `93m1_at` bundles omit the file, their boards having an integrated modem.
 
 ## Serial Modem firmware (nRF9151 DK)
 
