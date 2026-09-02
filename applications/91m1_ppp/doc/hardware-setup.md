@@ -158,18 +158,16 @@ On host boot, [`src/modem_reset.c`](../src/modem_reset.c) pulses nRESET (500 ms)
 
 ## Serial Modem firmware
 
-The 91m1_ppp host application is tested with Serial Modem release [`v2.0.0-preview2`](https://github.com/nrfconnect/ncs-serial-modem/releases/tag/v2.0.0-preview2). Download the external-MCU bundle for the nRF9151 / SMA DK:
-
-[`serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip`](https://github.com/nrfconnect/ncs-serial-modem/releases/download/v2.0.0-preview2/serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip)
+The 91m1_ppp host application is tested against the newest [ncs-serial-modem](https://github.com/nrfconnect/ncs-serial-modem/releases) release that ships the external-MCU zip for the nRF9151 / SMA DK. Download `serial_modem_<tag>_nrf9151dk_extmcu.zip` from the upstream release page, or use the copy at the top level of your [SMHA release bundle](../../../doc/release-artifacts.md#serial-modem-firmware-nrf9151-dk).
 
 This build enables PPP and CMUX on **uart2** routed to the host (P0.02/P0.03 TX/RX, P0.06/P0.07 RTS/CTS, DTR/RI on P0.31/P0.30). Without the external-MCU variant, the modem listens on the USB VCOM UART instead — the host will see `init_chat_script: timed out`.
 
-Extract the zip and flash `serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.hex` on the nRF9151 / SMA DK:
+Extract the zip and flash the `.hex` on the nRF9151 / SMA DK:
 
 ```shell
-nrfutil device program --firmware serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.hex --recover
+nrfutil device program --firmware serial_modem_<tag>_nrf9151dk_extmcu.hex --recover
 ```
 
-The same zip ships at the top level of every `91m1_ppp` [SMHA release bundle](../../../doc/release-artifacts.md#serial-modem-firmware-nrf9151-dk), and CI on-target tests flash it before each 91m1 run — see [Serial logs](../../../doc/ci-and-contribution.md#serial-logs).
+CI on-target tests resolve and flash the same archive before each 91m1 run — see [Serial logs](../../../doc/ci-and-contribution.md#serial-logs).
 
 To match an unreleased Serial Modem commit instead, build the modem application yourself; see the [Serial Modem getting started guide](https://docs.nordicsemi.com/bundle/addon-serial_modem-latest/page/gsg_guide.html#building_and_running) for workspace setup and build arguments.

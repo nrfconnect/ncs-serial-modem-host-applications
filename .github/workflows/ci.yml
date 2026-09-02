@@ -1,6 +1,6 @@
 # Nightly build, test, and release orchestrator.
 #
-# Flow: resolve semver → build firmware → hardware test (prebuilt) → release on bump.
+# Flow: resolve semver + Serial Modem tag → build firmware → hardware test (prebuilt) → release on bump.
 #
 # SonarCloud and Markdown link checks run on pull requests only.
 # Individual workflows remain independently triggerable via workflow_dispatch.
@@ -38,6 +38,27 @@ jobs:
           minor_pattern: feat
           ignore_commits_pattern: "/^(chore|docs|style|refactor|perf|test|build|ci)(\\(.+\\))?:/"
 
+  serial_modem:
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.resolve.outputs.release }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Resolve Serial Modem release
+        id: resolve
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_ROOT: ${{ github.workspace }}
+        run: |
+          set -eu
+          pip install --quiet pyyaml
+          release="$(PYTHONPATH=tests/on_target python3 -c "
+          from utils.serial_modem_firmware import resolve_serial_modem_release
+          print(resolve_serial_modem_release()['release'])
+          ")"
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+
   build:
     needs: version
     uses: ./.github/workflows/build.yml
@@ -46,16 +67,17 @@ jobs:
     secrets: inherit
 
   test:
-    needs: [version, build]
+    needs: [version, build, serial_modem]
     uses: ./.github/workflows/test.yml
     with:
       test: all
       use_prebuilt_firmware: true
       firmware_version: ${{ needs.version.outputs.version }}
+      serial_modem_release: ${{ needs.serial_modem.outputs.release }}
     secrets: inherit
 
   release:
-    needs: [version, build, test]
+    needs: [version, build, test, serial_modem]
     if: >-
       needs.version.outputs.is_bump == 'true' &&
       needs.build.result == 'success' &&
@@ -63,4 +85,5 @@ jobs:
     uses: ./.github/workflows/release.yml
     with:
       version: ${{ needs.version.outputs.version }}
+      serial_modem_release: ${{ needs.serial_modem.outputs.release }}
     secrets: inherit
