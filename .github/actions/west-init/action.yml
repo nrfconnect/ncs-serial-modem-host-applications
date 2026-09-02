@@ -13,8 +13,22 @@ runs:
     - name: Initialize West workspace
       shell: sh
       working-directory: ${{ inputs.working-directory }}
+      env:
+        WEST_FETCH_TOKEN: ${{ github.token }}
       run: |
         set -eu
+
+        # Every runner on a host shares github.com's 60 requests/hour
+        # anonymous quota, which West's fetches exhaust; GitHub then answers
+        # with 401 and Git asks for a username. Authenticating raises the
+        # quota to 5000/hour. The header goes through the environment so no
+        # credential is left in a workspace Git config for a later job to
+        # replay once it has expired.
+        auth="$(printf 'x-access-token:%s' "$WEST_FETCH_TOKEN" | base64 | tr -d '\n')"
+        echo "::add-mask::$auth"
+        export GIT_CONFIG_COUNT=1
+        export GIT_CONFIG_KEY_0="http.https://github.com/.extraheader"
+        export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $auth"
 
         if [ ! -d "../.west" ]; then
           west init -l .
