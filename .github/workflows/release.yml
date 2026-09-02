@@ -53,14 +53,18 @@ jobs:
           # Fetched once, before any bundle is zipped. Ships as published
           # upstream rather than extracted, so the archive people download
           # here is the one the Serial Modem release page serves.
+          # The path goes through a file because the download logs to stdout,
+          # which would end up inside a command substitution.
           pip install --quiet pyyaml
-          modem_zip="$(REPO_ROOT=$PWD PYTHONPATH=tests/on_target python3 -c "
+          REPO_ROOT=$PWD PYTHONPATH=tests/on_target python3 -c "
           from pathlib import Path
 
           from utils.serial_modem_firmware import download_serial_modem_bundle
 
-          print(download_serial_modem_bundle(root=Path('.')))
-          ")"
+          zip_path = download_serial_modem_bundle(root=Path('.'))
+          Path('modem-zip-path.txt').write_text(str(zip_path), encoding='utf-8')
+          "
+          modem_zip="$(cat modem-zip-path.txt)"
 
           for artifact_dir in firmware/firmware-*; do
             [ -d "$artifact_dir" ] || continue
