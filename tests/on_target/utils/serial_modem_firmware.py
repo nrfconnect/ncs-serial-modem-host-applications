@@ -60,40 +60,9 @@ def ensure_serial_modem_firmware(*, root: Path | None = None) -> Path:
     return hex_path
 
 
-def serial_modem_debug_hex(root: Path | None = None) -> Path | None:
-    """Path to a locally built debug-logging image, when one is available.
-
-    Produced by scripts/ci/build_serial_modem.sh, either in the Build workflow
-    or in the test job itself.
-    """
-    repo_root = root or REPO_ROOT
-    hex_path = repo_root / "build" / "serial-modem-dbg" / "merged.hex"
-    return hex_path if hex_path.is_file() else None
-
-
-def resolve_serial_modem_hex(*, root: Path | None = None) -> tuple[Path, bool]:
-    """Return the image to flash, and whether it is the debug-logging build.
-
-    Prefers the debug build: the released image logs almost nothing at runtime
-    even after AT#XLOG=1, because log levels are build-time and it leaves every
-    layer at INF.
-    """
-    debug_hex = serial_modem_debug_hex(root)
-    if debug_hex is not None:
-        return debug_hex, True
-    return ensure_serial_modem_firmware(root=root), False
-
-
 def flash_serial_modem_firmware(segger_sn: str, *, root: Path | None = None) -> None:
-    """Program the Serial Modem image on the nRF9151 / SMA DK."""
-    hex_path, is_debug_build = resolve_serial_modem_hex(root=root)
-    if is_debug_build:
-        logger.info("Using Serial Modem debug-logging build (sm + dtr_uart + cmux at DBG)")
-    else:
-        logger.warning(
-            "No Serial Modem debug build found; flashing the pinned release, whose "
-            "console stays near-silent while running even with AT#XLOG=1"
-        )
+    """Program the pinned Serial Modem release on the nRF9151 / SMA DK."""
+    hex_path = ensure_serial_modem_firmware(root=root)
     logger.info("Flashing Serial Modem firmware %s to %s", hex_path.name, segger_sn)
     flash_firmware_hex(
         hex_path,
@@ -117,9 +86,8 @@ Upstream: {upstream_release_url}
 The bundle is attached to the same SMHA release as this zip: flash its
 .hex on the modem DK first, then merged.hex on the host DK.
 
-This host build is verified against the revision above. On-target tests
-flash a debug-logging build of that revision rather than the bundle
-itself, so the two differ only in log verbosity.
+This host build is verified against that bundle: on-target tests flash
+these exact images on the modem DK.
 """
 
 

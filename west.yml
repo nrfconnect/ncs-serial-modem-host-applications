@@ -5,12 +5,6 @@ manifest:
   self:
     path: project
 
-  # The serial-modem group is off by default: that project is a Zephyr module,
-  # so fetching it would add its include path and CMake subdirectories to every
-  # application build. Only the job that builds the modem image enables it, via
-  # scripts/ci/build_serial_modem.sh.
-  group-filter: [-serial-modem]
-
   remotes:
     - name: ncs
       url-base: https://github.com/nrfconnect
@@ -28,13 +22,3 @@ manifest:
       repo-path: memfault-firmware-sdk
       path: modules/lib/memfault-firmware-sdk
       revision: 1.40.0
-    # Serial Modem firmware source, built with debug logging for on-target tests
-    # because the released image logs almost nothing while running. Keep the
-    # revision equal to `release` in tests/on_target/ci/serial_modem_firmware.yml;
-    # scripts/ci/build_serial_modem.sh fails if they drift apart.
-    - name: serial-modem
-      remote: ncs
-      repo-path: ncs-serial-modem
-      path: serial_modem
-      revision: v2.0.0-preview2
-      groups: [serial-modem]

@@ -43,24 +43,6 @@ runs:
         name: firmware-${{ steps.config.outputs.app }}-${{ steps.config.outputs.board_type }}
         path: serial-modem-host-applications/applications/${{ steps.config.outputs.app }}/build
 
-    # Tests flash a debug-logging Serial Modem image, because the released one
-    # logs almost nothing while running. The Build workflow publishes it, but a
-    # standalone workflow_dispatch run has no such artifact, so build it here
-    # when it is missing. Absent both, tests fall back to the pinned release.
-    - name: Download Serial Modem firmware
-      id: modem_artifact
-      continue-on-error: true
-      uses: actions/download-artifact@v7
-      with:
-        name: serial-modem-dbg
-        path: serial-modem-host-applications/build/serial-modem-dbg
-
-    - name: Build Serial Modem firmware
-      if: steps.modem_artifact.outcome != 'success'
-      shell: bash
-      working-directory: serial-modem-host-applications
-      run: scripts/ci/build_serial_modem.sh
-
     - name: Install SEGGER J-Link
       shell: bash
       run: |

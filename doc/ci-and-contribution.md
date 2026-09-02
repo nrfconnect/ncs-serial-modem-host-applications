@@ -152,9 +152,7 @@ When a test fails, the last 200 lines of both logs are also printed into the job
 
 Serial Modem prints its bootloader and application banners over `uart1` and then **suspends the log backend and the UART** to avoid the roughly 700 uA overhead of keeping it active. Without further action the modem log therefore stops after about 0.65 s of uptime and contains nothing from the phase a test actually exercises.
 
-`AT#XLOG=1` resumes it, and the tests issue that command through the host's `modem at` shell once the host reports `Cloud connected`.
-
-Resuming the UART is necessary but not sufficient, which is why tests flash a debug build (below). Log levels are build-time, and the release leaves every layer at `INF`, where the modem emits almost nothing while merely running — in practice only occasional events such as `dtr_uart: DTR deasserted`.
+`AT#XLOG=1` resumes it, and the tests issue that command through the host's `modem at` shell once the host reports `Cloud connected`. That is all the released image needs: its default `INF` levels carry the PPP, PDN, and AT events triage relies on.
 
 Three further consequences worth knowing:
 
@@ -176,32 +174,11 @@ Several nRF91 DKs share a runner, so a rig whose `CI_*_SERIAL_MODEM_SEGGER_SN` n
 
 Identities are therefore compared rather than assumed. `AT+CGSN=1` gives the IMEI of the modem the host is attached to, Serial Modem prints its own IMEI during boot before suspending the console, and a mismatch logs an error naming both IMEIs and the variable to correct. When that fires, find the right serial number by matching the IMEI the host reports against the boot output each candidate DK produces.
 
-#### Serial Modem debug build
+#### Pinned Serial Modem release
 
-Because verbosity is build-time, hardware tests do not flash the released image. [`scripts/ci/build_serial_modem.sh`](../scripts/ci/build_serial_modem.sh) builds the Serial Modem application from source with debug logging, using the same board and overlays as the pinned release's extmcu variant. The Build workflow publishes it as the `serial-modem-dbg` artifact — deliberately outside the `firmware-*` namespace, which the Release workflow collects and parses as `firmware-<app>-<board_type>`; a standalone `workflow_dispatch` Test run has no such artifact and builds it in the test job instead. If neither is present — a local run, say — tests fall back to the pinned release and log a warning saying the console will be near-silent.
+The modem image is never built from source here. [`tests/on_target/ci/serial_modem_firmware.yml`](../tests/on_target/ci/serial_modem_firmware.yml) pins one upstream release, and its `release`, `bundle`, `hex`, and `download_url` fields are the only place to change when moving to a different Serial Modem version. Tests download that bundle, cache it under `build/serial-modem-firmware/`, and flash its `.hex`; the Release workflow copies the same images into every `91m1_ppp` bundle, so what ships is what CI tested.
 
-Verbosity is set **per layer**, and raising the application's own level is not enough on its own. `CONFIG_SM_LOG_LEVEL` reaches only the `sm_*` modules, which log on state changes — PPP up and down, PDN activation, AT handling — and therefore stay silent throughout a steady transfer. The modules that narrate the link itself carry independent levels, so the build enables all three:
-
-| Kconfig | Layer | What it adds |
-|---------|-------|--------------|
-| `CONFIG_SM_LOG_LEVEL_DBG` | Serial Modem application | PPP and PDN events, AT handling, richer boot output |
-| `CONFIG_DTR_UART_LOG_LEVEL_DBG` | Host UART link | `api_tx: N bytes`, `TX: Done` / `TX: Aborted`, `RX: DTR not asserted`, `UART powered on` / `off` |
-| `CONFIG_MODEM_MODULES_LOG_LEVEL_DBG` | CMUX | DLCI framing and pipe events |
-
-`CONFIG_LOG_BUFFER_SIZE=16384` goes with them so bursts are not dropped. For a transfer that stalls, `dtr_uart` is the one to read: its `TX: Aborted` and `RX: DTR not asserted` are the modem-side counterparts to the host's `Transmit aborted (0 sent)`. Serial Modem lists all of these, commented out, under "debug options" in its `prj.conf` and `overlay-ppp.conf`. Going further to packet level (`CONFIG_NET_L2_PPP_LOG_LEVEL_DBG`, `CONFIG_NET_PKT_LOG_LEVEL_DBG`) additionally needs the log and net-management stack increases noted alongside them, and risks dropping lines at 1 Mbaud.
-
-One trap if you change Serial Modem's own configuration: `AT#XLOG=1` re-enables the backend at `CONFIG_LOG_DEFAULT_LEVEL` (`INF`), which is inert only because runtime filtering is off. Enabling `CONFIG_SHELL` there would imply `CONFIG_LOG_RUNTIME_FILTERING` and silently clamp every `DBG` message above back to `INF`.
-
-Source for that build comes from the `serial-modem` west project. It sits in a **disabled west group**, because it is a Zephyr module and fetching it would add its include path and CMake subdirectories to every application build. Only the build script enables the group, and it restores the previous filter afterwards so a shared runner's workspace is left as it was.
-
-To move to a different Serial Modem version, bump the tag in **both** places:
-
-| File | Field | Used for |
-|------|-------|----------|
-| [`west.yml`](../west.yml) | `serial-modem` project `revision` | Source of the debug build that tests flash |
-| [`tests/on_target/ci/serial_modem_firmware.yml`](../tests/on_target/ci/serial_modem_firmware.yml) | `release`, `bundle`, `hex`, `download_url` | Prebuilt bundle attached to SMHA releases, and the fallback image |
-
-The build script compares the two and fails with an explicit message if they drift, so a half-finished bump cannot pass silently. Also re-check `console_baudrate` when bumping, since a mismatch yields an empty log rather than an error. Serial Modem dropped the `overlay-` prefix from its overlay filenames after `v2.0.0-preview2`, so the script accepts either spelling and names both candidates if it finds neither.
+Re-check `console_baudrate` in the same file when bumping, since a mismatch yields an empty log rather than an error.
 
 Full LTE and IP-level modem traces (`AT#XTRACE=1`) are a further step still, and they need a trace database to decode. Note that the UART trace backend shares `uart1` with the log backend and the two are mutually exclusive, so capturing traces that way costs the application log; `overlay-trace-backend-cmux.conf` routes traces over a dedicated CMUX channel instead and leaves `AT#XLOG=1` usable.
 

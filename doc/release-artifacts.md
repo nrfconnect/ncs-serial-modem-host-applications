@@ -66,7 +66,7 @@ Signed application-only payload for over-the-air updates. CI FOTA tests build a 
 
 Present only in `91m1_ppp` bundles, which need Serial Modem firmware on the wired nRF9151 / SMA DK. It names the revision the host build was released and tested against, so the pairing survives extraction instead of living only on the release page. The matching bundle is attached to the same release — see [Serial Modem firmware (nRF9151 DK)](#serial-modem-firmware-nrf9151-dk).
 
-The revision is what CI verified, but not byte-for-byte the image you download: on-target tests flash a debug-logging build of that same revision, so the two differ in log verbosity only. `93m1_ppp` and `93m1_at` bundles omit the file, their boards having an integrated modem.
+On-target tests flash exactly the attached image on the companion DK, so the revision named here is what CI verified. `93m1_ppp` and `93m1_at` bundles omit the file, their boards having an integrated modem.
 
 ## Serial Modem firmware (nRF9151 DK)
 
