@@ -1,11 +1,9 @@
 # Pinned Serial Modem firmware for 91m1 host + nRF9151 DK setups.
 #
-# Copied into SMHA GitHub releases, and used by on-target tests as a fallback.
-# Tests normally flash a debug-logging build from source instead, because this
-# released image logs almost nothing while running (see the Serial logs section
-# in doc/ci-and-contribution.md). Keep `release` below equal to the
-# serial-modem project revision in west.yml; scripts/ci/build_serial_modem.sh
-# fails if they drift apart.
+# The single pin for the modem side: on-target tests flash this release on the
+# nRF9151 DK, and the same images are copied into SMHA GitHub releases. Tests
+# resume its log output with AT#XLOG=1 (see the Serial logs section in
+# doc/ci-and-contribution.md).
 
 release: v2.0.0-preview2
 bundle: serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip

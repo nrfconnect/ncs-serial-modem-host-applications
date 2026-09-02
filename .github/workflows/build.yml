@@ -100,34 +100,3 @@ jobs:
           path: serial-modem-host-applications/applications/${{ matrix.app }}/build/
           include-hidden-files: true
           retention-days: 14
-
-  # Debug-logging Serial Modem image for on-target tests. Built once here rather
-  # than per test job; test jobs without this artifact build it themselves.
-  # Deliberately not named firmware-*: the Release workflow collects everything
-  # matching that prefix and reads the name as firmware-<app>-<board_type>.
-  serial-modem:
-    needs: cleanup
-    runs-on: self-hosted-build
-    container: ghcr.io/zephyrproject-rtos/ci:v0.29.2
-    env:
-      CMAKE_PREFIX_PATH: /opt/toolchains
-    name: Build Serial Modem [debug logging]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          path: serial-modem-host-applications
-
-      - name: Initialize West workspace
-        uses: ./serial-modem-host-applications/.github/actions/west-init
-
-      - name: Build Serial Modem firmware
-        working-directory: serial-modem-host-applications
-        run: scripts/ci/build_serial_modem.sh
-
-      - name: Upload Serial Modem firmware artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: serial-modem-dbg
-          path: serial-modem-host-applications/build/serial-modem-dbg/
-          retention-days: 14

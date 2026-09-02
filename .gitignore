@@ -9,8 +9,6 @@
 build
 build-*
 build_*
-# The patterns above target build output; keep CI build scripts tracked.
-!scripts/**/build_*
 cscope.*
 .dir
 venv
