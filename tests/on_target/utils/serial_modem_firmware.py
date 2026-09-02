@@ -103,6 +103,40 @@ def flash_serial_modem_firmware(segger_sn: str, *, root: Path | None = None) -> 
     )
 
 
+SERIAL_MODEM_VERSION_NOTE = "serial-modem-version.txt"
+
+_VERSION_NOTE_TEMPLATE = """\
+Serial Modem firmware for the companion nRF9151 / SMA DK
+========================================================
+
+Release:  {release}
+Bundle:   {bundle}
+Upstream: {upstream_release_url}
+
+91m1 host applications need this firmware on the wired nRF9151 / SMA DK.
+The bundle is attached to the same SMHA release as this zip: flash its
+.hex on the modem DK first, then merged.hex on the host DK.
+
+This host build is verified against the revision above. On-target tests
+flash a debug-logging build of that revision rather than the bundle
+itself, so the two differ only in log verbosity.
+"""
+
+
+def write_serial_modem_version_note(dest_dir: Path, *, root: Path | None = None) -> Path:
+    """Record which Serial Modem revision a host build was tested against.
+
+    Goes into 91m1 release bundles, which pair with a Serial Modem DK. Those
+    zips otherwise say nothing about the modem side, leaving the version
+    discoverable only from the release page.
+    """
+    config = load_serial_modem_firmware_config(root or REPO_ROOT)
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / SERIAL_MODEM_VERSION_NOTE
+    dest.write_text(_VERSION_NOTE_TEMPLATE.format(**config), encoding="utf-8")
+    return dest
+
+
 def download_serial_modem_release_bundle(
     dest_dir: Path,
     *,
