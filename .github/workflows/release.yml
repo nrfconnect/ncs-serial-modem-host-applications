@@ -48,6 +48,9 @@ jobs:
           VERSION: ${{ inputs.version }}
           SERIAL_MODEM_RELEASE: ${{ inputs.serial_modem_release }}
           REPO_ROOT: ${{ github.workspace }}
+          # Each bundle README resolves the release in its own process, so
+          # these lookups do not share the in-process cache.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -eu
           mkdir -p release-assets release-staging

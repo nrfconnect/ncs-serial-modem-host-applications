@@ -8,6 +8,7 @@ from unittest.mock import patch
 import pytest
 
 from utils.serial_modem_firmware import (
+    clear_serial_modem_release_cache,
     load_serial_modem_firmware_config,
     resolve_serial_modem_release,
 )
@@ -56,8 +57,9 @@ PREVIEW1_RELEASE = {
 
 
 @pytest.fixture(autouse=True)
-def clear_serial_modem_release_env(monkeypatch: pytest.MonkeyPatch) -> None:
+def isolate_resolution(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("SERIAL_MODEM_RELEASE", raising=False)
+    clear_serial_modem_release_cache()
 
 
 def test_resolve_latest_prefers_newest_extmcu_zip() -> None:
@@ -119,6 +121,33 @@ def test_load_config_uses_serial_modem_release_env(monkeypatch: pytest.MonkeyPat
     api_request.assert_called_once()
     assert config["release"] == "v2.0.0-preview1"
     assert config["console_baudrate"] == 1000000
+
+
+def test_repeated_resolution_hits_the_api_once() -> None:
+    with patch(
+        "utils.serial_modem_firmware.load_serial_modem_static_config",
+        return_value=STATIC_CONFIG,
+    ), patch(
+        "utils.serial_modem_firmware._github_api_request",
+        return_value=[PREVIEW2_RELEASE],
+    ) as api_request:
+        first = resolve_serial_modem_release()
+        second = resolve_serial_modem_release()
+
+    api_request.assert_called_once()
+    assert first == second
+
+
+def test_cached_release_is_not_mutated_by_callers() -> None:
+    with patch(
+        "utils.serial_modem_firmware.load_serial_modem_static_config",
+        return_value=STATIC_CONFIG,
+    ), patch(
+        "utils.serial_modem_firmware._github_api_request",
+        return_value=[PREVIEW2_RELEASE],
+    ):
+        resolve_serial_modem_release()["release"] = "tampered"
+        assert resolve_serial_modem_release()["release"] == "v2.0.0-preview2"
 
 
 def test_resolve_raises_when_no_matching_asset() -> None:
