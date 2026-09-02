@@ -170,6 +170,6 @@ Extract the zip and flash `serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.hex` on
 nrfutil device program --firmware serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.hex --recover
 ```
 
-The same bundle is attached to every [SMHA release](../../../doc/release-artifacts.md#serial-modem-firmware-nrf9151-dk), and CI on-target tests flash it before each 91m1 run — see [Serial logs](../../../doc/ci-and-contribution.md#serial-logs).
+The same zip ships at the top level of every `91m1_ppp` [SMHA release bundle](../../../doc/release-artifacts.md#serial-modem-firmware-nrf9151-dk), and CI on-target tests flash it before each 91m1 run — see [Serial logs](../../../doc/ci-and-contribution.md#serial-logs).
 
 To match an unreleased Serial Modem commit instead, build the modem application yourself; see the [Serial Modem getting started guide](https://docs.nordicsemi.com/bundle/addon-serial_modem-latest/page/gsg_guide.html#building_and_running) for workspace setup and build arguments.

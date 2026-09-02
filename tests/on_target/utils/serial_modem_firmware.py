@@ -33,6 +33,24 @@ def serial_modem_cache_dir(config: dict, *, root: Path | None = None) -> Path:
     return repo_root / "build" / "serial-modem-firmware" / config["release"]
 
 
+def download_serial_modem_bundle(*, root: Path | None = None) -> Path:
+    """Download the pinned Serial Modem release zip if needed, and return its path.
+
+    Releases ship this archive as it comes from upstream; tests extract it.
+    """
+    repo_root = root or REPO_ROOT
+    config = load_serial_modem_firmware_config(repo_root)
+    cache_dir = serial_modem_cache_dir(config, root=repo_root)
+    zip_path = cache_dir / config["bundle"]
+
+    if not zip_path.is_file():
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        logger.info("Downloading Serial Modem firmware %s", config["download_url"])
+        urlretrieve(config["download_url"], zip_path)
+
+    return zip_path
+
+
 def ensure_serial_modem_firmware(*, root: Path | None = None) -> Path:
     """Download and extract the pinned Serial Modem bundle if needed."""
     repo_root = root or REPO_ROOT
@@ -43,12 +61,7 @@ def ensure_serial_modem_firmware(*, root: Path | None = None) -> Path:
     if hex_path.is_file():
         return hex_path
 
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    zip_path = cache_dir / config["bundle"]
-    if not zip_path.is_file():
-        logger.info("Downloading Serial Modem firmware %s", config["download_url"])
-        urlretrieve(config["download_url"], zip_path)
-
+    zip_path = download_serial_modem_bundle(root=repo_root)
     with zipfile.ZipFile(zip_path) as archive:
         archive.extractall(cache_dir)
 
@@ -70,56 +83,3 @@ def flash_serial_modem_firmware(segger_sn: str, *, root: Path | None = None) -> 
         recover=True,
         program_options=FULL_FLASH_PROGRAM_OPTIONS,
     )
-
-
-SERIAL_MODEM_VERSION_NOTE = "serial-modem-version.txt"
-
-_VERSION_NOTE_TEMPLATE = """\
-Serial Modem firmware for the companion nRF9151 / SMA DK
-========================================================
-
-Release:  {release}
-Bundle:   {bundle}
-Upstream: {upstream_release_url}
-
-91m1 host applications need this firmware on the wired nRF9151 / SMA DK.
-The bundle is attached to the same SMHA release as this zip: flash its
-.hex on the modem DK first, then merged.hex on the host DK.
-
-This host build is verified against that bundle: on-target tests flash
-these exact images on the modem DK.
-"""
-
-
-def write_serial_modem_version_note(dest_dir: Path, *, root: Path | None = None) -> Path:
-    """Record which Serial Modem revision a host build was tested against.
-
-    Goes into 91m1 release bundles, which pair with a Serial Modem DK. Those
-    zips otherwise say nothing about the modem side, leaving the version
-    discoverable only from the release page.
-    """
-    config = load_serial_modem_firmware_config(root or REPO_ROOT)
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    dest = dest_dir / SERIAL_MODEM_VERSION_NOTE
-    dest.write_text(_VERSION_NOTE_TEMPLATE.format(**config), encoding="utf-8")
-    return dest
-
-
-def download_serial_modem_release_bundle(
-    dest_dir: Path,
-    *,
-    root: Path | None = None,
-) -> Path:
-    """Copy the upstream Serial Modem release zip into dest_dir."""
-    repo_root = root or REPO_ROOT
-    config = load_serial_modem_firmware_config(repo_root)
-    cache_dir = serial_modem_cache_dir(config, root=repo_root)
-    ensure_serial_modem_firmware(root=repo_root)
-    src = cache_dir / config["bundle"]
-    if not src.is_file():
-        raise FileNotFoundError(f"Serial Modem bundle not found: {src}")
-
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    dest = dest_dir / config["bundle"]
-    dest.write_bytes(src.read_bytes())
-    return dest
