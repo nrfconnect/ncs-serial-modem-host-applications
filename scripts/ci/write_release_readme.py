@@ -106,8 +106,8 @@ def render_readme(bundle_dir: Path, *, app: str, board_type: str, version: str) 
     lines += [
         "## More",
         "",
-        f"- Application documentation: {REPO_URL}/tree/v{version}/applications/{app}/doc",
-        f"- Full artifact reference: {REPO_URL}/blob/v{version}/doc/release-artifacts.md",
+        f"- Application documentation: {REPO_URL}/tree/v{version}/docs/applications/{app}",
+        f"- Full artifact reference: {REPO_URL}/blob/v{version}/docs/release-artifacts.md",
     ]
     if modem is not None:
         lines.append(f"- Serial Modem release: {modem['upstream_release_url']}")
