@@ -84,3 +84,8 @@
 &gpio1 {
 	status = "okay";
 };
+
+/* Non-secure hardware watchdog, fallback for CONFIG_TASK_WDT_HW_FALLBACK. */
+&wdt31 {
+	status = "okay";
+};
