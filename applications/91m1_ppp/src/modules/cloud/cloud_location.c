@@ -57,7 +57,7 @@ void cloud_location_request_handle(const struct location_cloud_request_data *req
 {
 	static struct wifi_scan_result ap_info[CONFIG_APP_LOCATION_WIFI_APS_MAX];
 	struct nrf_cloud_location_config loc_config = {
-		.do_reply = false,
+		.do_reply = true,
 	};
 	struct wifi_scan_info wifi_info = { 0 };
 	struct nrf_cloud_coap_location_request loc_req = {
@@ -91,5 +91,8 @@ void cloud_location_request_handle(const struct location_cloud_request_data *req
 		return;
 	}
 
-	LOG_DBG("Location request sent to nRF Cloud");
+	LOG_INF("Location: %.06f, %.06f Uncertainty: %um",
+		result.lat, result.lon, result.unc);
+	LOG_INF("Google maps URL: https://maps.google.com/?q=%.06f,%.06f",
+		result.lat, result.lon);
 }

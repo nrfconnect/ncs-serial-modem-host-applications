@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from utils.location_data import wait_for_wifi_location_sent
+from utils.location_data import wait_for_resolved_location, wait_for_wifi_location_sent
 from utils.logger import get_logger
 from utils.memfault_ota import read_build_metadata
 from utils.modem_logs import enable_modem_application_logs
@@ -49,3 +49,15 @@ def test_location_wifi_data_after_provisioning(
     )
 
     assert access_points >= 1, "Wi-Fi location data sent without any access points"
+
+    logger.info("Verify nRF Cloud returns the resolved location to the device")
+    location = wait_for_resolved_location(
+        dut.uart,
+        after=CLOUD_CONNECTED_LOG,
+        timeout=LOCATION_TIMEOUT,
+    )
+
+    assert -90.0 <= location["lat"] <= 90.0, f"Latitude out of range: {location['lat']}"
+    assert -180.0 <= location["lon"] <= 180.0, (
+        f"Longitude out of range: {location['lon']}"
+    )
