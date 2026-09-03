@@ -417,6 +417,13 @@ int main(void)
 			   &cloud_sync_workq_cfg);
 	k_work_init_delayable(&main_state.cloud_sync_dwork, cloud_sync_delayed_work_handler);
 
+	err = task_wdt_init(DEVICE_DT_GET(DT_ALIAS(watchdog0)));
+	if (err) {
+		LOG_ERR("task_wdt_init, error: %d", err);
+		FATAL_ERROR();
+		return -EFAULT;
+	}
+
 	task_wdt_id = task_wdt_add(wdt_timeout_ms, main_wdt_callback, (void *)k_current_get());
 	if (task_wdt_id < 0) {
 		LOG_ERR("Failed to add task to watchdog: %d", task_wdt_id);

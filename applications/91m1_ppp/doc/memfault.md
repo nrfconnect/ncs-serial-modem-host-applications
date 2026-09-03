@@ -63,6 +63,17 @@ uart:~$ mflt test usagefault
 
 After a test fault the device reboots, reconnects to nRF Cloud, and uploads the coredump. Confirm the decoded trace appears under **Issues** or on the device's page in Memfault.
 
+### Software watchdog
+
+Each module thread is monitored by a Zephyr task watchdog. When a thread stops feeding its watchdog, the timeout callback calls `MEMFAULT_SOFTWARE_WATCHDOG()`, which captures a coredump tagged **Software Watchdog** before rebooting. To trigger this manually, suspend a monitored thread from the kernel shell so it can no longer feed its watchdog:
+
+```shell
+uart:~$ kernel thread list
+uart:~$ kernel thread suspend <thread_id>
+```
+
+Use the `0x...` id printed next to the `main` thread. After the watchdog timeout (`CONFIG_APP_MAIN_WATCHDOG_TIMEOUT_SECONDS`) elapses, the device captures the coredump, reboots, and uploads it. The trace appears in Memfault with the **Software Watchdog** reason.
+
 ## What gets collected
 
 | Data | Description |

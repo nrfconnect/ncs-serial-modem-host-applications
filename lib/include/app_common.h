@@ -11,6 +11,10 @@
 #include <zephyr/logging/log_ctrl.h>
 #include <zephyr/sys/util.h>
 
+#if defined(CONFIG_MEMFAULT)
+#include <memfault/panics/assert.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -30,8 +34,20 @@ extern "C" {
 /** @brief Macro used to handle fatal errors. */
 #define FATAL_ERROR() FATAL_ERROR_HANDLE(0)
 
-/** @brief Macro used to handle watchdog timeouts. */
+/** @brief Macro used to handle watchdog timeouts.
+ *
+ *  When Memfault is enabled, capture a coredump tagged with the "Software Watchdog"
+ *  reason before rebooting. The Memfault assert handler does not return. Without
+ *  Memfault, fall back to the generic fatal error handling.
+ */
+#if defined(CONFIG_MEMFAULT)
+#define FATAL_ERROR_WATCHDOG_TIMEOUT() do { \
+	LOG_PANIC(); \
+	MEMFAULT_SOFTWARE_WATCHDOG(); \
+} while (0)
+#else
 #define FATAL_ERROR_WATCHDOG_TIMEOUT() FATAL_ERROR_HANDLE(1)
+#endif
 
 /* Helper macro to create union member from channel and type */
 #define UNION_MEMBER(_chan, _type) _type _chan##_data_type;

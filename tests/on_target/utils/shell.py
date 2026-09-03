@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 
 import serial
@@ -12,6 +13,14 @@ from utils.logger import get_logger
 logger = get_logger()
 
 SHELL_PROMPT = "uart:~$"
+
+# Matches VT100/ANSI escape sequences the shell emits for colours and cursor moves.
+_ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
+
+
+def _strip_ansi(text: str) -> str:
+    """Remove ANSI escape sequences and carriage returns for line-oriented parsing."""
+    return _ANSI_ESCAPE.sub("", text).replace("\r", "")
 
 
 def _wait_for_prompt_in_buffer(
@@ -99,3 +108,57 @@ def send_shell_command(
 
         _wait_for_prompt_in_buffer(ser, timeout=timeout)
         logger.info("Shell command completed on %s", serial_port)
+
+
+def send_shell_command_until(
+    serial_port: str,
+    command: str,
+    pattern: str,
+    *,
+    timeout: float = 60.0,
+    baudrate: int = 115200,
+) -> str:
+    """Send a Zephyr shell command and read until *pattern* appears in its output.
+
+    Returns the accumulated, ANSI-stripped output once *pattern* (a regex) matches.
+    Unlike waiting for the shell prompt, this tolerates asynchronous log lines that make
+    the shell reprint its prompt, so it is safe for parsing command output (e.g.
+    ``kernel thread list``) on a device with active logging.
+    """
+    regex = re.compile(pattern, re.MULTILINE)
+    with serial.Serial(
+        serial_port,
+        baudrate=baudrate,
+        timeout=1.0,
+    ) as ser:
+        ser.dtr = True
+        ser.rts = True
+
+        if ser.in_waiting:
+            ser.reset_input_buffer()
+
+        # Make sure the shell is up before issuing the command.
+        _wait_for_prompt_in_buffer(ser, timeout=timeout)
+
+        logger.info("Sending shell command on %s: %r", serial_port, command)
+        ser.write(f"{command}\r\n".encode("utf-8"))
+        ser.flush()
+
+        raw = ""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            waiting = ser.in_waiting
+            data = ser.read(waiting if waiting else 1)
+            if not data:
+                continue
+
+            raw += data.decode("utf-8", errors="replace")
+            clean = _strip_ansi(raw)
+            if regex.search(clean):
+                logger.info("Shell command output matched %r on %s", pattern, serial_port)
+                return clean
+
+    raise TimeoutError(
+        f"Timed out after {timeout:.0f}s waiting for output matching {pattern!r} from "
+        f"command {command!r} on {serial_port!r}. Captured:\n{_strip_ansi(raw)}"
+    )
