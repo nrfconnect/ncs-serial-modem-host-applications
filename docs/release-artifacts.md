@@ -1,6 +1,6 @@
 # Release artifacts
 
-This document describes the pre-built firmware published on each GitHub release. Each zip bundles one application and board-type combination built by CI from the matching NCS version pinned in [`west.yml`](../west.yml).
+This document describes the pre-built firmware published on each GitHub release. Each zip bundles one application and board-type combination built by CI from the matching NCS version pinned in [`west.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/west.yml).
 
 ## Downloading releases
 
@@ -18,11 +18,11 @@ Each release contains one zip per CI build flavor:
 
 | **Release zip** | **Application** | **Hardware** | **Description** |
 |-----------------|-----------------|--------------|-----------------|
-| `91m1_ppp-nrf54l15-v{VERSION}.zip` | [91m1_ppp](../applications/91m1_ppp/) | nRF54L15 DK + nRF9151 Serial Modem | Standard PPP host; nRF Cloud CoAP/DTLS on the host |
-| `91m1_ppp-nrf54lm20b-v{VERSION}.zip` | [91m1_ppp](../applications/91m1_ppp/) | nRF54LM20B DK + nRF9151 Serial Modem | Same feature set on nRF54LM20B |
-| `91m1_ppp-nrf54lm20b-location-v{VERSION}.zip` | [91m1_ppp](../applications/91m1_ppp/) | nRF54LM20B DK + nRF7002-EB2 + Serial Modem | Wi-Fi scan for cloud-assisted location |
-| `93m1_ppp-nrf93m1-v{VERSION}.zip` | [93m1_ppp](../applications/93m1_ppp/) | nRF93M1 DK | PPP host for the integrated nRF93M1 modem |
-| `93m1_at-nrf93m1-v{VERSION}.zip` | [93m1_at](../applications/93m1_at/) | nRF93M1 DK | AT host; modem terminates the cloud connection |
+| `91m1_ppp-nrf54l15-v{VERSION}.zip` | [91m1_ppp](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/) | nRF54L15 DK + nRF9151 Serial Modem | Standard PPP host; nRF Cloud CoAP/DTLS on the host |
+| `91m1_ppp-nrf54lm20b-v{VERSION}.zip` | [91m1_ppp](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/) | nRF54LM20B DK + nRF9151 Serial Modem | Same feature set on nRF54LM20B |
+| `91m1_ppp-nrf54lm20b-location-v{VERSION}.zip` | [91m1_ppp](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/) | nRF54LM20B DK + nRF7002-EB2 + Serial Modem | Wi-Fi scan for cloud-assisted location |
+| `93m1_ppp-nrf93m1-v{VERSION}.zip` | [93m1_ppp](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/93m1_ppp/) | nRF93M1 DK | PPP host for the integrated nRF93M1 modem |
+| `93m1_at-nrf93m1-v{VERSION}.zip` | [93m1_at](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/93m1_at/) | nRF93M1 DK | AT host; modem terminates the cloud connection |
 
 Replace `{VERSION}` with the release tag without the `v` prefix (for example `1.2.3` for tag `v1.2.3`).
 
@@ -63,13 +63,13 @@ Use this for first-time programming or when you need to replace the full flash c
 
 After flashing, follow the application guide for hardware setup and cloud onboarding:
 
-- [91m1_ppp documentation](../applications/91m1_ppp/doc/README.md)
-- [93m1_ppp documentation](../applications/93m1_ppp/doc/README.md)
-- [93m1_at documentation](../applications/93m1_at/doc/README.md)
+- [91m1_ppp documentation](applications/91m1_ppp/README.md)
+- [93m1_ppp documentation](applications/93m1_ppp/README.md)
+- [93m1_at documentation](applications/93m1_at/README.md)
 
 ### `zephyr.elf`
 
-Upload this to Memfault **once per release build** so coredumps decode correctly. The GNU build ID logged at boot must match the symbol file. See [Memfault remote debugging](../applications/91m1_ppp/doc/memfault.md) for the 91m1_ppp flow.
+Upload this to Memfault **once per release build** so coredumps decode correctly. The GNU build ID logged at boot must match the symbol file. See [Memfault remote debugging](applications/91m1_ppp/memfault.md) for the 91m1_ppp flow.
 
 ### `.config`
 
@@ -105,7 +105,7 @@ nrfutil device program \
 
 Replace `<tag>` with the version named in the bundle `README.md` (for example `2.0.0-preview2`).
 
-See [91m1_ppp hardware setup](../applications/91m1_ppp/doc/hardware-setup.md#serial-modem-firmware) for wiring and Board Configurator settings.
+See [91m1_ppp hardware setup](applications/91m1_ppp/hardware-setup.md#serial-modem-firmware) for wiring and Board Configurator settings.
 
 ## Flashing a release
 
@@ -136,7 +136,7 @@ For 91m1 two-board setups, extract the bundled Serial Modem archive and flash it
 | `91m1_ppp-nrf54lm20b-location-*` | nRF54LM20B DK VCOM0 |
 | `93m1_ppp-nrf93m1-*`, `93m1_at-nrf93m1-*` | nRF93M1 DK default console |
 
-See each application's [hardware setup](../applications/91m1_ppp/doc/hardware-setup.md) guide for wiring and serial port details.
+See each application's [hardware setup](applications/91m1_ppp/hardware-setup.md) guide for wiring and serial port details.
 
 ## Building locally instead
 
@@ -153,4 +153,4 @@ Board identifiers match CI; see [CI and contribution](ci-and-contribution.md) an
 ## Related documentation
 
 - [CI and contribution](ci-and-contribution.md) — how releases are versioned and published
-- [91m1_ppp Memfault](../applications/91m1_ppp/doc/memfault.md) — symbol upload and coredump workflow
+- [91m1_ppp Memfault](applications/91m1_ppp/memfault.md) — symbol upload and coredump workflow
