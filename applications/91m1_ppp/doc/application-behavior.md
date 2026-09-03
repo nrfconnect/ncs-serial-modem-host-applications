@@ -39,7 +39,7 @@ While nRF Cloud is connected, main keeps a periodic timer on a dedicated workque
 
 An initial synchronization runs immediately on cloud connect. The timer is cancelled when cloud disconnects.
 
-A location search runs asynchronously: the location module scans for Wi-Fi access points and publishes the result as `LOCATION_CLOUD_REQUEST`, which the cloud module resolves into a position with an nRF Cloud CoAP ground-fix request. nRF Cloud records the position for the device, so no coordinates are returned to it. A trigger that arrives while a search is still in progress is ignored, so a scan timeout longer than the synchronization period simply means fewer position updates.
+A location search runs asynchronously: the location module scans for Wi-Fi access points and publishes the result as `LOCATION_CLOUD_REQUEST`, which the cloud module resolves into a position with an nRF Cloud CoAP ground-fix request. The request asks nRF Cloud to return the resolved position, which the cloud module logs together with a Google Maps URL. A trigger that arrives while a search is still in progress is ignored, so a scan timeout longer than the synchronization period simply means fewer position updates.
 
 ## Memfault
 
