@@ -194,6 +194,14 @@ def upload_mcu_symbols(
     command = [
         *_memfault_cli_base(env),
         "upload-mcu-symbols",
+        # Memfault matches coredumps to symbols by Build Id, but the default
+        # --check-uploaded skips the upload when a symbol file already exists for
+        # this (software-type, software-version). CI pins the version (e.g.
+        # 1.0.0), so a symbol file from an earlier build of the same version
+        # keeps the slot and this build's Build Id is never registered, leaving
+        # its coredumps unsymbolicated. Force the upload so the current build's
+        # Build Id always lands.
+        "--no-check-uploaded",
         "--software-type",
         metadata["software_type"],
         "--software-version",
