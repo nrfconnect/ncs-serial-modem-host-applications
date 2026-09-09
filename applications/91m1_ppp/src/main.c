@@ -15,14 +15,17 @@
 #include "app_common.h"
 #include "modules/network/network.h"
 #include "modules/cloud/cloud.h"
+
+#if defined(CONFIG_APP_FOTA)
 #include "modules/fota/fota.h"
+#endif /* CONFIG_APP_FOTA */
+
 #if defined(CONFIG_APP_LOCATION)
 #include "modules/location/location.h"
 #endif /* CONFIG_APP_LOCATION */
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_MAIN_LOG_LEVEL);
 
-BUILD_ASSERT(IS_ENABLED(CONFIG_APP_FOTA), "FOTA module is required");
 BUILD_ASSERT(CONFIG_APP_MAIN_WATCHDOG_TIMEOUT_SECONDS >
 	     CONFIG_APP_MAIN_MSG_PROCESSING_TIMEOUT_SECONDS,
 	     "Watchdog timeout must be greater than maximum message processing time");
@@ -52,7 +55,7 @@ ZBUS_CHAN_DEFINE(main_priv_chan,
 #define CHANNEL_LIST(X) \
 	X(network_chan, struct network_msg) \
 	X(cloud_chan, struct cloud_msg) \
-	X(fota_chan, struct fota_msg) \
+	IF_ENABLED(CONFIG_APP_FOTA, (X(fota_chan, struct fota_msg))) \
 	IF_ENABLED(CONFIG_APP_LOCATION, (X(location_chan, struct location_msg))) \
 	X(main_priv_chan, struct main_priv_msg)
 
@@ -93,6 +96,17 @@ enum main_app_state {
 		 * - Posts any pending Memfault data
 		 */
 		STATE_CLOUD_CONNECTED,
+#if defined(CONFIG_APP_FOTA)
+	/**
+	 * A FOTA download is in progress. Cloud state at entry is saved in
+	 * @ref main_state::cloud_history for restore on @ref FOTA_ABORTED.
+	 */
+	STATE_FOTA,
+	/**
+	 * FOTA completed; application cleanup runs before reboot.
+	 */
+	STATE_REBOOTING,
+#endif /* CONFIG_APP_FOTA */
 };
 
 /* State object for the main module.
@@ -103,6 +117,8 @@ struct main_state {
 	const struct zbus_channel *chan;
 	uint8_t msg_buf[MAX_MSG_SIZE];
 	struct k_work_delayable cloud_sync_dwork;
+	/** Cloud state to restore after @ref FOTA_ABORTED. */
+	enum main_app_state cloud_history;
 };
 
 static struct main_state main_state;
@@ -124,8 +140,13 @@ static void state_cloud_connected_entry(void *obj);
 static enum smf_state_result state_cloud_connected_run(void *obj);
 static void state_cloud_connected_exit(void *obj);
 
-/** SMF state table */
+#if defined(CONFIG_APP_FOTA)
+static void state_fota_entry(void *obj);
+static enum smf_state_result state_fota_run(void *obj);
+static void state_rebooting_entry(void *obj);
+#endif /* CONFIG_APP_FOTA */
 
+/** SMF state table */
 static const struct smf_state states[] = {
 	[STATE_RUNNING] =
 		SMF_CREATE_STATE(state_running_entry,
@@ -145,6 +166,17 @@ static const struct smf_state states[] = {
 				 state_cloud_connected_exit,
 				 &states[STATE_RUNNING],
 				 NULL),
+#if defined(CONFIG_APP_FOTA)
+	[STATE_FOTA] =
+		SMF_CREATE_STATE(state_fota_entry,
+				 state_fota_run,
+				 NULL,
+				 &states[STATE_RUNNING],
+				 NULL),
+	[STATE_REBOOTING] =
+		SMF_CREATE_STATE(state_rebooting_entry,
+				 NULL, NULL, NULL, NULL),
+#endif /* CONFIG_APP_FOTA */
 };
 
 /** Convenience functions */
@@ -225,6 +257,7 @@ static void location_request_forward(const struct location_cloud_request_data *r
 }
 #endif /* CONFIG_APP_LOCATION */
 
+#if defined(CONFIG_APP_FOTA)
 static void fota_poll_request(void)
 {
 	int err;
@@ -238,6 +271,7 @@ static void fota_poll_request(void)
 		FATAL_ERROR();
 	}
 }
+#endif /* CONFIG_APP_FOTA */
 
 static void shadow_poll_request(void)
 {
@@ -277,7 +311,9 @@ static void cloud_sync_run(void)
 
 	shadow_poll_request();
 
+#if defined(CONFIG_APP_FOTA)
 	fota_poll_request();
+#endif /* CONFIG_APP_FOTA */
 
 	/* Posted last so the module handles it once its own requests above are done. */
 	memfault_post_request();
@@ -320,6 +356,17 @@ static void cloud_sync_delayed_work_handler(struct k_work *work)
 	cloud_sync_schedule(state);
 }
 
+#if defined(CONFIG_APP_FOTA)
+static void fota_running_state_restore(struct main_state *state_object)
+{
+	if (state_object->cloud_history == STATE_CLOUD_CONNECTED) {
+		smf_set_state(SMF_CTX(state_object), &states[STATE_CLOUD_CONNECTED]);
+	} else {
+		smf_set_state(SMF_CTX(state_object), &states[STATE_CLOUD_DISCONNECTED]);
+	}
+}
+#endif /* CONFIG_APP_FOTA */
+
 /** SMF state functions */
 
 static void state_running_entry(void *obj)
@@ -361,36 +408,29 @@ static enum smf_state_result state_running_run(void *obj)
 	}
 #endif /* CONFIG_APP_LOCATION */
 
+#if defined(CONFIG_APP_FOTA)
 	if (state_object->chan == &fota_chan) {
 		const struct fota_msg *msg = (const struct fota_msg *)state_object->msg_buf;
 
-		switch (msg->type) {
-		case FOTA_REBOOT_REQUEST:
-			LOG_INF("FOTA successful, rebooting to apply the update");
-			LOG_PANIC();
-			sys_reboot(SYS_REBOOT_COLD);
-			break;
-		case FOTA_STARTING:
+		if (msg->type == FOTA_STARTING) {
 			LOG_INF("FOTA download starting");
-			break;
-		case FOTA_ABORTED:
-			LOG_INF("No FOTA update available");
-			break;
-		default:
-			break;
-		}
+			smf_set_state(SMF_CTX(state_object), &states[STATE_FOTA]);
 
-		return SMF_EVENT_HANDLED;
+			return SMF_EVENT_HANDLED;
+		}
 	}
+#endif /* CONFIG_APP_FOTA */
 
 	return SMF_EVENT_PROPAGATE;
 }
 
 static void state_cloud_disconnected_entry(void *obj)
 {
-	ARG_UNUSED(obj);
+	struct main_state *state_object = obj;
 
 	LOG_INF("state_cloud_disconnected_entry");
+
+	state_object->cloud_history = STATE_CLOUD_DISCONNECTED;
 }
 
 static void state_cloud_disconnected_exit(void *obj)
@@ -425,6 +465,7 @@ static void state_cloud_connected_entry(void *obj)
 
 	LOG_INF("state_cloud_connected_entry");
 
+	state_object->cloud_history = STATE_CLOUD_CONNECTED;
 	cloud_sync_schedule(state_object);
 
 	/* Synchronize once immediately so connecting always syncs without waiting a period. */
@@ -469,6 +510,55 @@ static enum smf_state_result state_cloud_connected_run(void *obj)
 
 	return SMF_EVENT_PROPAGATE;
 }
+
+#if defined(CONFIG_APP_FOTA)
+static void state_fota_entry(void *obj)
+{
+	ARG_UNUSED(obj);
+
+	LOG_INF("state_fota_entry");
+}
+
+static enum smf_state_result state_fota_run(void *obj)
+{
+	struct main_state *state_object = obj;
+
+	if (state_object->chan == &fota_chan) {
+		const struct fota_msg *msg = (const struct fota_msg *)state_object->msg_buf;
+
+		if (msg->type == FOTA_ABORTED) {
+			LOG_INF("FOTA download aborted");
+			fota_running_state_restore(state_object);
+
+			return SMF_EVENT_HANDLED;
+		} else if (msg->type == FOTA_REBOOT_REQUEST) {
+			smf_set_state(SMF_CTX(state_object), &states[STATE_REBOOTING]);
+
+			return SMF_EVENT_HANDLED;
+		}
+	} else if (state_object->chan == &cloud_chan) {
+		const struct cloud_msg *msg = (const struct cloud_msg *)state_object->msg_buf;
+
+		if (msg->type == CLOUD_DISCONNECTED) {
+			state_object->cloud_history = STATE_CLOUD_DISCONNECTED;
+
+			return SMF_EVENT_HANDLED;
+		}
+	}
+
+	return SMF_EVENT_PROPAGATE;
+}
+
+static void state_rebooting_entry(void *obj)
+{
+	ARG_UNUSED(obj);
+
+	LOG_INF("FOTA successful, rebooting to apply the update");
+	LOG_PANIC();
+
+	sys_reboot(SYS_REBOOT_COLD);
+}
+#endif /* CONFIG_APP_FOTA */
 
 static void main_wdt_callback(int channel_id, void *user_data)
 {
