@@ -140,6 +140,7 @@ static bool credentials_ready(void)
 
 static bool wait_for_valid_time(void)
 {
+	int err;
 	int64_t deadline = k_uptime_get() +
 			   (TIME_WAIT_TIMEOUT_S * MSEC_PER_SEC);
 
@@ -147,7 +148,11 @@ static bool wait_for_valid_time(void)
 		return true;
 	}
 
-	date_time_update_async(date_time_event_handler);
+	err = date_time_update_async(date_time_event_handler);
+	if (err) {
+		LOG_WRN("date_time_update_async, error: %d", err);
+		return false;
+	}
 
 	while (!atomic_get(&connect_abort) && k_uptime_get() < deadline) {
 		if (k_sem_take(&date_time_sem, K_SECONDS(1)) == 0 &&
