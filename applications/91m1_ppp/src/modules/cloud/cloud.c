@@ -14,6 +14,7 @@
 #include <zephyr/task_wdt/task_wdt.h>
 #include <zephyr/zbus/zbus.h>
 #include <date_time.h>
+#include <zephyr/net/coap.h>
 #include <net/nrf_cloud.h>
 #include <net/nrf_cloud_coap.h>
 #include <memfault/metrics/metrics.h>
@@ -155,6 +156,39 @@ static bool valid_time_wait(void)
 	return false;
 }
 
+static void cloud_shadow_poll(void)
+{
+	int err;
+	char buf[CONFIG_APP_CLOUD_SHADOW_MAX_LEN];
+	size_t buf_len = sizeof(buf);
+
+	err = nrf_cloud_coap_shadow_get(buf, &buf_len, false, COAP_CONTENT_FORMAT_APP_JSON);
+	if (err < 0) {
+		if (err == -E2BIG) {
+			LOG_WRN("nrf_cloud_coap_shadow_get, shadow truncated (%zu bytes)", buf_len);
+			LOG_DBG("Device shadow desired config: %.*s", (int)buf_len, buf);
+		} else {
+			LOG_ERR("nrf_cloud_coap_shadow_get, error: %d", err);
+		}
+
+		goto done;
+	}
+
+	if (err > 0) {
+		LOG_ERR("nrf_cloud_coap_shadow_get, CoAP error: %d", err);
+		goto done;
+	}
+
+	if (buf_len == 0) {
+		LOG_DBG("Device shadow desired config is empty");
+	} else {
+		LOG_DBG("Device shadow desired config: %.*s", (int)buf_len, buf);
+	}
+
+done:
+	cloud_msg_publish(CLOUD_SHADOW_POLLED, NULL, 0);
+}
+
 static void cloud_connect(void)
 {
 	int err;
@@ -275,6 +309,10 @@ static enum smf_state_result state_connected_run(void *obj)
 	case CLOUD_DISCONNECT:
 		cloud_msg_publish(CLOUD_DISCONNECTED, NULL, 0);
 		smf_set_state(SMF_CTX(state_object), &states[STATE_DISCONNECTED]);
+
+		return SMF_EVENT_HANDLED;
+	case CLOUD_SHADOW_POLL_REQUEST:
+		cloud_shadow_poll();
 
 		return SMF_EVENT_HANDLED;
 	case CLOUD_MEMFAULT_POST_REQUEST:
