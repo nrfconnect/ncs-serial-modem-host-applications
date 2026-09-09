@@ -16,6 +16,8 @@
 #include <date_time.h>
 #include <net/nrf_cloud.h>
 #include <net/nrf_cloud_coap.h>
+#include <memfault/metrics/metrics.h>
+#include <memfault/ports/zephyr/http.h>
 
 #include "app_common.h"
 #include "cloud.h"
@@ -241,6 +243,21 @@ static enum smf_state_result state_connecting_run(void *obj)
 	return SMF_EVENT_HANDLED;
 }
 
+static void memfault_data_post(void)
+{
+	int err;
+
+	memfault_metrics_heartbeat_debug_trigger();
+
+	err = memfault_zephyr_port_post_data();
+	if (err) {
+		LOG_WRN("memfault_zephyr_port_post_data, error: %d", err);
+		return;
+	}
+
+	LOG_DBG("Memfault data posted");
+}
+
 static void state_connected_entry(void *obj)
 {
 	ARG_UNUSED(obj);
@@ -258,6 +275,10 @@ static enum smf_state_result state_connected_run(void *obj)
 	case CLOUD_DISCONNECT:
 		cloud_msg_publish(CLOUD_DISCONNECTED, NULL, 0);
 		smf_set_state(SMF_CTX(state_object), &states[STATE_DISCONNECTED]);
+
+		return SMF_EVENT_HANDLED;
+	case CLOUD_MEMFAULT_POST_REQUEST:
+		memfault_data_post();
 
 		return SMF_EVENT_HANDLED;
 	case CLOUD_MESSAGE_SEND:

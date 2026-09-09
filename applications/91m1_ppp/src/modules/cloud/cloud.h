@@ -36,6 +36,8 @@ enum cloud_msg_type {
 	CLOUD_DISCONNECT,
 	/* Request to send the device message in @ref cloud_msg::payload. */
 	CLOUD_MESSAGE_SEND,
+	/* Request to post any pending Memfault data. */
+	CLOUD_MEMFAULT_POST_REQUEST,
 #if defined(CONFIG_APP_LOCATION)
 	/* Request to resolve the Wi-Fi based location in
 	 * @ref cloud_msg::location_request using the nRF Cloud location service.
