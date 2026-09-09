@@ -31,31 +31,39 @@ BUILD_ASSERT(CONFIG_APP_MAIN_WATCHDOG_TIMEOUT_SECONDS >
 
 ZBUS_MSG_SUBSCRIBER_DEFINE(main_subscriber);
 
-enum main_sync_msg_type {
-	MAIN_CLOUD_SYNCHRONIZATION,
+/* Private channel message types for internal state management. */
+enum main_priv_msg_type {
+	MAIN_PRIV_CLOUD_SYNCHRONIZATION,
 };
 
-struct main_sync_msg {
-	enum main_sync_msg_type type;
+struct main_priv_msg {
+	enum main_priv_msg_type type;
 };
 
-ZBUS_CHAN_DEFINE(main_sync_chan,
-		 struct main_sync_msg,
+ZBUS_CHAN_DEFINE(main_priv_chan,
+		 struct main_priv_msg,
 		 NULL,
 		 NULL,
 		 ZBUS_OBSERVERS_EMPTY,
 		 ZBUS_MSG_INIT(0)
 );
 
+/* Define the channels that the module subscribes to, their associated message types
+ * and the subscriber that will receive the messages on the channel.
+ */
 #define CHANNEL_LIST(X) \
 	X(network_chan, struct network_msg) \
 	X(cloud_chan, struct cloud_msg) \
 	X(fota_chan, struct fota_msg) \
-	X(main_sync_chan, struct main_sync_msg)
+	X(main_priv_chan, struct main_priv_msg)
 
-#define MAX_MSG_SIZE MAX_MSG_SIZE_FROM_LIST(CHANNEL_LIST)
+/* Calculate the maximum message size from the list of channels */
+#define MAX_MSG_SIZE		    MAX_MSG_SIZE_FROM_LIST(CHANNEL_LIST)
+
+/* Add main_subscriber as observer to all the channels in the list. */
 #define ADD_OBSERVERS(_chan, _type) ZBUS_CHAN_ADD_OBS(_chan, main_subscriber, 0);
 
+/* Expand to a call to ZBUS_CHAN_ADD_OBS for each channel in the list. */
 CHANNEL_LIST(ADD_OBSERVERS)
 
 /** Demo cloud payload */
@@ -228,13 +236,13 @@ static void cloud_sync_delayed_work_handler(struct k_work *work)
 	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
 	struct main_state *state = CONTAINER_OF(dwork, struct main_state, cloud_sync_dwork);
 	int err;
-	struct main_sync_msg msg = {
-		.type = MAIN_CLOUD_SYNCHRONIZATION
+	struct main_priv_msg msg = {
+		.type = MAIN_PRIV_CLOUD_SYNCHRONIZATION
 	};
 
-	err = zbus_chan_pub(&main_sync_chan, &msg, PUB_TIMEOUT);
+	err = zbus_chan_pub(&main_priv_chan, &msg, PUB_TIMEOUT);
 	if (err) {
-		LOG_ERR("zbus_chan_pub main_sync_chan, error: %d", err);
+		LOG_ERR("zbus_chan_pub main_priv_chan, error: %d", err);
 		FATAL_ERROR();
 	}
 
@@ -254,11 +262,11 @@ static enum smf_state_result state_running_run(void *obj)
 {
 	struct main_state *state_object = obj;
 
-	if (state_object->chan == &main_sync_chan) {
-		const struct main_sync_msg *msg =
-			(const struct main_sync_msg *)state_object->msg_buf;
+	if (state_object->chan == &main_priv_chan) {
+		const struct main_priv_msg *msg =
+			(const struct main_priv_msg *)state_object->msg_buf;
 
-		if (msg->type == MAIN_CLOUD_SYNCHRONIZATION) {
+		if (msg->type == MAIN_PRIV_CLOUD_SYNCHRONIZATION) {
 			cloud_sync_run();
 			fota_poll_request();
 		}
