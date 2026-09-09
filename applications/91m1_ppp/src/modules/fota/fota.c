@@ -387,7 +387,7 @@ static void state_reboot_pending_entry(void *obj)
 	LOG_DBG("%s", __func__);
 	LOG_DBG("Waiting for the application to reboot in order to apply the update");
 
-	fota_event_publish(FOTA_REQUEST_REBOOT);
+	fota_event_publish(FOTA_REBOOT_REQUEST);
 }
 
 static void state_canceling_entry(void *obj)

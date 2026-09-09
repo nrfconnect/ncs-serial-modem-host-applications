@@ -288,7 +288,7 @@ static enum smf_state_result state_running_run(void *obj)
 		const struct fota_msg *msg = (const struct fota_msg *)state_object->msg_buf;
 
 		switch (msg->type) {
-		case FOTA_REQUEST_REBOOT:
+		case FOTA_REBOOT_REQUEST:
 			LOG_INF("FOTA successful, rebooting to apply the update");
 			LOG_PANIC();
 			sys_reboot(SYS_REBOOT_COLD);

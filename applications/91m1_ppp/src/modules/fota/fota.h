@@ -29,7 +29,7 @@ enum fota_msg_type {
 	/* The FOTA module requires the application to reboot the device to
 	 * continue or finalize the update.
 	 */
-	FOTA_REQUEST_REBOOT,
+	FOTA_REBOOT_REQUEST,
 
 	/* The FOTA sequence was aborted (download failed, timed out,
 	 * canceled, rejected, or no update was available).
