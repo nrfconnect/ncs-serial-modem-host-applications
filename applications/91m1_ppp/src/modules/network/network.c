@@ -47,10 +47,12 @@ static struct net_mgmt_event_callback conn_cb;
 static struct network_state_object network_state;
 static const struct smf_state states[];
 
-static void publish_network_status(enum network_msg_type type)
+static void network_status_publish(enum network_msg_type type)
 {
-	struct network_msg msg = { .type = type };
 	int err;
+	struct network_msg msg = {
+		.type = type
+	};
 
 	err = zbus_chan_pub(&network_chan, &msg, PUB_TIMEOUT);
 	if (err) {
@@ -69,13 +71,13 @@ static void l4_event_handler(const struct net_mgmt_event_callback *cb, uint64_t 
 		LOG_DBG("Network connectivity established (iface %d)",
 			net_if_get_by_iface((struct net_if *)iface));
 
-		publish_network_status(NETWORK_CONNECTED);
+		network_status_publish(NETWORK_CONNECTED);
 		break;
 	case NET_EVENT_L4_DISCONNECTED:
 		LOG_DBG("Network connectivity lost (iface %d)",
 			net_if_get_by_iface((struct net_if *)iface));
 
-		publish_network_status(NETWORK_DISCONNECTED);
+		network_status_publish(NETWORK_DISCONNECTED);
 		break;
 	default:
 		break;
@@ -94,14 +96,14 @@ static void connectivity_event_handler(const struct net_mgmt_event_callback *cb,
 	}
 }
 
-static void disconnected_entry(void *obj)
+static void state_disconnected_entry(void *obj)
 {
 	ARG_UNUSED(obj);
 
 	LOG_DBG("Network module disconnected");
 }
 
-static enum smf_state_result disconnected_run(void *obj)
+static enum smf_state_result state_disconnected_run(void *obj)
 {
 	int err;
 	struct network_state_object *state_object = obj;
@@ -133,14 +135,14 @@ static enum smf_state_result disconnected_run(void *obj)
 	return SMF_EVENT_HANDLED;
 }
 
-static void connected_entry(void *obj)
+static void state_connected_entry(void *obj)
 {
 	ARG_UNUSED(obj);
 
 	LOG_DBG("Network module connected");
 }
 
-static enum smf_state_result connected_run(void *obj)
+static enum smf_state_result state_connected_run(void *obj)
 {
 	int err;
 	struct network_state_object *state_object = obj;
@@ -166,10 +168,10 @@ static enum smf_state_result connected_run(void *obj)
 }
 
 static const struct smf_state states[] = {
-	[STATE_DISCONNECTED] = SMF_CREATE_STATE(disconnected_entry,
-						disconnected_run, NULL, NULL, NULL),
-	[STATE_CONNECTED] = SMF_CREATE_STATE(connected_entry,
-					     connected_run, NULL, NULL, NULL),
+	[STATE_DISCONNECTED] = SMF_CREATE_STATE(state_disconnected_entry,
+						state_disconnected_run, NULL, NULL, NULL),
+	[STATE_CONNECTED] = SMF_CREATE_STATE(state_connected_entry,
+					     state_connected_run, NULL, NULL, NULL),
 };
 
 static void network_wdt_callback(int channel_id, void *user_data)
@@ -208,7 +210,9 @@ static void network_module(void)
 	smf_set_initial(SMF_CTX(&network_state), &states[STATE_DISCONNECTED]);
 
 #if IS_ENABLED(CONFIG_APP_NETWORK_SEARCH_NETWORK_ON_STARTUP)
-	struct network_msg connect_msg = { .type = NETWORK_CONNECT };
+	struct network_msg connect_msg = {
+		.type = NETWORK_CONNECT
+	};
 
 	err = zbus_chan_pub(&network_chan, &connect_msg, PUB_TIMEOUT);
 	if (err) {

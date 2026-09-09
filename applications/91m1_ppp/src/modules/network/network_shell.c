@@ -13,12 +13,14 @@
 
 static int network_publish(const struct shell *sh, enum network_msg_type type)
 {
-	struct network_msg msg = { .type = type };
 	int err;
+	struct network_msg msg = {
+		.type = type
+	};
 
 	err = zbus_chan_pub(&network_chan, &msg, PUB_TIMEOUT);
 	if (err) {
-		shell_error(sh, "Failed to publish network message, error: %d", err);
+		(void)shell_error(sh, "Failed to publish network message, error: %d", err);
 		return err;
 	}
 
@@ -33,7 +35,7 @@ static int cmd_network_connect(const struct shell *sh, size_t argc, char **argv)
 	int err = network_publish(sh, NETWORK_CONNECT);
 
 	if (!err) {
-		shell_print(sh, "Network connect requested");
+		(void)shell_print(sh, "Network connect requested");
 	}
 
 	return err;
@@ -47,7 +49,7 @@ static int cmd_network_disconnect(const struct shell *sh, size_t argc, char **ar
 	int err = network_publish(sh, NETWORK_DISCONNECT);
 
 	if (!err) {
-		shell_print(sh, "Network disconnect requested");
+		(void)shell_print(sh, "Network disconnect requested");
 	}
 
 	return err;

@@ -55,6 +55,7 @@ static int wifi_ap_data_construct(struct wifi_scan_info *dest,
 
 void cloud_location_request_handle(const struct location_cloud_request_data *request)
 {
+	int err;
 	static struct wifi_scan_result ap_info[CONFIG_APP_LOCATION_WIFI_APS_MAX];
 	struct nrf_cloud_location_config loc_config = {
 		.do_reply = true,
@@ -64,7 +65,6 @@ void cloud_location_request_handle(const struct location_cloud_request_data *req
 		.config = &loc_config,
 	};
 	struct nrf_cloud_location_result result = { 0 };
-	int err;
 
 	if (request->wifi_cnt == 0) {
 		LOG_WRN("No Wi-Fi access points in location request, ignoring");
@@ -91,8 +91,8 @@ void cloud_location_request_handle(const struct location_cloud_request_data *req
 		return;
 	}
 
-	LOG_INF("Location: %.06f, %.06f Uncertainty: %um",
+	LOG_DBG("Location: %.06f, %.06f Uncertainty: %um",
 		result.lat, result.lon, result.unc);
-	LOG_INF("Google maps URL: https://maps.google.com/?q=%.06f,%.06f",
+	LOG_DBG("Google maps URL: https://maps.google.com/?q=%.06f,%.06f",
 		result.lat, result.lon);
 }

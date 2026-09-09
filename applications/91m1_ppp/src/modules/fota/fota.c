@@ -128,10 +128,12 @@ static const struct smf_state states[] = {
 				 NULL),
 };
 
-static void publish_fota_event(enum fota_msg_type type)
+static void fota_event_publish(enum fota_msg_type type)
 {
 	int err;
-	struct fota_msg evt = { .type = type };
+	struct fota_msg evt = {
+		.type = type
+	};
 
 	err = zbus_chan_pub(&fota_chan, &evt, PUB_TIMEOUT);
 	if (err) {
@@ -140,10 +142,12 @@ static void publish_fota_event(enum fota_msg_type type)
 	}
 }
 
-static void publish_priv_fota(enum priv_fota_msg_type type)
+static void priv_fota_publish(enum priv_fota_msg_type type)
 {
 	int err;
-	struct priv_fota_msg msg = { .type = type };
+	struct priv_fota_msg msg = {
+		.type = type
+	};
 
 	err = zbus_chan_pub(&priv_fota_chan, &msg, PUB_TIMEOUT);
 	if (err) {
@@ -156,7 +160,7 @@ static void fota_reboot(enum nrf_cloud_fota_reboot_status status)
 {
 	LOG_DBG("Reboot requested with FOTA status %d", status);
 
-	publish_priv_fota(FOTA_PRIV_REBOOT_NEEDED);
+	priv_fota_publish(FOTA_PRIV_REBOOT_NEEDED);
 }
 
 static void fota_status(enum nrf_cloud_fota_status status, const char *const status_details)
@@ -168,27 +172,27 @@ static void fota_status(enum nrf_cloud_fota_status status, const char *const sta
 	case NRF_CLOUD_FOTA_DOWNLOADING:
 		LOG_DBG("Downloading firmware update");
 
-		publish_priv_fota(FOTA_PRIV_DOWNLOADING);
+		priv_fota_publish(FOTA_PRIV_DOWNLOADING);
 		break;
 	case NRF_CLOUD_FOTA_FAILED:
 		LOG_WRN("Firmware download failed");
 
-		publish_priv_fota(FOTA_PRIV_ABORTED);
+		priv_fota_publish(FOTA_PRIV_ABORTED);
 		break;
 	case NRF_CLOUD_FOTA_CANCELED:
 		LOG_WRN("Firmware download canceled");
 
-		publish_priv_fota(FOTA_PRIV_ABORTED);
+		priv_fota_publish(FOTA_PRIV_ABORTED);
 		break;
 	case NRF_CLOUD_FOTA_REJECTED:
 		LOG_WRN("Firmware update rejected");
 
-		publish_priv_fota(FOTA_PRIV_ABORTED);
+		priv_fota_publish(FOTA_PRIV_ABORTED);
 		break;
 	case NRF_CLOUD_FOTA_TIMED_OUT:
 		LOG_WRN("Firmware download timed out");
 
-		publish_priv_fota(FOTA_PRIV_ABORTED);
+		priv_fota_publish(FOTA_PRIV_ABORTED);
 		break;
 	case NRF_CLOUD_FOTA_SUCCEEDED:
 		LOG_DBG("Firmware update succeeded");
@@ -228,12 +232,12 @@ static void state_running_entry(void *obj)
 		if (err) {
 			LOG_ERR("boot_write_img_confirmed, error: %d", err);
 		} else {
-			LOG_INF("Running image confirmed");
+			LOG_DBG("Running image confirmed");
 		}
 	}
 #endif /* CONFIG_MCUBOOT_IMG_MANAGER */
 
-	publish_fota_event(FOTA_MODULE_READY);
+	fota_event_publish(FOTA_MODULE_READY);
 }
 
 static enum smf_state_result state_running_run(void *obj)
@@ -285,8 +289,8 @@ static enum smf_state_result state_waiting_for_poll_request_run(void *obj)
 
 static void state_polling_for_update_entry(void *obj)
 {
-	struct fota_state_object *state_object = obj;
 	int err;
+	struct fota_state_object *state_object = obj;
 
 	LOG_DBG("%s", __func__);
 
@@ -298,7 +302,7 @@ static void state_polling_for_update_entry(void *obj)
 		return;
 	} else if (err) {
 		LOG_DBG("No FOTA job available");
-		publish_priv_fota(FOTA_PRIV_ABORTED);
+		priv_fota_publish(FOTA_PRIV_ABORTED);
 		return;
 	}
 
@@ -319,7 +323,7 @@ static enum smf_state_result state_polling_for_update_run(void *obj)
 
 			return SMF_EVENT_HANDLED;
 		case FOTA_PRIV_ABORTED:
-			publish_fota_event(FOTA_ABORTED);
+			fota_event_publish(FOTA_ABORTED);
 			smf_set_state(SMF_CTX(state_object),
 				      &states[STATE_WAITING_FOR_POLL_REQUEST]);
 
@@ -346,7 +350,7 @@ static void state_downloading_update_entry(void *obj)
 
 	LOG_DBG("%s", __func__);
 
-	publish_fota_event(FOTA_STARTING);
+	fota_event_publish(FOTA_STARTING);
 }
 
 static enum smf_state_result state_downloading_update_run(void *obj)
@@ -363,7 +367,7 @@ static enum smf_state_result state_downloading_update_run(void *obj)
 
 			return SMF_EVENT_HANDLED;
 		case FOTA_PRIV_ABORTED:
-			publish_fota_event(FOTA_ABORTED);
+			fota_event_publish(FOTA_ABORTED);
 			smf_set_state(SMF_CTX(state_object),
 				      &states[STATE_WAITING_FOR_POLL_REQUEST]);
 
@@ -383,7 +387,7 @@ static void state_reboot_pending_entry(void *obj)
 	LOG_DBG("%s", __func__);
 	LOG_DBG("Waiting for the application to reboot in order to apply the update");
 
-	publish_fota_event(FOTA_REQUEST_REBOOT);
+	fota_event_publish(FOTA_REQUEST_REBOOT);
 }
 
 static void state_canceling_entry(void *obj)
@@ -411,7 +415,7 @@ static enum smf_state_result state_canceling_run(void *obj)
 			(const struct priv_fota_msg *)state_object->msg_buf;
 
 		if (msg->type == FOTA_PRIV_ABORTED) {
-			publish_fota_event(FOTA_ABORTED);
+			fota_event_publish(FOTA_ABORTED);
 			smf_set_state(SMF_CTX(state_object),
 				      &states[STATE_WAITING_FOR_POLL_REQUEST]);
 
