@@ -88,6 +88,7 @@ enum main_app_state {
 		 * Each synchronization:
 		 * - Sends demo payload
 		 * - Sends location via scanned Wi-Fi Access Point MAC addresses. (Optional)
+		 * - Polls device shadow
 		 * - Polls for any available FOTA job. (Optional)
 		 * - Posts any pending Memfault data
 		 */
@@ -238,6 +239,20 @@ static void fota_poll_request(void)
 	}
 }
 
+static void shadow_poll_request(void)
+{
+	int err;
+	struct cloud_msg msg = {
+		.type = CLOUD_SHADOW_POLL_REQUEST
+	};
+
+	err = zbus_chan_pub(&cloud_chan, &msg, PUB_TIMEOUT);
+	if (err) {
+		LOG_ERR("zbus_chan_pub, error: %d", err);
+		FATAL_ERROR();
+	}
+}
+
 static void memfault_post_request(void)
 {
 	int err;
@@ -259,6 +274,8 @@ static void cloud_sync_run(void)
 #if defined(CONFIG_APP_LOCATION)
 	location_search_request();
 #endif /* CONFIG_APP_LOCATION */
+
+	shadow_poll_request();
 
 	fota_poll_request();
 

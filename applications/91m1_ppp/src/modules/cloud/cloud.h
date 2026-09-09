@@ -27,6 +27,8 @@ enum cloud_msg_type {
 	CLOUD_DISCONNECTED = 0x1,
 	/* The cloud connection is established. */
 	CLOUD_CONNECTED,
+	/* The device shadow has been polled. */
+	CLOUD_SHADOW_POLLED,
 
 	/* Input message types */
 
@@ -36,6 +38,8 @@ enum cloud_msg_type {
 	CLOUD_DISCONNECT,
 	/* Request to send the device message in @ref cloud_msg::payload. */
 	CLOUD_MESSAGE_SEND,
+	/* Request to poll the device shadow. */
+	CLOUD_SHADOW_POLL_REQUEST,
 	/* Request to post any pending Memfault data. */
 	CLOUD_MEMFAULT_POST_REQUEST,
 #if defined(CONFIG_APP_LOCATION)

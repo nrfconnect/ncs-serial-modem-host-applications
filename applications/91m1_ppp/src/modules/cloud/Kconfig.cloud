@@ -26,6 +26,10 @@ config APP_CLOUD_MSG_MAX_LEN
 	int "Maximum device message length"
 	default 512
 
+config APP_CLOUD_SHADOW_MAX_LEN
+	int "Maximum device shadow desired buffer length"
+	default 1024
+
 config APP_CLOUD_CREDENTIAL_RETRY_SECONDS
 	int "Retry interval when credentials are missing"
 	default 10
