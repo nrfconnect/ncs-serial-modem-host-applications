@@ -7,6 +7,7 @@ import re
 import time
 import types
 
+from utils.console import strip_console_noise
 from utils.logger import get_logger
 
 logger = get_logger()
@@ -34,8 +35,6 @@ PIPE_UNAVAILABLE_RESPONSES = (
 # update payload built before that option was added behaves this way.
 SHELL_MISSING_RESPONSE = "command not found"
 
-_ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;?]*[a-zA-Z]")
-_SHELL_PROMPT = re.compile(r"uart:~\$\s*")
 _OK_RESPONSE = re.compile(r"^OK\s*$", re.MULTILINE)
 _XLOG_STATE = re.compile(r"#XLOG:\s*(\d)")
 _CGSN_IMEI = re.compile(r"\+CGSN:\s*\"?(\d{15})\"?")
@@ -45,15 +44,6 @@ _CONSOLE_IMEI = re.compile(r"IMEI:\s*(\d{15})")
 
 class _ShellCommandMissing(Exception):
     """The running firmware does not have the `modem at` shell command."""
-
-
-def _readable(text: str) -> str:
-    """Strip ANSI escapes and shell prompts interleaved into captured output.
-
-    The shell reprints its prompt around streaming log lines, so a bare `OK`
-    reaches the log as `\x1b[1;32muart:~$ \x1b[m\x1b[8D\x1b[JOK`.
-    """
-    return _SHELL_PROMPT.sub("", _ANSI_ESCAPE.sub("", text))
 
 
 def _send_at(
@@ -77,7 +67,7 @@ def _send_at(
     deadline = time.monotonic() + timeout
     response = ""
     while time.monotonic() < deadline:
-        tail = _readable(dut.uart.snapshot_log()[offset:])
+        tail = strip_console_noise(dut.uart.snapshot_log()[offset:])
         # Everything from the shell's echo onwards is the response to our command.
         echo_index = tail.rfind(at_command)
         if echo_index >= 0:

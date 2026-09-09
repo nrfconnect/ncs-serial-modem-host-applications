@@ -8,19 +8,12 @@ import time
 
 import serial
 
+from utils.console import strip_ansi
 from utils.logger import get_logger
 
 logger = get_logger()
 
 SHELL_PROMPT = "uart:~$"
-
-# Matches VT100/ANSI escape sequences the shell emits for colours and cursor moves.
-_ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
-
-
-def _strip_ansi(text: str) -> str:
-    """Remove ANSI escape sequences and carriage returns for line-oriented parsing."""
-    return _ANSI_ESCAPE.sub("", text).replace("\r", "")
 
 
 def _wait_for_prompt_in_buffer(
@@ -153,12 +146,12 @@ def send_shell_command_until(
                 continue
 
             raw += data.decode("utf-8", errors="replace")
-            clean = _strip_ansi(raw)
+            clean = strip_ansi(raw)
             if regex.search(clean):
                 logger.info("Shell command output matched %r on %s", pattern, serial_port)
                 return clean
 
     raise TimeoutError(
         f"Timed out after {timeout:.0f}s waiting for output matching {pattern!r} from "
-        f"command {command!r} on {serial_port!r}. Captured:\n{_strip_ansi(raw)}"
+        f"command {command!r} on {serial_port!r}. Captured:\n{strip_ansi(raw)}"
     )
