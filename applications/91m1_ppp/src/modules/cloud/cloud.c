@@ -18,7 +18,6 @@
 #include <net/nrf_cloud_coap.h>
 
 #include "app_common.h"
-#include "modules/network/network.h"
 #include "cloud.h"
 #if defined(CONFIG_APP_LOCATION)
 #include "cloud_location.h"
@@ -42,21 +41,7 @@ ZBUS_CHAN_DEFINE(cloud_chan,
 
 ZBUS_MSG_SUBSCRIBER_DEFINE(cloud);
 
-#if defined(CONFIG_APP_LOCATION)
-#define CHANNEL_LIST(X) \
-	X(network_chan, struct network_msg) \
-	X(cloud_chan, struct cloud_msg) \
-	X(location_chan, struct location_msg)
-#else
-#define CHANNEL_LIST(X) \
-	X(network_chan, struct network_msg) \
-	X(cloud_chan, struct cloud_msg)
-#endif /* CONFIG_APP_LOCATION */
-
-#define MAX_MSG_SIZE MAX_MSG_SIZE_FROM_LIST(CHANNEL_LIST)
-#define ADD_OBSERVERS(_chan, _type) ZBUS_CHAN_ADD_OBS(_chan, cloud, 0);
-
-CHANNEL_LIST(ADD_OBSERVERS)
+ZBUS_CHAN_ADD_OBS(cloud_chan, cloud, 0);
 
 enum cloud_state {
 	STATE_DISCONNECTED,
@@ -67,7 +52,7 @@ enum cloud_state {
 struct cloud_state_object {
 	struct smf_ctx ctx;
 	const struct zbus_channel *chan;
-	uint8_t msg_buf[MAX_MSG_SIZE];
+	uint8_t msg_buf[sizeof(struct cloud_msg)];
 };
 
 static struct cloud_state_object cloud_state;
@@ -76,11 +61,13 @@ static atomic_t connect_abort;
 
 static K_SEM_DEFINE(date_time_sem, 0, 1);
 
-static void publish_cloud_msg(enum cloud_msg_type type, const char *payload,
+static void cloud_msg_publish(enum cloud_msg_type type, const char *payload,
 			      size_t payload_len)
 {
-	struct cloud_msg msg = { .type = type };
 	int err;
+	struct cloud_msg msg = {
+		.type = type
+	};
 
 	if (payload != NULL && payload_len > 0) {
 		if (payload_len >= sizeof(msg.payload)) {
@@ -114,8 +101,8 @@ static void date_time_event_handler(const struct date_time_evt *evt)
 
 static bool credentials_ready(void)
 {
-	struct nrf_cloud_credentials_status cs;
 	int err;
+	struct nrf_cloud_credentials_status cs;
 
 	err = nrf_cloud_credentials_check(&cs);
 	if (err) {
@@ -138,7 +125,7 @@ static bool credentials_ready(void)
 	return false;
 }
 
-static bool wait_for_valid_time(void)
+static bool valid_time_wait(void)
 {
 	int err;
 	int64_t deadline = k_uptime_get() +
@@ -168,8 +155,8 @@ static bool wait_for_valid_time(void)
 
 static void cloud_connect(void)
 {
-	char device_id[NRF_CLOUD_CLIENT_ID_MAX_LEN + 1];
 	int err;
+	char device_id[NRF_CLOUD_CLIENT_ID_MAX_LEN + 1];
 
 	while (!atomic_get(&connect_abort)) {
 		if (!credentials_ready()) {
@@ -177,7 +164,7 @@ static void cloud_connect(void)
 			continue;
 		}
 
-		if (!wait_for_valid_time()) {
+		if (!valid_time_wait()) {
 			k_sleep(CREDENTIAL_RETRY);
 			continue;
 		}
@@ -189,7 +176,7 @@ static void cloud_connect(void)
 			continue;
 		}
 
-		LOG_INF("nRF Cloud client ID: %s", device_id);
+		LOG_DBG("nRF Cloud client ID: %s", device_id);
 
 		err = nrf_cloud_coap_connect(NULL);
 		if (err) {
@@ -198,42 +185,36 @@ static void cloud_connect(void)
 			continue;
 		}
 
-		LOG_INF("Connected to nRF Cloud");
+		LOG_DBG("Connected to nRF Cloud");
 
 		if (!atomic_get(&connect_abort)) {
-			publish_cloud_msg(CLOUD_CONNECTED, NULL, 0);
+			cloud_msg_publish(CLOUD_CONNECTED, NULL, 0);
 		}
 
 		return;
 	}
 }
 
-static void disconnected_entry(void *obj)
+static void state_disconnected_entry(void *obj)
 {
 	ARG_UNUSED(obj);
 
 	LOG_DBG("Cloud module disconnected");
 }
 
-static enum smf_state_result disconnected_run(void *obj)
+static enum smf_state_result state_disconnected_run(void *obj)
 {
 	struct cloud_state_object *state_object = obj;
+	const struct cloud_msg *msg = (const struct cloud_msg *)state_object->msg_buf;
 
-	if (state_object->chan != &network_chan) {
-		return SMF_EVENT_HANDLED;
-	}
-
-	const struct network_msg *msg =
-		(const struct network_msg *)state_object->msg_buf;
-
-	if (msg->type == NETWORK_CONNECTED) {
+	if (msg->type == CLOUD_CONNECT) {
 		smf_set_state(SMF_CTX(state_object), &states[STATE_CONNECTING]);
 	}
 
 	return SMF_EVENT_HANDLED;
 }
 
-static void connecting_entry(void *obj)
+static void state_connecting_entry(void *obj)
 {
 	ARG_UNUSED(obj);
 
@@ -243,94 +224,61 @@ static void connecting_entry(void *obj)
 	cloud_connect();
 }
 
-static enum smf_state_result connecting_run(void *obj)
+static enum smf_state_result state_connecting_run(void *obj)
 {
 	struct cloud_state_object *state_object = obj;
+	const struct cloud_msg *msg = (const struct cloud_msg *)state_object->msg_buf;
 
-	if (state_object->chan == &network_chan) {
-		const struct network_msg *msg =
-			(const struct network_msg *)state_object->msg_buf;
-
-		if (msg->type == NETWORK_DISCONNECTED) {
-			atomic_set(&connect_abort, 1);
-			(void)nrf_cloud_coap_disconnect();
-			publish_cloud_msg(CLOUD_DISCONNECTED, NULL, 0);
-			smf_set_state(SMF_CTX(state_object),
-				      &states[STATE_DISCONNECTED]);
-		}
-
-		return SMF_EVENT_HANDLED;
-	}
-
-	if (state_object->chan == &cloud_chan) {
-		const struct cloud_msg *msg = (const struct cloud_msg *)state_object->msg_buf;
-
-		if (msg->type == CLOUD_CONNECTED) {
-			smf_set_state(SMF_CTX(state_object), &states[STATE_CONNECTED]);
-		}
+	if (msg->type == CLOUD_DISCONNECT) {
+		atomic_set(&connect_abort, 1);
+		(void)nrf_cloud_coap_disconnect();
+		cloud_msg_publish(CLOUD_DISCONNECTED, NULL, 0);
+		smf_set_state(SMF_CTX(state_object), &states[STATE_DISCONNECTED]);
+	} else if (msg->type == CLOUD_CONNECTED) {
+		smf_set_state(SMF_CTX(state_object), &states[STATE_CONNECTED]);
 	}
 
 	return SMF_EVENT_HANDLED;
 }
 
-static void connected_entry(void *obj)
+static void state_connected_entry(void *obj)
 {
 	ARG_UNUSED(obj);
 
 	LOG_DBG("Cloud module connected");
 }
 
-static enum smf_state_result connected_run(void *obj)
+static enum smf_state_result state_connected_run(void *obj)
 {
+	int err;
 	struct cloud_state_object *state_object = obj;
+	const struct cloud_msg *msg = (const struct cloud_msg *)state_object->msg_buf;
 
-	if (state_object->chan == &network_chan) {
-		const struct network_msg *msg =
-			(const struct network_msg *)state_object->msg_buf;
-
-		if (msg->type == NETWORK_DISCONNECTED) {
-			publish_cloud_msg(CLOUD_DISCONNECTED, NULL, 0);
-			smf_set_state(SMF_CTX(state_object),
-				      &states[STATE_DISCONNECTED]);
-		}
+	switch (msg->type) {
+	case CLOUD_DISCONNECT:
+		cloud_msg_publish(CLOUD_DISCONNECTED, NULL, 0);
+		smf_set_state(SMF_CTX(state_object), &states[STATE_DISCONNECTED]);
 
 		return SMF_EVENT_HANDLED;
-	}
-
-#if defined(CONFIG_APP_LOCATION)
-	if (state_object->chan == &location_chan) {
-		const struct location_msg *msg =
-			(const struct location_msg *)state_object->msg_buf;
-
-		if (msg->type == LOCATION_CLOUD_REQUEST) {
-			cloud_location_request_handle(&msg->cloud_request);
-		}
-
-		return SMF_EVENT_HANDLED;
-	}
-#endif /* CONFIG_APP_LOCATION */
-
-	if (state_object->chan == &cloud_chan) {
-		const struct cloud_msg *msg = (const struct cloud_msg *)state_object->msg_buf;
-		int err;
-
-		if (msg->type != CLOUD_SEND_MESSAGE) {
-			return SMF_EVENT_HANDLED;
-		}
-
+	case CLOUD_MESSAGE_SEND:
 		err = nrf_cloud_coap_json_message_send(msg->payload, false, true);
 		if (err) {
 			LOG_ERR("nrf_cloud_coap_json_message_send, error: %d", err);
-			return SMF_EVENT_HANDLED;
 		}
 
-		publish_cloud_msg(CLOUD_MESSAGE_SENT, msg->payload, msg->payload_len);
-	}
+		return SMF_EVENT_HANDLED;
+#if defined(CONFIG_APP_LOCATION)
+	case CLOUD_LOCATION_REQUEST:
+		cloud_location_request_handle(&msg->location_request);
 
-	return SMF_EVENT_HANDLED;
+		return SMF_EVENT_HANDLED;
+#endif /* CONFIG_APP_LOCATION */
+	default:
+		return SMF_EVENT_PROPAGATE;
+	}
 }
 
-static void connected_exit(void *obj)
+static void state_connected_exit(void *obj)
 {
 	ARG_UNUSED(obj);
 
@@ -338,12 +286,12 @@ static void connected_exit(void *obj)
 }
 
 static const struct smf_state states[] = {
-	[STATE_DISCONNECTED] = SMF_CREATE_STATE(disconnected_entry,
-						disconnected_run, NULL, NULL, NULL),
-	[STATE_CONNECTING] = SMF_CREATE_STATE(connecting_entry,
-					      connecting_run, NULL, NULL, NULL),
-	[STATE_CONNECTED] = SMF_CREATE_STATE(connected_entry,
-					     connected_run, connected_exit, NULL, NULL),
+	[STATE_DISCONNECTED] = SMF_CREATE_STATE(state_disconnected_entry,
+						state_disconnected_run, NULL, NULL, NULL),
+	[STATE_CONNECTING] = SMF_CREATE_STATE(state_connecting_entry,
+					      state_connecting_run, NULL, NULL, NULL),
+	[STATE_CONNECTED] = SMF_CREATE_STATE(state_connected_entry,
+					     state_connected_run, state_connected_exit, NULL, NULL),
 };
 
 static void cloud_wdt_callback(int channel_id, void *user_data)

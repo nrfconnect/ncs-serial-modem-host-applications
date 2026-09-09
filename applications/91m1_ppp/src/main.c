@@ -55,6 +55,7 @@ ZBUS_CHAN_DEFINE(main_priv_chan,
 	X(network_chan, struct network_msg) \
 	X(cloud_chan, struct cloud_msg) \
 	X(fota_chan, struct fota_msg) \
+	IF_ENABLED(CONFIG_APP_LOCATION, (X(location_chan, struct location_msg))) \
 	X(main_priv_chan, struct main_priv_msg)
 
 /* Calculate the maximum message size from the list of channels */
@@ -145,11 +146,39 @@ static void demo_cloud_message_send(void)
 {
 	int err;
 	struct cloud_msg msg = {
-		.type = CLOUD_SEND_MESSAGE,
+		.type = CLOUD_MESSAGE_SEND,
 		.payload = DEMO_CLOUD_PAYLOAD,
 	};
 
 	msg.payload_len = sizeof(DEMO_CLOUD_PAYLOAD) - 1;
+	err = zbus_chan_pub(&cloud_chan, &msg, PUB_TIMEOUT);
+	if (err) {
+		LOG_ERR("zbus_chan_pub, error: %d", err);
+		FATAL_ERROR();
+	}
+}
+
+static void cloud_connect_request(void)
+{
+	int err;
+	struct cloud_msg msg = {
+		.type = CLOUD_CONNECT
+	};
+
+	err = zbus_chan_pub(&cloud_chan, &msg, PUB_TIMEOUT);
+	if (err) {
+		LOG_ERR("zbus_chan_pub, error: %d", err);
+		FATAL_ERROR();
+	}
+}
+
+static void cloud_disconnect_request(void)
+{
+	int err;
+	struct cloud_msg msg = {
+		.type = CLOUD_DISCONNECT
+	};
+
 	err = zbus_chan_pub(&cloud_chan, &msg, PUB_TIMEOUT);
 	if (err) {
 		LOG_ERR("zbus_chan_pub, error: %d", err);
@@ -182,6 +211,22 @@ static void location_search_request(void)
 	};
 
 	err = zbus_chan_pub(&location_chan, &msg, PUB_TIMEOUT);
+	if (err) {
+		LOG_ERR("zbus_chan_pub, error: %d", err);
+		FATAL_ERROR();
+	}
+}
+
+static void location_request_forward(const struct location_cloud_request_data *request)
+{
+	int err;
+	struct cloud_msg msg = {
+		.type = CLOUD_LOCATION_REQUEST
+	};
+
+	msg.location_request = *request;
+
+	err = zbus_chan_pub(&cloud_chan, &msg, PUB_TIMEOUT);
 	if (err) {
 		LOG_ERR("zbus_chan_pub, error: %d", err);
 		FATAL_ERROR();
@@ -278,19 +323,29 @@ static enum smf_state_result state_running_run(void *obj)
 		const struct network_msg *msg =
 			(const struct network_msg *)state_object->msg_buf;
 
-		switch (msg->type) {
-		case NETWORK_CONNECTED:
+		if (msg->type == NETWORK_CONNECTED) {
 			LOG_INF("Network connected");
-			break;
-		case NETWORK_DISCONNECTED:
+			cloud_connect_request();
+		} else if (msg->type == NETWORK_DISCONNECTED) {
 			LOG_INF("Network disconnected");
-			break;
-		default:
-			break;
+			cloud_disconnect_request();
 		}
 
 		return SMF_EVENT_HANDLED;
 	}
+
+#if defined(CONFIG_APP_LOCATION)
+	if (state_object->chan == &location_chan) {
+		const struct location_msg *msg =
+			(const struct location_msg *)state_object->msg_buf;
+
+		if (msg->type == LOCATION_CLOUD_REQUEST) {
+			location_request_forward(&msg->cloud_request);
+		}
+
+		return SMF_EVENT_HANDLED;
+	}
+#endif /* CONFIG_APP_LOCATION */
 
 	if (state_object->chan == &fota_chan) {
 		const struct fota_msg *msg = (const struct fota_msg *)state_object->msg_buf;
@@ -388,9 +443,6 @@ static enum smf_state_result state_cloud_connected_run(void *obj)
 	case CLOUD_DISCONNECTED:
 		LOG_INF("Cloud disconnected");
 		smf_set_state(SMF_CTX(state_object), &states[STATE_CLOUD_DISCONNECTED]);
-		break;
-	case CLOUD_MESSAGE_SENT:
-		LOG_INF("Cloud message sent");
 		break;
 	default:
 		break;
