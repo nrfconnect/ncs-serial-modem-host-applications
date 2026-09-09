@@ -8,6 +8,7 @@ from pathlib import Path
 
 import serial
 
+from utils.console import strip_console_noise
 from utils.logger import get_logger
 
 logger = get_logger()
@@ -119,14 +120,19 @@ class Uart:
 
                 pending += decoder.decode(data)
 
+                # Clean whole lines only: an escape sequence split across two
+                # reads is still incomplete in `pending` and must stay raw until
+                # the rest of it arrives.
                 lines = pending.split("\n")
                 pending = lines.pop()
-                self._append_lines([line.strip() for line in lines])
+                cleaned = [strip_console_noise(line).strip() for line in lines]
+                self._append_lines([line for line in cleaned if line])
 
             self._serial_open.clear()
             self._serial = None
-            if pending.strip():
-                self._append_lines([pending.strip()])
+            tail = strip_console_noise(pending).strip()
+            if tail:
+                self._append_lines([tail])
 
     def wait_for_substring(
         self,
