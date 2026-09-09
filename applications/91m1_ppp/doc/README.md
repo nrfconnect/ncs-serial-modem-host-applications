@@ -121,7 +121,7 @@ The application connects to nRF Cloud over **CoAP/DTLS** from the host MCU (nRF5
 
 The host application runs on nRF54L15 and uses the nRF91M1 Serial Modem for cellular data over PPP. Modules communicate over **zbus** and coordinate with **SMF** state machines. After network and cloud are up, the main module periodically sends a demo device message and requests a FOTA poll.
 
-See [Application behavior](application-behavior.md) for the full startup sequence, module roles, FOTA flow, and Memfault integration.
+See [Application behavior](application-behavior.md) for the full startup sequence, cloud synchronization, and Memfault integration, and [Architecture](architecture.md) for the module design and state machines.
 
 CoAP authentication uses a JWT signed with the installed private key. Only the **CA certificate** and **private key** are required at runtime; the device certificate is used for portal onboarding.
 
@@ -163,9 +163,18 @@ See [Memfault remote debugging](memfault.md) for how to open the Memfault dashbo
 
 | Guide | Description |
 |-------|-------------|
-| [Application behavior](application-behavior.md) | Module architecture, cloud sync, FOTA, and Memfault at runtime |
+| [Application behavior](application-behavior.md) | Startup sequence, cloud sync, FOTA, and Memfault at runtime |
+| [Architecture](architecture.md) | Module design, zbus message passing, and SMF state machines |
 | [Hardware setup](hardware-setup.md) | Host + Serial Modem wiring (nRF54L15, nRF54LM20B, optional nRF7002-EB2 for Wi-Fi location), board configurator, Serial Modem firmware |
 | [Memfault remote debugging](memfault.md) | Open Memfault from nRF Cloud, upload symbol files, view coredumps |
+
+Module documentation:
+
+- [Main module](modules/main.md) — business logic, cloud synchronization, FOTA coordination
+- [Network module](modules/network.md) — PPP link to the Serial Modem
+- [Cloud module](modules/cloud.md) — nRF Cloud CoAP session, device messages, shadow
+- [FOTA module](modules/fota.md) — firmware updates of the host application
+- [Location module](modules/location.md) — Wi-Fi based positioning (location overlay)
 
 ## References
 
