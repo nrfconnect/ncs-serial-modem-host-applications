@@ -10,7 +10,6 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/settings/settings.h>
 #include <zephyr/smf.h>
-#include <zephyr/sys/atomic.h>
 #include <zephyr/task_wdt/task_wdt.h>
 #include <zephyr/zbus/zbus.h>
 #include <date_time.h>
@@ -28,7 +27,6 @@
 
 LOG_MODULE_REGISTER(cloud, CONFIG_APP_CLOUD_LOG_LEVEL);
 
-#define TIME_WAIT_TIMEOUT_S  120
 #define CREDENTIAL_RETRY	K_SECONDS(CONFIG_APP_CLOUD_CREDENTIAL_RETRY_SECONDS)
 
 BUILD_ASSERT(CONFIG_APP_CLOUD_WATCHDOG_TIMEOUT_SECONDS >
@@ -44,7 +42,32 @@ ZBUS_CHAN_DEFINE(cloud_chan,
 
 ZBUS_MSG_SUBSCRIBER_DEFINE(cloud);
 
-ZBUS_CHAN_ADD_OBS(cloud_chan, cloud, 0);
+enum priv_cloud_msg_type {
+	/* Make one attempt at establishing the cloud connection. */
+	CLOUD_PRIV_CONNECT_ATTEMPT,
+};
+
+struct priv_cloud_msg {
+	enum priv_cloud_msg_type type;
+};
+
+ZBUS_CHAN_DEFINE(priv_cloud_chan,
+		 struct priv_cloud_msg,
+		 NULL,
+		 NULL,
+		 ZBUS_OBSERVERS_EMPTY,
+		 ZBUS_MSG_INIT(0)
+);
+
+#define CHANNEL_LIST(X)							\
+	X(cloud_chan,		struct cloud_msg)			\
+	X(priv_cloud_chan,	struct priv_cloud_msg)
+
+#define MAX_MSG_SIZE			MAX_MSG_SIZE_FROM_LIST(CHANNEL_LIST)
+
+#define ADD_OBSERVERS(_chan, _type)	ZBUS_CHAN_ADD_OBS(_chan, cloud, 0);
+
+CHANNEL_LIST(ADD_OBSERVERS)
 
 enum cloud_state {
 	STATE_DISCONNECTED,
@@ -55,14 +78,11 @@ enum cloud_state {
 struct cloud_state_object {
 	struct smf_ctx ctx;
 	const struct zbus_channel *chan;
-	uint8_t msg_buf[sizeof(struct cloud_msg)];
+	uint8_t msg_buf[MAX_MSG_SIZE];
 };
 
 static struct cloud_state_object cloud_state;
 static const struct smf_state states[];
-static atomic_t connect_abort;
-
-static K_SEM_DEFINE(date_time_sem, 0, 1);
 
 static void cloud_msg_publish(enum cloud_msg_type type, const char *payload,
 			      size_t payload_len)
@@ -89,13 +109,47 @@ static void cloud_msg_publish(enum cloud_msg_type type, const char *payload,
 	}
 }
 
+static void priv_cloud_msg_publish(enum priv_cloud_msg_type type)
+{
+	int err;
+	struct priv_cloud_msg msg = {
+		.type = type
+	};
+
+	err = zbus_chan_pub(&priv_cloud_chan, &msg, PUB_TIMEOUT);
+	if (err) {
+		LOG_ERR("zbus_chan_pub priv_cloud_chan, error: %d", err);
+		FATAL_ERROR();
+	}
+}
+
+static void connect_retry_work_handler(struct k_work *work)
+{
+	ARG_UNUSED(work);
+
+	priv_cloud_msg_publish(CLOUD_PRIV_CONNECT_ATTEMPT);
+}
+
+static K_WORK_DELAYABLE_DEFINE(connect_retry_work, connect_retry_work_handler);
+
+static void connect_retry_schedule(void)
+{
+	int err;
+
+	err = k_work_schedule(&connect_retry_work, CREDENTIAL_RETRY);
+	if (err < 0) {
+		LOG_ERR("k_work_schedule, error: %d", err);
+		FATAL_ERROR();
+	}
+}
+
 static void date_time_event_handler(const struct date_time_evt *evt)
 {
 	switch (evt->type) {
 	case DATE_TIME_OBTAINED_MODEM:
 	case DATE_TIME_OBTAINED_NTP:
 	case DATE_TIME_OBTAINED_EXT:
-		k_sem_give(&date_time_sem);
+		priv_cloud_msg_publish(CLOUD_PRIV_CONNECT_ATTEMPT);
 		break;
 	default:
 		break;
@@ -125,34 +179,6 @@ static bool credentials_ready(void)
 		LOG_WRN("  - Private key (JWT signing key)");
 	}
 
-	return false;
-}
-
-static bool valid_time_wait(void)
-{
-	int err;
-	int64_t deadline = k_uptime_get() +
-			   (TIME_WAIT_TIMEOUT_S * MSEC_PER_SEC);
-
-	if (date_time_is_valid()) {
-		return true;
-	}
-
-	err = date_time_update_async(date_time_event_handler);
-	if (err) {
-		LOG_WRN("date_time_update_async, error: %d", err);
-		return false;
-	}
-
-	while (!atomic_get(&connect_abort) && k_uptime_get() < deadline) {
-		if (k_sem_take(&date_time_sem, K_SECONDS(1)) == 0 &&
-		    date_time_is_valid()) {
-			return true;
-		}
-	}
-
-	LOG_WRN("Valid date/time not available within %d seconds",
-		TIME_WAIT_TIMEOUT_S);
 	return false;
 }
 
@@ -189,46 +215,50 @@ done:
 	cloud_msg_publish(CLOUD_SHADOW_POLLED, NULL, 0);
 }
 
-static void cloud_connect(void)
+static void connect_attempt(void)
 {
 	int err;
 	char device_id[NRF_CLOUD_CLIENT_ID_MAX_LEN + 1];
 
-	while (!atomic_get(&connect_abort)) {
-		if (!credentials_ready()) {
-			k_sleep(CREDENTIAL_RETRY);
-			continue;
-		}
-
-		if (!valid_time_wait()) {
-			k_sleep(CREDENTIAL_RETRY);
-			continue;
-		}
-
-		err = nrf_cloud_client_id_get(device_id, sizeof(device_id));
-		if (err) {
-			LOG_ERR("nrf_cloud_client_id_get, error: %d", err);
-			k_sleep(CREDENTIAL_RETRY);
-			continue;
-		}
-
-		LOG_DBG("nRF Cloud client ID: %s", device_id);
-
-		err = nrf_cloud_coap_connect(NULL);
-		if (err) {
-			LOG_ERR("nrf_cloud_coap_connect, error: %d", err);
-			k_sleep(CREDENTIAL_RETRY);
-			continue;
-		}
-
-		LOG_DBG("Connected to nRF Cloud");
-
-		if (!atomic_get(&connect_abort)) {
-			cloud_msg_publish(CLOUD_CONNECTED, NULL, 0);
-		}
-
+	if (!credentials_ready()) {
+		connect_retry_schedule();
 		return;
 	}
+
+	if (!date_time_is_valid()) {
+		LOG_DBG("Waiting for valid date/time");
+
+		/* The date/time handler asks for a new attempt as soon as time arrives,
+		 * ahead of the scheduled retry.
+		 */
+		err = date_time_update_async(date_time_event_handler);
+		if (err) {
+			LOG_WRN("date_time_update_async, error: %d", err);
+		}
+
+		connect_retry_schedule();
+		return;
+	}
+
+	err = nrf_cloud_client_id_get(device_id, sizeof(device_id));
+	if (err) {
+		LOG_ERR("nrf_cloud_client_id_get, error: %d", err);
+		connect_retry_schedule();
+		return;
+	}
+
+	LOG_DBG("nRF Cloud client ID: %s", device_id);
+
+	err = nrf_cloud_coap_connect(NULL);
+	if (err) {
+		LOG_ERR("nrf_cloud_coap_connect, error: %d", err);
+		connect_retry_schedule();
+		return;
+	}
+
+	LOG_DBG("Connected to nRF Cloud");
+
+	cloud_msg_publish(CLOUD_CONNECTED, NULL, 0);
 }
 
 static void state_disconnected_entry(void *obj)
@@ -243,6 +273,10 @@ static enum smf_state_result state_disconnected_run(void *obj)
 	struct cloud_state_object *state_object = obj;
 	const struct cloud_msg *msg = (const struct cloud_msg *)state_object->msg_buf;
 
+	if (state_object->chan != &cloud_chan) {
+		return SMF_EVENT_PROPAGATE;
+	}
+
 	if (msg->type == CLOUD_CONNECT) {
 		smf_set_state(SMF_CTX(state_object), &states[STATE_CONNECTING]);
 	}
@@ -256,25 +290,46 @@ static void state_connecting_entry(void *obj)
 
 	LOG_DBG("Cloud module connecting");
 
-	atomic_set(&connect_abort, 0);
-	cloud_connect();
+	priv_cloud_msg_publish(CLOUD_PRIV_CONNECT_ATTEMPT);
 }
 
 static enum smf_state_result state_connecting_run(void *obj)
 {
 	struct cloud_state_object *state_object = obj;
-	const struct cloud_msg *msg = (const struct cloud_msg *)state_object->msg_buf;
 
-	if (msg->type == CLOUD_DISCONNECT) {
-		atomic_set(&connect_abort, 1);
-		(void)nrf_cloud_coap_disconnect();
-		cloud_msg_publish(CLOUD_DISCONNECTED, NULL, 0);
-		smf_set_state(SMF_CTX(state_object), &states[STATE_DISCONNECTED]);
-	} else if (msg->type == CLOUD_CONNECTED) {
-		smf_set_state(SMF_CTX(state_object), &states[STATE_CONNECTED]);
+	if (state_object->chan == &priv_cloud_chan) {
+		const struct priv_cloud_msg *msg =
+			(const struct priv_cloud_msg *)state_object->msg_buf;
+
+		if (msg->type == CLOUD_PRIV_CONNECT_ATTEMPT) {
+			connect_attempt();
+		}
+
+		return SMF_EVENT_HANDLED;
 	}
 
-	return SMF_EVENT_HANDLED;
+	if (state_object->chan == &cloud_chan) {
+		const struct cloud_msg *msg = (const struct cloud_msg *)state_object->msg_buf;
+
+		if (msg->type == CLOUD_DISCONNECT) {
+			(void)nrf_cloud_coap_disconnect();
+			cloud_msg_publish(CLOUD_DISCONNECTED, NULL, 0);
+			smf_set_state(SMF_CTX(state_object), &states[STATE_DISCONNECTED]);
+		} else if (msg->type == CLOUD_CONNECTED) {
+			smf_set_state(SMF_CTX(state_object), &states[STATE_CONNECTED]);
+		}
+
+		return SMF_EVENT_HANDLED;
+	}
+
+	return SMF_EVENT_PROPAGATE;
+}
+
+static void state_connecting_exit(void *obj)
+{
+	ARG_UNUSED(obj);
+
+	(void)k_work_cancel_delayable(&connect_retry_work);
 }
 
 static void memfault_data_post(void)
@@ -304,6 +359,10 @@ static enum smf_state_result state_connected_run(void *obj)
 	int err;
 	struct cloud_state_object *state_object = obj;
 	const struct cloud_msg *msg = (const struct cloud_msg *)state_object->msg_buf;
+
+	if (state_object->chan != &cloud_chan) {
+		return SMF_EVENT_PROPAGATE;
+	}
 
 	switch (msg->type) {
 	case CLOUD_DISCONNECT:
@@ -347,8 +406,8 @@ static void state_connected_exit(void *obj)
 static const struct smf_state states[] = {
 	[STATE_DISCONNECTED] = SMF_CREATE_STATE(state_disconnected_entry,
 						state_disconnected_run, NULL, NULL, NULL),
-	[STATE_CONNECTING] = SMF_CREATE_STATE(state_connecting_entry,
-					      state_connecting_run, NULL, NULL, NULL),
+	[STATE_CONNECTING] = SMF_CREATE_STATE(state_connecting_entry, state_connecting_run,
+					      state_connecting_exit, NULL, NULL),
 	[STATE_CONNECTED] = SMF_CREATE_STATE(state_connected_entry,
 					     state_connected_run, state_connected_exit, NULL, NULL),
 };
