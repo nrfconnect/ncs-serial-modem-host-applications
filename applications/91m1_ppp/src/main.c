@@ -74,23 +74,30 @@ CHANNEL_LIST(ADD_OBSERVERS)
 /** Application SMF states. */
 enum main_app_state {
 	/**
-	 * Top-level state. Handles network, FOTA, and cloud-synchronization
-	 * events. The initial substate is @ref STATE_CLOUD_DISCONNECTED.
+	 * Top-level state.
+	 * The initial substate is @ref STATE_CLOUD_DISCONNECTED.
 	 */
 	STATE_RUNNING,
-	/**
-	 * Cloud is not connected. Periodic cloud synchronization is not
-	 * scheduled.
-	 */
-	STATE_CLOUD_DISCONNECTED,
-	/**
-	 * Cloud is connected. An initial cloud synchronization runs on
-	 * entry and periodic synchronization is scheduled on the dedicated
-	 * cloud-sync workqueue.
-	 */
-	STATE_CLOUD_CONNECTED,
+		/**
+		 * Cloud is not connected. Periodic cloud synchronization is not
+		 * scheduled, and synchronization triggers are ignored.
+		 */
+		STATE_CLOUD_DISCONNECTED,
+		/**
+		 * Cloud is connected. Periodic synchronization is scheduled on the
+		 * dedicated cloud-sync workqueue.
+		 *
+		 * Each synchronization:
+		 * - Sends demo payload
+		 * - Sends location via scanned Wi-Fi Access Point MAC addresses. (Optional)
+		 * - Polls for any available FOTA job. (Optional)
+		 */
+		STATE_CLOUD_CONNECTED,
 };
 
+/* State object for the main module.
+ * Used to transfer data between state changes.
+ */
 struct main_state {
 	struct smf_ctx ctx;
 	const struct zbus_channel *chan;
@@ -234,15 +241,6 @@ static void location_request_forward(const struct location_cloud_request_data *r
 }
 #endif /* CONFIG_APP_LOCATION */
 
-static void cloud_sync_run(void)
-{
-	demo_cloud_message_send();
-
-#if defined(CONFIG_APP_LOCATION)
-	location_search_request();
-#endif /* CONFIG_APP_LOCATION */
-}
-
 static void fota_poll_request(void)
 {
 	int err;
@@ -255,6 +253,17 @@ static void fota_poll_request(void)
 		LOG_ERR("zbus_chan_pub, error: %d", err);
 		FATAL_ERROR();
 	}
+}
+
+static void cloud_sync_run(void)
+{
+	demo_cloud_message_send();
+
+#if defined(CONFIG_APP_LOCATION)
+	location_search_request();
+#endif /* CONFIG_APP_LOCATION */
+
+	fota_poll_request();
 }
 
 static void cloud_sync_schedule(struct main_state *state)
@@ -306,18 +315,6 @@ static void state_running_entry(void *obj)
 static enum smf_state_result state_running_run(void *obj)
 {
 	struct main_state *state_object = obj;
-
-	if (state_object->chan == &main_priv_chan) {
-		const struct main_priv_msg *msg =
-			(const struct main_priv_msg *)state_object->msg_buf;
-
-		if (msg->type == MAIN_PRIV_CLOUD_SYNCHRONIZATION) {
-			cloud_sync_run();
-			fota_poll_request();
-		}
-
-		return SMF_EVENT_HANDLED;
-	}
 
 	if (state_object->chan == &network_chan) {
 		const struct network_msg *msg =
@@ -390,22 +387,19 @@ static enum smf_state_result state_cloud_disconnected_run(void *obj)
 {
 	struct main_state *state_object = obj;
 
-	if (state_object->chan != &cloud_chan) {
-		return SMF_EVENT_PROPAGATE;
+	if (state_object->chan == &cloud_chan) {
+		const struct cloud_msg *msg = (const struct cloud_msg *)state_object->msg_buf;
+
+		if (msg->type == CLOUD_CONNECTED) {
+			LOG_INF("Cloud connected");
+
+			smf_set_state(SMF_CTX(state_object), &states[STATE_CLOUD_CONNECTED]);
+
+			return SMF_EVENT_HANDLED;
+		}
 	}
 
-	const struct cloud_msg *msg = (const struct cloud_msg *)state_object->msg_buf;
-
-	switch (msg->type) {
-	case CLOUD_CONNECTED:
-		LOG_INF("Cloud connected");
-		smf_set_state(SMF_CTX(state_object), &states[STATE_CLOUD_CONNECTED]);
-		break;
-	default:
-		break;
-	}
-
-	return SMF_EVENT_HANDLED;
+	return SMF_EVENT_PROPAGATE;
 }
 
 static void state_cloud_connected_entry(void *obj)
@@ -415,9 +409,10 @@ static void state_cloud_connected_entry(void *obj)
 	LOG_INF("state_cloud_connected_entry");
 
 	post_memfault_data();
-	cloud_sync_run();
-	fota_poll_request();
 	cloud_sync_schedule(state_object);
+
+	/* Synchronize once immediately so connecting always syncs without waiting a period. */
+	cloud_sync_run();
 }
 
 static void state_cloud_connected_exit(void *obj)
@@ -433,22 +428,30 @@ static enum smf_state_result state_cloud_connected_run(void *obj)
 {
 	struct main_state *state_object = obj;
 
-	if (state_object->chan != &cloud_chan) {
-		return SMF_EVENT_PROPAGATE;
+	if (state_object->chan == &cloud_chan) {
+		const struct cloud_msg *msg = (const struct cloud_msg *)state_object->msg_buf;
+
+		if (msg->type == CLOUD_DISCONNECTED) {
+			LOG_INF("Cloud disconnected");
+
+			smf_set_state(SMF_CTX(state_object), &states[STATE_CLOUD_DISCONNECTED]);
+
+			return SMF_EVENT_HANDLED;
+		}
 	}
 
-	const struct cloud_msg *msg = (const struct cloud_msg *)state_object->msg_buf;
+	if (state_object->chan == &main_priv_chan) {
+		const struct main_priv_msg *msg =
+			(const struct main_priv_msg *)state_object->msg_buf;
 
-	switch (msg->type) {
-	case CLOUD_DISCONNECTED:
-		LOG_INF("Cloud disconnected");
-		smf_set_state(SMF_CTX(state_object), &states[STATE_CLOUD_DISCONNECTED]);
-		break;
-	default:
-		break;
+		if (msg->type == MAIN_PRIV_CLOUD_SYNCHRONIZATION) {
+			cloud_sync_run();
+
+			return SMF_EVENT_HANDLED;
+		}
 	}
 
-	return SMF_EVENT_HANDLED;
+	return SMF_EVENT_PROPAGATE;
 }
 
 static void main_wdt_callback(int channel_id, void *user_data)
