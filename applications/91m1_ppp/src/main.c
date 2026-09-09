@@ -99,52 +99,52 @@ static struct k_work_q cloud_sync_workq;
 
 /** Forward declarations */
 
-static void running_entry(void *obj);
-static enum smf_state_result running_run(void *obj);
-static void cloud_disconnected_entry(void *obj);
-static enum smf_state_result cloud_disconnected_run(void *obj);
-static void cloud_disconnected_exit(void *obj);
-static void cloud_connected_entry(void *obj);
-static enum smf_state_result cloud_connected_run(void *obj);
-static void cloud_connected_exit(void *obj);
+static void state_running_entry(void *obj);
+static enum smf_state_result state_running_run(void *obj);
+static void state_cloud_disconnected_entry(void *obj);
+static enum smf_state_result state_cloud_disconnected_run(void *obj);
+static void state_cloud_disconnected_exit(void *obj);
+static void state_cloud_connected_entry(void *obj);
+static enum smf_state_result state_cloud_connected_run(void *obj);
+static void state_cloud_connected_exit(void *obj);
 
 /** SMF state table */
 
 static const struct smf_state states[] = {
 	[STATE_RUNNING] =
-		SMF_CREATE_STATE(running_entry,
-				 running_run,
+		SMF_CREATE_STATE(state_running_entry,
+				 state_running_run,
 				 NULL,
 				 NULL,
 				 &states[STATE_CLOUD_DISCONNECTED]),
 	[STATE_CLOUD_DISCONNECTED] =
-		SMF_CREATE_STATE(cloud_disconnected_entry,
-				 cloud_disconnected_run,
-				 cloud_disconnected_exit,
+		SMF_CREATE_STATE(state_cloud_disconnected_entry,
+				 state_cloud_disconnected_run,
+				 state_cloud_disconnected_exit,
 				 &states[STATE_RUNNING],
 				 NULL),
 	[STATE_CLOUD_CONNECTED] =
-		SMF_CREATE_STATE(cloud_connected_entry,
-				 cloud_connected_run,
-				 cloud_connected_exit,
+		SMF_CREATE_STATE(state_cloud_connected_entry,
+				 state_cloud_connected_run,
+				 state_cloud_connected_exit,
 				 &states[STATE_RUNNING],
 				 NULL),
 };
 
 /** Convenience functions */
 
-static void send_demo_cloud_message(void)
+static void demo_cloud_message_send(void)
 {
+	int err;
 	struct cloud_msg msg = {
 		.type = CLOUD_SEND_MESSAGE,
 		.payload = DEMO_CLOUD_PAYLOAD,
 	};
-	int err;
 
 	msg.payload_len = sizeof(DEMO_CLOUD_PAYLOAD) - 1;
 	err = zbus_chan_pub(&cloud_chan, &msg, PUB_TIMEOUT);
 	if (err) {
-		LOG_ERR("zbus_chan_pub cloud_chan, error: %d", err);
+		LOG_ERR("zbus_chan_pub, error: %d", err);
 		FATAL_ERROR();
 	}
 }
@@ -166,36 +166,40 @@ static bool post_memfault_data(void)
 }
 
 #if defined(CONFIG_APP_LOCATION)
-static void request_location_search(void)
+static void location_search_request(void)
 {
-	struct location_msg msg = { .type = LOCATION_SEARCH_TRIGGER };
 	int err;
+	struct location_msg msg = {
+		.type = LOCATION_SEARCH_TRIGGER
+	};
 
 	err = zbus_chan_pub(&location_chan, &msg, PUB_TIMEOUT);
 	if (err) {
-		LOG_ERR("zbus_chan_pub location_chan, error: %d", err);
+		LOG_ERR("zbus_chan_pub, error: %d", err);
 		FATAL_ERROR();
 	}
 }
 #endif /* CONFIG_APP_LOCATION */
 
-static void perform_cloud_synchronization(void)
+static void cloud_sync_run(void)
 {
-	send_demo_cloud_message();
+	demo_cloud_message_send();
 
 #if defined(CONFIG_APP_LOCATION)
-	request_location_search();
+	location_search_request();
 #endif /* CONFIG_APP_LOCATION */
 }
 
-static void request_fota_poll(void)
+static void fota_poll_request(void)
 {
-	struct fota_msg fota_msg = { .type = FOTA_POLL_REQUEST };
 	int err;
+	struct fota_msg fota_msg = {
+		.type = FOTA_POLL_REQUEST
+	};
 
 	err = zbus_chan_pub(&fota_chan, &fota_msg, PUB_TIMEOUT);
 	if (err) {
-		LOG_ERR("zbus_chan_pub fota_chan, error: %d", err);
+		LOG_ERR("zbus_chan_pub, error: %d", err);
 		FATAL_ERROR();
 	}
 }
@@ -223,8 +227,10 @@ static void cloud_sync_delayed_work_handler(struct k_work *work)
 {
 	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
 	struct main_state *state = CONTAINER_OF(dwork, struct main_state, cloud_sync_dwork);
-	struct main_sync_msg msg = { .type = MAIN_CLOUD_SYNCHRONIZATION };
 	int err;
+	struct main_sync_msg msg = {
+		.type = MAIN_CLOUD_SYNCHRONIZATION
+	};
 
 	err = zbus_chan_pub(&main_sync_chan, &msg, PUB_TIMEOUT);
 	if (err) {
@@ -237,25 +243,24 @@ static void cloud_sync_delayed_work_handler(struct k_work *work)
 
 /** SMF state functions */
 
-static void running_entry(void *obj)
+static void state_running_entry(void *obj)
 {
 	ARG_UNUSED(obj);
 
-	LOG_DBG("running_entry");
+	LOG_INF("state_running_entry");
 }
 
-static enum smf_state_result running_run(void *obj)
+static enum smf_state_result state_running_run(void *obj)
 {
 	struct main_state *state_object = obj;
-	int err;
 
 	if (state_object->chan == &main_sync_chan) {
 		const struct main_sync_msg *msg =
 			(const struct main_sync_msg *)state_object->msg_buf;
 
 		if (msg->type == MAIN_CLOUD_SYNCHRONIZATION) {
-			perform_cloud_synchronization();
-			request_fota_poll();
+			cloud_sync_run();
+			fota_poll_request();
 		}
 
 		return SMF_EVENT_HANDLED;
@@ -301,26 +306,24 @@ static enum smf_state_result running_run(void *obj)
 		return SMF_EVENT_HANDLED;
 	}
 
-	(void)err;
-
 	return SMF_EVENT_PROPAGATE;
 }
 
-static void cloud_disconnected_entry(void *obj)
+static void state_cloud_disconnected_entry(void *obj)
 {
 	ARG_UNUSED(obj);
 
-	LOG_DBG("cloud_disconnected_entry");
+	LOG_INF("state_cloud_disconnected_entry");
 }
 
-static void cloud_disconnected_exit(void *obj)
+static void state_cloud_disconnected_exit(void *obj)
 {
 	ARG_UNUSED(obj);
 
-	LOG_DBG("cloud_disconnected_exit");
+	LOG_INF("state_cloud_disconnected_exit");
 }
 
-static enum smf_state_result cloud_disconnected_run(void *obj)
+static enum smf_state_result state_cloud_disconnected_run(void *obj)
 {
 	struct main_state *state_object = obj;
 
@@ -342,28 +345,28 @@ static enum smf_state_result cloud_disconnected_run(void *obj)
 	return SMF_EVENT_HANDLED;
 }
 
-static void cloud_connected_entry(void *obj)
+static void state_cloud_connected_entry(void *obj)
 {
 	struct main_state *state_object = obj;
 
-	LOG_DBG("cloud_connected_entry");
+	LOG_INF("state_cloud_connected_entry");
 
 	post_memfault_data();
-	perform_cloud_synchronization();
-	request_fota_poll();
+	cloud_sync_run();
+	fota_poll_request();
 	cloud_sync_schedule(state_object);
 }
 
-static void cloud_connected_exit(void *obj)
+static void state_cloud_connected_exit(void *obj)
 {
 	struct main_state *state_object = obj;
 
-	LOG_DBG("cloud_connected_exit");
+	LOG_INF("state_cloud_connected_exit");
 
 	cloud_sync_cancel(state_object);
 }
 
-static enum smf_state_result cloud_connected_run(void *obj)
+static enum smf_state_result state_cloud_connected_run(void *obj)
 {
 	struct main_state *state_object = obj;
 

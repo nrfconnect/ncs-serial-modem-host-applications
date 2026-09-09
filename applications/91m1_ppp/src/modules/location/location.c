@@ -95,8 +95,10 @@ static struct location_state_object location_state;
 
 static void message_send(enum location_msg_type msg_type)
 {
-	struct location_msg location_msg = { .type = msg_type };
 	int err;
+	struct location_msg location_msg = {
+		.type = msg_type
+	};
 
 	err = zbus_chan_pub(&location_chan, &location_msg, PUB_TIMEOUT);
 	if (err) {
@@ -133,8 +135,10 @@ static int wifi_data_copy(struct location_cloud_request_data *dest,
 
 static void cloud_request_send(const struct location_data_cloud *cloud_request)
 {
-	struct location_msg location_msg = { .type = LOCATION_CLOUD_REQUEST };
 	int err;
+	struct location_msg location_msg = {
+		.type = LOCATION_CLOUD_REQUEST
+	};
 
 	err = wifi_data_copy(&location_msg.cloud_request, cloud_request->wifi_data);
 	if (err) {
@@ -180,8 +184,8 @@ static void state_location_search_inactive_entry(void *obj)
 
 static enum smf_state_result state_location_search_inactive_run(void *obj)
 {
-	struct location_state_object *state_object = obj;
 	int err;
+	struct location_state_object *state_object = obj;
 
 	if (state_object->chan == &location_chan) {
 		const struct location_msg *msg =
@@ -217,8 +221,8 @@ static void state_location_search_active_entry(void *obj)
 
 static enum smf_state_result state_location_search_active_run(void *obj)
 {
-	struct location_state_object *state_object = obj;
 	int err;
+	struct location_state_object *state_object = obj;
 
 	if (state_object->chan == &location_chan) {
 		const struct location_msg *msg =
@@ -253,7 +257,7 @@ static enum smf_state_result state_location_search_active_run(void *obj)
 }
 
 #if defined(CONFIG_LOCATION_DATA_DETAILS)
-static void location_print_data_details(enum location_method method,
+static void location_data_details_print(enum location_method method,
 					const struct location_data_details *details)
 {
 	LOG_DBG("Elapsed method time: %d ms", details->elapsed_time_method);
@@ -289,7 +293,7 @@ static void location_event_handler(const struct location_event_data *event_data)
 						event_data->method);
 
 #if defined(CONFIG_LOCATION_DATA_DETAILS)
-		location_print_data_details(event_data->method, &event_data->error.details);
+		location_data_details_print(event_data->method, &event_data->error.details);
 #endif /* CONFIG_LOCATION_DATA_DETAILS */
 
 		message_send(LOCATION_SEARCH_DONE);
@@ -307,7 +311,7 @@ static void location_event_handler(const struct location_event_data *event_data)
 			(event_data->fallback.cause == LOCATION_EVT_ERROR) ? "error" :
 			"unknown");
 
-		location_print_data_details(event_data->method, &event_data->fallback.details);
+		location_data_details_print(event_data->method, &event_data->fallback.details);
 #endif /* CONFIG_LOCATION_DATA_DETAILS */
 		break;
 	case LOCATION_EVT_CLOUD_LOCATION_EXT_REQUEST:
