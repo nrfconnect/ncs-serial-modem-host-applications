@@ -11,8 +11,6 @@
 #include <zephyr/task_wdt/task_wdt.h>
 #include <zephyr/smf.h>
 #include <zephyr/sys/reboot.h>
-#include <memfault/metrics/metrics.h>
-#include <memfault/ports/zephyr/http.h>
 
 #include "app_common.h"
 #include "modules/network/network.h"
@@ -91,6 +89,7 @@ enum main_app_state {
 		 * - Sends demo payload
 		 * - Sends location via scanned Wi-Fi Access Point MAC addresses. (Optional)
 		 * - Polls for any available FOTA job. (Optional)
+		 * - Posts any pending Memfault data
 		 */
 		STATE_CLOUD_CONNECTED,
 };
@@ -193,22 +192,6 @@ static void cloud_disconnect_request(void)
 	}
 }
 
-static bool post_memfault_data(void)
-{
-	int err;
-
-	memfault_metrics_heartbeat_debug_trigger();
-
-	err = memfault_zephyr_port_post_data();
-	if (err) {
-		LOG_WRN("memfault_zephyr_port_post_data, error: %d", err);
-		return false;
-	}
-
-	LOG_INF("Memfault data posted");
-	return true;
-}
-
 #if defined(CONFIG_APP_LOCATION)
 static void location_search_request(void)
 {
@@ -255,6 +238,20 @@ static void fota_poll_request(void)
 	}
 }
 
+static void memfault_post_request(void)
+{
+	int err;
+	struct cloud_msg msg = {
+		.type = CLOUD_MEMFAULT_POST_REQUEST
+	};
+
+	err = zbus_chan_pub(&cloud_chan, &msg, PUB_TIMEOUT);
+	if (err) {
+		LOG_ERR("zbus_chan_pub, error: %d", err);
+		FATAL_ERROR();
+	}
+}
+
 static void cloud_sync_run(void)
 {
 	demo_cloud_message_send();
@@ -264,6 +261,9 @@ static void cloud_sync_run(void)
 #endif /* CONFIG_APP_LOCATION */
 
 	fota_poll_request();
+
+	/* Posted last so the module handles it once its own requests above are done. */
+	memfault_post_request();
 }
 
 static void cloud_sync_schedule(struct main_state *state)
@@ -408,7 +408,6 @@ static void state_cloud_connected_entry(void *obj)
 
 	LOG_INF("state_cloud_connected_entry");
 
-	post_memfault_data();
 	cloud_sync_schedule(state_object);
 
 	/* Synchronize once immediately so connecting always syncs without waiting a period. */
