@@ -20,7 +20,7 @@
  *
  * Set matching VDD on both DKs (typically 1.8 V).
  *
- * Wiring: see doc/hardware-setup.md.
+ * Wiring: see docs/applications/91m1_ppp/hardware-setup.md.
  *
  * RRAM/SRAM partitions: nrf54lm20_cpuapp_ns_partitions.dtsi (MCUboot + TF-M).
  */

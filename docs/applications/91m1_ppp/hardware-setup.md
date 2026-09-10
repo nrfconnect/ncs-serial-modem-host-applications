@@ -8,9 +8,9 @@ Supported host boards:
 
 | Host DK | Serial Modem wiring |
 |---|---|
-| [nRF54L15 DK](#nrf54l15-dk--nrf9151-dk) | P0 connector (uart30) |
-| [nRF54LM20B DK](#nrf54lm20b-dk--nrf9151-dk) | P1/P2 connector (uart21) |
-| [nRF54LM20B DK + nRF7002-EB2 (Wi-Fi location)](#nrf54lm20b-dk--nrf7002-eb2-wi-fi-location) | P1/P2 connector (uart21) |
+| [nRF54L15 DK](#nrf54l15-dk-with-nrf9151-dk) | P0 connector (uart30) |
+| [nRF54LM20B DK](#nrf54lm20b-dk-with-nrf9151-or-sma-dk) | P1/P2 connector (uart21) |
+| [nRF54LM20B DK + nRF7002-EB2 (Wi-Fi location)](#nrf54lm20b-dk-with-nrf7002-eb2-for-wi-fi-location) | P1/P2 connector (uart21) |
 
 ## Board Configurator
 
@@ -32,9 +32,9 @@ The Serial Modem bundle is `*_nrf9151dk_nrf91m1.zip`. The host UART is the nRF91
 
 Until the nRF9151 DK Board Configurator can route DTR automatically, the modem DK also expects **P0.31 (DTR) jumpered to GND** when a PC host is used; an external MCU host should drive DTR from its GPIO instead (as this application does via P1.11).
 
-CI tracks the newest upstream release that ships the nrf91m1 bundle. Static settings such as `console_baudrate` live in [`tests/on_target/ci/serial_modem_firmware.yml`](../../../tests/on_target/ci/serial_modem_firmware.yml); set `SERIAL_MODEM_RELEASE` to pin a specific tag locally.
+CI tracks the newest upstream release that ships the nrf91m1 bundle. Static settings such as `console_baudrate` live in [`tests/on_target/ci/serial_modem_firmware.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/tests/on_target/ci/serial_modem_firmware.yml); set `SERIAL_MODEM_RELEASE` to pin a specific tag locally.
 
-## nRF54L15 DK + nRF9151 DK
+## nRF54L15 DK with nRF9151 DK
 
 Development setup: **nRF54L15 DK** (host) wired to **nRF9151 DK** (Serial Modem).
 
@@ -70,7 +70,7 @@ west build -b nrf54l15dk/nrf54l15/cpuapp/ns -p
 
 ### Devicetree
 
-[`boards/nrf54l15dk_nrf54l15_cpuapp_ns.overlay`](../boards/nrf54l15dk_nrf54l15_cpuapp_ns.overlay)
+[`boards/nrf54l15dk_nrf54l15_cpuapp_ns.overlay`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/boards/nrf54l15dk_nrf54l15_cpuapp_ns.overlay)
 
 ### Console
 
@@ -78,11 +78,11 @@ Open a serial terminal on **VCOM1** (uart20 — the secondary USB serial port on
 
 ---
 
-## nRF54LM20B DK + nRF9151 / SMA DK
+## nRF54LM20B DK with nRF9151 or SMA DK
 
 Development setup: **nRF54LM20B DK** (host) wired to **nRF9151 DK** or **nRF9151 SMA DK** (Serial Modem).
 
-On the nRF54LM20B DK, no Board Configurator changes are required for the plain build — both VCOM ports may stay enabled. When the nRF7002-EB2 shield is attached, disable **VCOM1** (see [Wi-Fi location setup](#nrf54lm20b-dk--nrf7002-eb2-wi-fi-location)).
+On the nRF54LM20B DK, no Board Configurator changes are required for the plain build — both VCOM ports may stay enabled. When the nRF7002-EB2 shield is attached, disable **VCOM1** (see [Wi-Fi location setup](#nrf54lm20b-dk-with-nrf7002-eb2-for-wi-fi-location)).
 
 ### Wiring
 
@@ -116,7 +116,7 @@ west build -b nrf54lm20dk/nrf54lm20b/cpuapp/ns -p
 
 ### Devicetree
 
-[`boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.overlay`](../boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.overlay)
+[`boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.overlay`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.overlay)
 
 ### Console
 
@@ -126,7 +126,7 @@ Serial Modem logs appear on **VCOM1 of the nRF9151 / SMA DK** (uart1, P0.28/P0.2
 
 ---
 
-## nRF54LM20B DK + nRF7002-EB2 (Wi-Fi location)
+## nRF54LM20B DK with nRF7002-EB2 for Wi-Fi location
 
 Development setup: **nRF54LM20B DK** with **nRF7002-EB II** (EB2) on the **P18 expansion header**, wired to **nRF9151 DK** or **nRF9151 SMA DK** (Serial Modem). Use this configuration only when building with Wi-Fi location support — the EB2 shield is not required for the base PPP application.
 
@@ -141,7 +141,7 @@ On the nRF54LM20B DK:
 
 ### Wiring
 
-The shield shares the same host console as the plain build (**uart30** / **VCOM0**). Serial Modem wiring is the same as the [plain nRF54LM20B setup](#wiring-1) above (uart21 on P1).
+The shield shares the same host console as the plain build (**uart30** / **VCOM0**). Serial Modem wiring is the same as the [plain nRF54LM20B setup](#nrf54lm20b-dk-with-nrf9151-or-sma-dk) above (uart21 on P1).
 
 ### Build
 
@@ -155,7 +155,7 @@ west build -b nrf54lm20dk/nrf54lm20b/cpuapp/ns -p -- \
 
 ### Devicetree
 
-[`boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.overlay`](../boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.overlay)
+[`boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.overlay`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.overlay)
 
 The Zephyr `nrf7002eb2` shield overlay provides the Wi-Fi companion IC devicetree. The base board overlay already routes the console to uart30.
 
@@ -169,11 +169,11 @@ Serial Modem logs appear on **VCOM1 of the nRF9151 / SMA DK** (uart1, P0.28/P0.2
 
 ## Firmware behavior
 
-On host boot, [`src/modem_reset.c`](../src/modem_reset.c) pulses nRESET (500 ms), then waits for the Serial Modem `"Ready"` string before the cellular driver starts.
+On host boot, [`src/modem_reset.c`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/src/modem_reset.c) pulses nRESET (500 ms), then waits for the Serial Modem `"Ready"` string before the cellular driver starts.
 
 ## Serial Modem firmware
 
-The 91m1_ppp host application is tested against the newest [ncs-serial-modem](https://github.com/nrfconnect/ncs-serial-modem/releases) release that ships the nrf91m1 zip for the nRF9151 / SMA DK. Download `serial_modem_<tag>_nrf9151dk_nrf91m1.zip` from the upstream release page, or use the copy at the top level of your [SMHA release bundle](../../../doc/release-artifacts.md#serial-modem-firmware-nrf9151-dk).
+The 91m1_ppp host application is tested against the newest [ncs-serial-modem](https://github.com/nrfconnect/ncs-serial-modem/releases) release that ships the nrf91m1 zip for the nRF9151 / SMA DK. Download `serial_modem_<tag>_nrf9151dk_nrf91m1.zip` from the upstream release page, or use the copy at the top level of your [SMHA release bundle](../../release-artifacts.md#serial-modem-firmware-nrf9151-dk).
 
 This build enables PPP and CMUX on **uart0** routed to the host (P0.27/P0.26 TX/RX, P0.15/P0.14 RTS/CTS, DTR/RI on P0.31/P0.30). Without the nrf91m1 variant, the modem listens on the USB VCOM UART instead — the host will see `init_chat_script: timed out`.
 
@@ -183,6 +183,6 @@ Extract the zip and flash the `.hex` on the nRF9151 / SMA DK:
 nrfutil device program --firmware serial_modem_<tag>_nrf9151dk_nrf91m1.hex --recover
 ```
 
-CI on-target tests resolve and flash the same archive before each 91m1 run — see [Serial logs](../../../doc/ci-and-contribution.md#serial-logs).
+CI on-target tests resolve and flash the same archive before each 91m1 run — see [Serial logs](../../ci-and-contribution.md#serial-logs).
 
 To match an unreleased Serial Modem commit instead, build the modem application yourself; see the [Serial Modem getting started guide](https://docs.nordicsemi.com/bundle/addon-serial_modem-latest/page/gsg_guide.html#building_and_running) for workspace setup and build arguments.

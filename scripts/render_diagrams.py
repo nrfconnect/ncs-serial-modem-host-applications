@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 """Render the applications' PlantUML diagram sources to SVG.
 
-With no arguments, every ``applications/*/doc/diagrams/*.puml`` file holding a
+With no arguments, every ``docs/applications/*/diagrams/*.puml`` file holding a
 diagram is rendered to an ``.svg`` file of the same name. Sources without an
 ``@startuml`` line, such as the shared ``style.puml`` skin, are skipped.
 
@@ -25,7 +25,7 @@ import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DIAGRAM_GLOB = "applications/*/doc/diagrams/*.puml"
+DIAGRAM_GLOB = "docs/applications/*/diagrams/*.puml"
 DEFAULT_SERVER = "https://www.plantuml.com/plantuml"
 TIMEOUT_SECONDS = 60
 MAX_INCLUDE_DEPTH = 8

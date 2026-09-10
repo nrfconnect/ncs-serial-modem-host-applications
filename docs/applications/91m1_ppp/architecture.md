@@ -1,6 +1,6 @@
 # Architecture
 
-The [91m1_ppp](../) application is built on a modular, event-driven architecture. The modules interact through messages that are processed as events by the modules' state machines.
+The [91m1_ppp](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/) application is built on a modular, event-driven architecture. The modules interact through messages that are processed as events by the modules' state machines.
 
 The architecture is implemented using [Zephyr bus (zbus)](https://docs.nordicsemi.com/bundle/ncs-latest/page/zephyr/services/zbus/index.html) for inter-module communication and the [State Machine Framework](https://docs.nordicsemi.com/bundle/ncs-latest/page/zephyr/services/smf/index.html) (SMF) for managing module behavior.
 
@@ -8,7 +8,7 @@ This document provides an overview of the architecture, with a focus on the zbus
 
 ## Diagram notation
 
-The diagrams in this guide and in the module guides are generated from the PlantUML sources in [`doc/diagrams/`](diagrams/), which describe the implementation as it is. They use the following conventions:
+The diagrams in this guide and in the module guides are generated from the PlantUML sources in [`diagrams/`](diagrams/), which describe the implementation as it is. They use the following conventions:
 
 | Notation | Meaning |
 |----------|---------|
@@ -18,7 +18,7 @@ The diagrams in this guide and in the module guides are generated from the Plant
 | `EVENT [guard]` on a transition | A transition taken only when the guard holds |
 | Dashed state or transition | Present only in some build configurations. The Kconfig symbol is named in the state |
 
-To change a diagram, edit its `.puml` file and regenerate the `.svg` with [`scripts/render_diagrams.py`](../../../scripts/render_diagrams.py), as described in [CI and contribution](../../../doc/ci-and-contribution.md#documentation-diagrams).
+To change a diagram, edit its `.puml` file and regenerate the `.svg` with [`scripts/render_diagrams.py`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/scripts/render_diagrams.py), as described in [CI and contribution](../../ci-and-contribution.md#documentation-diagrams).
 
 ## System overview
 

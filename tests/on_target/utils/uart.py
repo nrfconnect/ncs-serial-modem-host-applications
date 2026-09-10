@@ -153,7 +153,7 @@ class Uart:
         raise ModemLinkError(
             f"Host never reached the Serial Modem: {MODEM_LINK_DOWN_LOG!r} in the "
             "host log. Check the four UART wires and the nRF9151 DK VCOM0 and "
-            "VCOM0 HWFC switches - see applications/91m1_ppp/doc/hardware-setup.md"
+            "VCOM0 HWFC switches - see docs/applications/91m1_ppp/hardware-setup.md"
         )
 
     def wait_for_substring(

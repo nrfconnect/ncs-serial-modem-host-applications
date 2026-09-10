@@ -6,7 +6,7 @@
 # SERIAL_MODEM_RELEASE when you need a specific tag.
 #
 # The host UART uses the nRF91M1 pinout on uart0 (P0.27/P0.26/P0.14/P0.15). See
-# applications/91m1_ppp/doc/hardware-setup.md for the wiring.
+# docs/applications/91m1_ppp/hardware-setup.md for the wiring.
 #
 # Log capture reads zephyr,console = &uart1 (P0.28/P0.29 -> VCOM1). Re-check
 # console_baudrate when upstream changes the nrf91m1 overlay.
