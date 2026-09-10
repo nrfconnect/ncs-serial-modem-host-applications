@@ -121,13 +121,15 @@ Each module configures its own watchdog timeout and message processing budget, s
 
 | Module | Watchdog timeout | Message processing budget |
 |--------|-----------------:|--------------------------:|
-| Main | 120 s | 110 s |
-| Network | 120 s | 110 s |
+| Main | 30 s | 5 s |
+| Network | 30 s | 5 s |
 | Cloud | 300 s | 290 s |
-| FOTA | 900 s | 870 s |
-| Location | 120 s | 60 s |
+| FOTA | 300 s | 290 s |
+| Location | 30 s | 5 s |
 
-The FOTA module has the longest timeout because a firmware download runs to completion inside a single message handler. The Cloud module needs a long timeout because connecting waits for valid time and performs a DTLS handshake.
+The Cloud and FOTA modules have the longest timeouts because their handlers make blocking CoAP calls. In the Cloud module a connect attempt performs a DTLS handshake, and the shadow, message, location, and Memfault requests are blocking CoAP exchanges. In the FOTA module the poll makes reliable CoAP calls to check for and report a job; the image download itself does not block, because the module uses the nRF Cloud FOTA poll library in non-blocking mode and drives the download from its callbacks.
+
+The Main, Network, and Location modules never block in their handlers: they only publish messages, drive the connection manager, or start an asynchronous Wi-Fi scan, all of which return immediately while results arrive later as messages or callbacks. Their timeouts are therefore short, sized only to catch a genuinely stuck thread rather than to cover a long operation.
 
 ## Message passing with zbus
 
