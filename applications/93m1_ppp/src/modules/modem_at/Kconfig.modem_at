@@ -10,16 +10,16 @@ menuconfig APP_MODEM_AT
 	select MODEM_AT_USER_PIPE
 	help
 	  Owns the single host AT user pipe (DLCI 3) with its own modem_chat and
-	  serialises access between the `modem at` shell and application modules.
+	  serialises access between the `at` shell and application modules.
 	  Replaces the in-tree CONFIG_MODEM_AT_SHELL, which must be disabled.
 
 if APP_MODEM_AT
 
 config APP_MODEM_AT_SHELL
-	bool "modem at shell command"
+	bool "at shell command"
 	default y if SHELL
 	help
-	  Re-adds the interactive `modem at "<command>"` shell on top of the
+	  Re-adds the interactive `at "<command>"` shell on top of the
 	  shared handler.
 
 config APP_MODEM_AT_COMMAND_MAX_SIZE

@@ -9,13 +9,13 @@
 
 #include "modem_at.h"
 
-static int cmd_modem_at(const struct shell *sh, size_t argc, char **argv)
+static int cmd_at(const struct shell *sh, size_t argc, char **argv)
 {
 	static char resp[CONFIG_APP_MODEM_AT_RESPONSE_MAX_SIZE];
 	int ret;
 
 	if (argc != 2) {
-		shell_error(sh, "usage: modem at \"<command>\"");
+		shell_error(sh, "usage: at \"<command>\"");
 		return -EINVAL;
 	}
 
@@ -43,8 +43,4 @@ static int cmd_modem_at(const struct shell *sh, size_t argc, char **argv)
 	return ret;
 }
 
-SHELL_STATIC_SUBCMD_SET_CREATE(modem_sub_cmds,
-	SHELL_CMD_ARG(at, NULL, "Send AT command: modem at \"<command>\"", cmd_modem_at, 2, 0),
-	SHELL_SUBCMD_SET_END);
-
-SHELL_CMD_REGISTER(modem, &modem_sub_cmds, "Modem commands", NULL);
+SHELL_CMD_ARG_REGISTER(at, NULL, "Send AT command: at \"<command>\"", cmd_at, 2, 0);
