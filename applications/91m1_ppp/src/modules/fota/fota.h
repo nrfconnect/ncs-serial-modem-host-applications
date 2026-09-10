@@ -14,38 +14,41 @@
 extern "C" {
 #endif
 
-/* Channels provided by this module */
+/** @brief Channel carrying @ref fota_msg messages to and from the FOTA module. */
 ZBUS_CHAN_DECLARE(fota_chan);
 
+/** @brief Message types published on and handled by @ref fota_chan. */
 enum fota_msg_type {
-	/* Output message types */
+	/* Output message types (published by the FOTA module). */
 
-	/* FOTA module is ready to use. */
+	/** FOTA module is ready to use. */
 	FOTA_MODULE_READY = 0x1,
 
-	/* A FOTA download has started. */
+	/** A FOTA download has started. */
 	FOTA_STARTING,
 
-	/* The FOTA module requires the application to reboot the device to
-	 * continue or finalize the update.
+	/** The FOTA module requires the application to reboot the device to
+	 *  continue or finalize the update.
 	 */
 	FOTA_REBOOT_REQUEST,
 
-	/* The FOTA sequence was aborted (download failed, timed out,
-	 * canceled, rejected, or no update was available).
+	/** The FOTA sequence was aborted (download failed, timed out,
+	 *  canceled, rejected, or no update was available).
 	 */
 	FOTA_ABORTED,
 
-	/* Input message types */
+	/* Input message types (handled by the FOTA module). */
 
-	/* Request to poll cloud for any available firmware updates. */
+	/** Request to poll cloud for any available firmware updates. */
 	FOTA_POLL_REQUEST,
 
-	/* Cancel the FOTA download. */
+	/** Request to cancel the ongoing FOTA download. */
 	FOTA_DOWNLOAD_CANCEL,
 };
 
+/** @brief Message carried on @ref fota_chan. */
 struct fota_msg {
+	/** Message type. */
 	enum fota_msg_type type;
 };
 

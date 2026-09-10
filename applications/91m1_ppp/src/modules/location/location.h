@@ -15,51 +15,53 @@
 extern "C" {
 #endif
 
+/** @brief Channel carrying @ref location_msg messages to and from the location module. */
 ZBUS_CHAN_DECLARE(location_chan);
 
+/** Length of a Wi-Fi access point MAC address in bytes. */
 #define MAC_ADDR_LEN 6
 
+/** @brief Message types published on and handled by @ref location_chan. */
 enum location_msg_type {
-	/* Output message types */
+	/* Output message types (published by the location module). */
 
-	/* A location search operation has been initiated and is now active. */
+	/** A location search operation has been initiated and is now active. */
 	LOCATION_SEARCH_STARTED = 0x1,
 
-	/* A location search operation has completed successfully or due to timeout/error.
-	 * This message indicates that the location module has returned to an inactive state
-	 * and is ready to accept new location requests.
+	/** A location search operation has completed successfully or due to timeout/error.
+	 *  This message indicates that the location module has returned to an inactive state
+	 *  and is ready to accept new location requests.
 	 */
 	LOCATION_SEARCH_DONE,
 
-	/* A cloud location request with Wi-Fi scanning data is available for external
-	 * processing. The cloud request data is found in the .cloud_request field of the
-	 * message.
+	/** A cloud location request with Wi-Fi scanning data is available for external
+	 *  processing. The cloud request data is found in @ref location_msg::cloud_request.
 	 */
 	LOCATION_CLOUD_REQUEST,
 
-	/* Location module is ready to use */
+	/** Location module is ready to use. */
 	LOCATION_MODULE_READY,
 
-	/* Input message types */
+	/* Input message types (handled by the location module). */
 
-	/* Request to initiate a location search operation. This starts a Wi-Fi scan and
-	 * publishes the result as LOCATION_CLOUD_REQUEST.
+	/** Request to initiate a location search operation. This starts a Wi-Fi scan and
+	 *  publishes the result as @ref LOCATION_CLOUD_REQUEST.
 	 */
 	LOCATION_SEARCH_TRIGGER,
 
-	/* Request to cancel an ongoing location search operation.
+	/** Request to cancel an ongoing location search operation.
 	 *
-	 * WARNING: This operation has known limitations and may cause issues with Wi-Fi
-	 * scanning operations. Specifically:
-	 * - Wi-Fi scans cannot be truly cancelled at the driver level and may continue
-	 *   running, potentially causing -EBUSY errors on subsequent location requests
-	 * - Race conditions may occur between cancellation and scan completion
-	 * - Scan results may be lost if cancellation occurs during result collection
+	 *  WARNING: This operation has known limitations and may cause issues with Wi-Fi
+	 *  scanning operations. Specifically:
+	 *  - Wi-Fi scans cannot be truly cancelled at the driver level and may continue
+	 *    running, potentially causing -EBUSY errors on subsequent location requests
+	 *  - Race conditions may occur between cancellation and scan completion
+	 *  - Scan results may be lost if cancellation occurs during result collection
 	 *
-	 * Use this operation only when absolutely necessary. Before cancelling:
-	 * - Ensure sufficient delay between subsequent location requests to avoid conflicts
-	 * - Consider implementing retry logic to handle potential -EBUSY errors
-	 * - Be aware that Wi-Fi scan results may be incomplete or lost
+	 *  Use this operation only when absolutely necessary. Before cancelling:
+	 *  - Ensure sufficient delay between subsequent location requests to avoid conflicts
+	 *  - Consider implementing retry logic to handle potential -EBUSY errors
+	 *  - Be aware that Wi-Fi scan results may be incomplete or lost
 	 */
 	LOCATION_SEARCH_CANCEL,
 };
@@ -85,12 +87,13 @@ struct location_cloud_request_data {
 	struct location_wifi_ap_info wifi_aps[CONFIG_APP_LOCATION_WIFI_APS_MAX];
 };
 
-/* Structure to pass location data through zbus */
+/** @brief Message carried on @ref location_chan. */
 struct location_msg {
+	/** Message type, determines which of the remaining fields are valid. */
 	enum location_msg_type type;
 
-	/** Contains cloud location request data with Wi-Fi information.
-	 *  cloud_request is valid for LOCATION_CLOUD_REQUEST messages.
+	/** Cloud location request data with Wi-Fi information.
+	 *  Valid for @ref LOCATION_CLOUD_REQUEST messages.
 	 */
 	struct location_cloud_request_data cloud_request;
 };
