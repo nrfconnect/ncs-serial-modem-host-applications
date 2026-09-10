@@ -17,7 +17,7 @@
 LOG_MODULE_REGISTER(modem_at, CONFIG_APP_MODEM_AT_LOG_LEVEL);
 
 /* The modem exposes a single host AT pipe (DLCI 3); this handler owns it and
- * serialises access between the `modem at` shell and application modules.
+ * serialises access between the `at` shell and application modules.
  * A 2nd pipe (DLCI 4) needs a modem-firmware change - see the CMUX notes.
  */
 

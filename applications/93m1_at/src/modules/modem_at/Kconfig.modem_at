@@ -14,10 +14,10 @@ menuconfig APP_MODEM_AT
 if APP_MODEM_AT
 
 config APP_MODEM_AT_SHELL
-	bool "modem at shell command"
+	bool "at shell command"
 	default y if SHELL
 	help
-	  Re-adds the interactive `modem at "<command>"` shell on top of the shared
+	  Re-adds the interactive `at "<command>"` shell on top of the shared
 	  handler.
 
 config APP_MODEM_AT_COMMAND_MAX_SIZE

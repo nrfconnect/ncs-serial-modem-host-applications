@@ -23,22 +23,22 @@ west flash
 
 ## Bring-up
 
-The modem is its own nRF Cloud client. It needs to be registered to your account before it can send location fixes or telemetry. All commands below go through the app's `modem at` shell command over the console, not a raw AT passthrough.
+The modem is its own nRF Cloud client. It needs to be registered to your account before it can send location fixes or telemetry. All commands below go through the app's `at` shell command over the console, not a raw AT passthrough.
 
 ### Claim the device on nRF Cloud
 
 1. In nRF Cloud, go to **Fleet → Devices**.
 2. Click **+ Add New Devices** and select nRF93M1.
-3. Paste the two supplied AT commands to generate the device UUID and JWT with the `modem at` shell:
+3. Paste the two supplied AT commands to generate the device UUID and JWT with the `at` shell:
 
    ```text
-   uart:~$ modem at AT%DEVICEUUID
+   uart:~$ at AT%DEVICEUUID
    %DEVICEUUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
    OK
    ```
 
    ```text
-   uart:~$ modem at AT%REGJWT=<team-id>
+   uart:~$ at AT%REGJWT=<team-id>
    %REGJWT: <jwt>
    OK
    ```
