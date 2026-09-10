@@ -254,7 +254,7 @@ In modules that subscribe to multiple channels, a channel list macro is used to 
 	X(cloud_chan, struct cloud_msg) \
 	IF_ENABLED(CONFIG_APP_FOTA, (X(fota_chan, struct fota_msg))) \
 	IF_ENABLED(CONFIG_APP_LOCATION, (X(location_chan, struct location_msg))) \
-	X(main_priv_chan, struct main_priv_msg)
+	X(main_priv_chan, struct priv_main_msg)
 
 /* Calculate the maximum message size from the list of channels */
 #define MAX_MSG_SIZE		    MAX_MSG_SIZE_FROM_LIST(CHANNEL_LIST)

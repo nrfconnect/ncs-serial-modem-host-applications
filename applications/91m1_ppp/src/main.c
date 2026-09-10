@@ -33,16 +33,16 @@ BUILD_ASSERT(CONFIG_APP_MAIN_WATCHDOG_TIMEOUT_SECONDS >
 ZBUS_MSG_SUBSCRIBER_DEFINE(main_subscriber);
 
 /* Private channel message types for internal state management. */
-enum main_priv_msg_type {
+enum priv_main_msg_type {
 	MAIN_PRIV_CLOUD_SYNCHRONIZATION,
 };
 
-struct main_priv_msg {
-	enum main_priv_msg_type type;
+struct priv_main_msg {
+	enum priv_main_msg_type type;
 };
 
 ZBUS_CHAN_DEFINE(main_priv_chan,
-		 struct main_priv_msg,
+		 struct priv_main_msg,
 		 NULL,
 		 NULL,
 		 ZBUS_OBSERVERS_EMPTY,
@@ -57,7 +57,7 @@ ZBUS_CHAN_DEFINE(main_priv_chan,
 	X(cloud_chan, struct cloud_msg) \
 	IF_ENABLED(CONFIG_APP_FOTA, (X(fota_chan, struct fota_msg))) \
 	IF_ENABLED(CONFIG_APP_LOCATION, (X(location_chan, struct location_msg))) \
-	X(main_priv_chan, struct main_priv_msg)
+	X(main_priv_chan, struct priv_main_msg)
 
 /* Calculate the maximum message size from the list of channels */
 #define MAX_MSG_SIZE		    MAX_MSG_SIZE_FROM_LIST(CHANNEL_LIST)
@@ -343,7 +343,7 @@ static void cloud_sync_delayed_work_handler(struct k_work *work)
 	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
 	struct main_state *state = CONTAINER_OF(dwork, struct main_state, cloud_sync_dwork);
 	int err;
-	struct main_priv_msg msg = {
+	struct priv_main_msg msg = {
 		.type = MAIN_PRIV_CLOUD_SYNCHRONIZATION
 	};
 
@@ -498,8 +498,8 @@ static enum smf_state_result state_cloud_connected_run(void *obj)
 	}
 
 	if (state_object->chan == &main_priv_chan) {
-		const struct main_priv_msg *msg =
-			(const struct main_priv_msg *)state_object->msg_buf;
+		const struct priv_main_msg *msg =
+			(const struct priv_main_msg *)state_object->msg_buf;
 
 		if (msg->type == MAIN_PRIV_CLOUD_SYNCHRONIZATION) {
 			cloud_sync_run();
