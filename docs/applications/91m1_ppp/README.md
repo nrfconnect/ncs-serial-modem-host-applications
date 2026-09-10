@@ -1,12 +1,12 @@
 # nRF91M1 Host Application Documentation
 
-End-to-end guide for the [91m1_ppp](../) host application on nRF54L15 or nRF54LM20B. Complete these steps in order to wire up the hardware, build and flash firmware, and connect the device to nRF Cloud over CoAP.
+End-to-end guide for the [91m1_ppp](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/) host application on nRF54L15 or nRF54LM20B. Complete these steps in order to wire up the hardware, build and flash firmware, and connect the device to nRF Cloud over CoAP.
 
 The application connects to nRF Cloud over **CoAP/DTLS** from the host MCU (nRF54L15 or nRF54LM20B). Cellular data goes through the nRF91M1 Serial Modem via PPP; credentials are stored on the host using the TLS credentials shell and TF-M Protected Storage. Until onboarding is complete, `nrf_cloud_coap_connect()` will fail even if credentials are installed locally.
 
 ## Getting started
 
-1. **Wire up the development boards** — Connect the host DK (nRF54L15 or nRF54LM20B) to the nRF9151 DK (Serial Modem). Configure both DKs in the Board Configurator and flash Serial Modem firmware with PPP and CMUX enabled on the nRF9151. Use the `serial_modem_*_nrf9151dk_extmcu.zip` from your [SMHA release bundle](../../../doc/release-artifacts.md#serial-modem-firmware-nrf9151-dk), or download the newest matching archive from [ncs-serial-modem releases](https://github.com/nrfconnect/ncs-serial-modem/releases). See [Hardware setup](hardware-setup.md) for wiring, pin assignments, and how to flash the Serial Modem image.
+1. **Wire up the development boards** — Connect the host DK (nRF54L15 or nRF54LM20B) to the nRF9151 DK (Serial Modem). Configure both DKs in the Board Configurator and flash Serial Modem firmware with PPP and CMUX enabled on the nRF9151. Use the `serial_modem_*_nrf9151dk_extmcu.zip` from your [SMHA release bundle](../../release-artifacts.md#serial-modem-firmware-nrf9151-dk), or download the newest matching archive from [ncs-serial-modem releases](https://github.com/nrfconnect/ncs-serial-modem/releases). See [Hardware setup](hardware-setup.md) for wiring, pin assignments, and how to flash the Serial Modem image.
 
 2. **Build and flash 91m1_ppp on the host DK**
 
@@ -32,7 +32,7 @@ The application connects to nRF Cloud over **CoAP/DTLS** from the host MCU (nRF5
    west flash --recover
    ```
 
-   For Wi-Fi location with the nRF7002-EB2 shield, see [Hardware setup — Wi-Fi location](hardware-setup.md#nrf54lm20b-dk--nrf7002-eb2-wi-fi-location).
+   For Wi-Fi location with the nRF7002-EB2 shield, see [Hardware setup — Wi-Fi location](hardware-setup.md#nrf54lm20b-dk-with-nrf7002-eb2-for-wi-fi-location).
 
 3. **Verify the host application boots** — Open a serial terminal on the host **console** port (see [Hardware setup](hardware-setup.md) for which VCOM to use on your board). Confirm the application starts and note the **Device ID** from the boot log:
 

@@ -2,7 +2,7 @@
 """Gitlint rules for this repository (single source of truth).
 
 Commit titles combine Conventional Commits semver types with Zephyr-style
-subsystem prefixes. See doc/ci-and-contribution.md.
+subsystem prefixes. See docs/ci-and-contribution.md.
 """
 
 from __future__ import annotations
