@@ -8,7 +8,7 @@ The module does not reboot the device itself. When an update is ready to be appl
 
 The nRF Cloud FOTA poll library reports progress through callbacks that run in the library's own context. The module forwards each callback as a message on its [private channel](../architecture.md#private-channels) `priv_fota_chan`, so all decisions are made in the state machine.
 
-Both the poll and the download run inside the entry function of `STATE_POLLING_FOR_UPDATE`, because `nrf_cloud_fota_poll_process()` does not return until the job has been downloaded or has failed. This is why the module has by far the longest watchdog timeout in the application, and why the substates that follow are entered once the call has returned, from the messages its callbacks published along the way.
+The module uses the library in its non-blocking mode: because it registers a status callback, `nrf_cloud_fota_poll_process()` starts the download and returns instead of blocking until the image has been downloaded. The call is made from the entry function of `STATE_POLLING_FOR_UPDATE`, and what it does synchronously is the poll itself: reliable CoAP requests to check for a job and report its status, plus a short wait inside the library after a job update. The download then runs on its own, and the substates that follow are entered from the messages the library's callbacks publish along the way. The watchdog timeout therefore only has to cover the blocking CoAP poll, not a whole download, and matches the Cloud module rather than dwarfing it.
 
 On startup, the module confirms the running MCUboot image with `boot_write_img_confirmed()`. This marks a newly downloaded image as good, so MCUboot does not revert to the previous one on the next boot. It then publishes `FOTA_MODULE_READY`.
 
@@ -82,7 +82,7 @@ uart:~$ fota cancel
 
 - **CONFIG_APP_FOTA_THREAD_STACK_SIZE**: Sets the stack size for the FOTA module thread.
 
-- **CONFIG_APP_FOTA_WATCHDOG_TIMEOUT_SECONDS**: Defines the timeout in seconds for the FOTA module watchdog. This timeout covers both waiting for incoming messages and message processing time, and must therefore exceed the time a full download takes.
+- **CONFIG_APP_FOTA_WATCHDOG_TIMEOUT_SECONDS**: Defines the timeout in seconds for the FOTA module watchdog. This timeout covers both waiting for incoming messages and message processing time. The download runs asynchronously and is not part of the processing time, so the timeout only has to cover the blocking CoAP poll that checks for and reports a job.
 
 - **CONFIG_APP_FOTA_MSG_PROCESSING_TIMEOUT_SECONDS**: Sets the maximum time allowed for processing a single message in the module's state machine. This value must be smaller than the watchdog timeout.
 

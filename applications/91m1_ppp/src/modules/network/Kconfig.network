@@ -16,11 +16,15 @@ config APP_NETWORK_THREAD_STACK_SIZE
 
 config APP_NETWORK_WATCHDOG_TIMEOUT_SECONDS
 	int "Watchdog timeout"
-	default 120
+	default 30
+	help
+	  The connection manager calls in the module's handlers return immediately;
+	  connectivity results arrive later as net management events. The module
+	  never blocks, so the timeout is kept short to catch a stuck thread quickly.
 
 config APP_NETWORK_MSG_PROCESSING_TIMEOUT_SECONDS
 	int "Maximum message processing time"
-	default 110
+	default 5
 
 config APP_NETWORK_SEARCH_NETWORK_ON_STARTUP
 	bool "Connect to network on startup"

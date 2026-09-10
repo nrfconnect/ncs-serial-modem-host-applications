@@ -8,11 +8,15 @@ menu "Main"
 
 config APP_MAIN_WATCHDOG_TIMEOUT_SECONDS
 	int "Watchdog timeout"
-	default 120
+	default 30
+	help
+	  The module only publishes messages and schedules work in its handlers;
+	  it never blocks. The timeout is kept short so a stuck thread is caught
+	  quickly, while leaving ample margin over the message processing budget.
 
 config APP_MAIN_MSG_PROCESSING_TIMEOUT_SECONDS
 	int "Maximum message processing time"
-	default 110
+	default 5
 
 config APP_MAIN_CLOUD_SYNCHRONIZATION_PERIOD_SECONDS
 	int "Cloud-connected synchronization interval (seconds)"

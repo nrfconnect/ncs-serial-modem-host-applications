@@ -22,18 +22,25 @@ config APP_FOTA_THREAD_STACK_SIZE
 
 config APP_FOTA_WATCHDOG_TIMEOUT_SECONDS
 	int "Watchdog timeout"
-	default 900
+	default 300
 	help
 	  Timeout in seconds for the FOTA module watchdog.
 	  The timeout given in this option covers both:
 	    * Waiting for an incoming message in zbus_sub_wait_msg().
 	    * Time spent processing the message, defined by
 	      CONFIG_APP_FOTA_MSG_PROCESSING_TIMEOUT_SECONDS.
+	  The image download does not run in a handler: the module uses the nRF Cloud
+	  FOTA poll library in non-blocking mode (a status callback is provided), so
+	  nrf_cloud_fota_poll_process() starts the download and returns, and the
+	  download is driven by callbacks. What still blocks is the poll itself, which
+	  makes reliable CoAP calls to check for and report the job, plus a short wait
+	  inside the library after a job update. This is the same class of blocking as
+	  the Cloud module, which is why the timeout matches it.
 	  Ensure that this value exceeds CONFIG_APP_FOTA_MSG_PROCESSING_TIMEOUT_SECONDS.
 
 config APP_FOTA_MSG_PROCESSING_TIMEOUT_SECONDS
 	int "Maximum message processing time"
-	default 870
+	default 290
 	help
 	  Maximum time allowed for processing a single message in the module's state machine.
 	  The value must be smaller than CONFIG_APP_FOTA_WATCHDOG_TIMEOUT_SECONDS.
