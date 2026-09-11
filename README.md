@@ -23,7 +23,7 @@ Supported product targets:
 | [`applications/91m1_ppp/`](applications/91m1_ppp/) | nRF91M1 PPP host application |
 | [`applications/93m1_ppp/`](applications/93m1_ppp/) | nRF93M1 PPP host application |
 | [`applications/93m1_at/`](applications/93m1_at/) | nRF93M1 AT host application |
-| [`doc/`](doc/) | Repository-wide docs (CI and contribution, release artifacts) |
+| [`docs/`](docs/) | Documentation site source (application guides, CI and contribution, release artifacts) |
 | [`scripts/`](scripts/) | CI and gitlint helper scripts |
 | [`tests/on_target/`](tests/on_target/) | On-target (hardware-in-the-loop) test suite |
 
@@ -63,7 +63,7 @@ west update
 
 The repository is now cloned into the `smha-workspace/project` folder, the west modules are downloaded, and you are ready to build an application.
 
-Alternatively, download pre-built firmware from the [latest release](https://github.com/nrfconnect/ncs-serial-modem-host-applications/releases) and flash it directly. See [Release artifacts](doc/release-artifacts.md) for bundle names, file descriptions, and flash commands.
+Alternatively, download pre-built firmware from the [latest release](https://github.com/nrfconnect/ncs-serial-modem-host-applications/releases) and flash it directly. See [Release artifacts](docs/release-artifacts.md) for bundle names, file descriptions, and flash commands.
 
 ### Build and flash
 
@@ -71,15 +71,15 @@ Follow the application documentation for hardware setup, build, flash, and (wher
 
 | Application | Documentation | Cloud connectivity |
 |-------------|---------------|---------------------|
-| **91m1_ppp** | [applications/91m1_ppp/doc/](applications/91m1_ppp/doc/README.md) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP just carries IP to the nRF91M1 modem |
-| **93m1_ppp** | [applications/93m1_ppp/doc/](applications/93m1_ppp/doc/README.md) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP just carries IP to the nRF93M1 modem |
-| **93m1_at** | [applications/93m1_at/doc/](applications/93m1_at/doc/README.md) | Modem terminates the connection itself with its built-in AT client. Host just sends AT commands |
+| **91m1_ppp** | [docs/applications/91m1_ppp/](docs/applications/91m1_ppp/README.md) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP just carries IP to the nRF91M1 modem |
+| **93m1_ppp** | [docs/applications/93m1_ppp/](docs/applications/93m1_ppp/README.md) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP just carries IP to the nRF93M1 modem |
+| **93m1_at** | [docs/applications/93m1_at/](docs/applications/93m1_at/README.md) | Modem terminates the connection itself with its built-in AT client. Host just sends AT commands |
 
 ---
 
 ## Contributing
 
-See [CI and contribution](doc/ci-and-contribution.md) for continuous integration, releases, and commit message guidelines. Pre-built firmware bundles are described in [Release artifacts](doc/release-artifacts.md).
+See [CI and contribution](docs/ci-and-contribution.md) for continuous integration, releases, and commit message guidelines. Pre-built firmware bundles are described in [Release artifacts](docs/release-artifacts.md).
 
 ## License
 

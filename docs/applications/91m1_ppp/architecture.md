@@ -1,6 +1,6 @@
 # Architecture
 
-The [91m1_ppp](../) application is built on a modular, event-driven architecture. The modules interact through messages that are processed as events by the modules' state machines.
+The [91m1_ppp](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/) application is built on a modular, event-driven architecture. The modules interact through messages that are processed as events by the modules' state machines.
 
 The architecture is implemented using [Zephyr bus (zbus)](https://docs.nordicsemi.com/bundle/ncs-latest/page/zephyr/services/zbus/index.html) for inter-module communication and the [State Machine Framework](https://docs.nordicsemi.com/bundle/ncs-latest/page/zephyr/services/smf/index.html) (SMF) for managing module behavior.
 

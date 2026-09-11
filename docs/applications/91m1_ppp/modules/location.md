@@ -2,7 +2,7 @@
 
 The Location module finds the device position from nearby Wi-Fi access points. On request it runs a Wi-Fi scan through the [Location](https://docs.nordicsemi.com/bundle/ncs-latest/page/nrf/libraries/modem/location.html) library and publishes the scan result for the application to resolve into a position.
 
-The module is only built with the location overlay, which requires an nRF7002-EB2 shield for Wi-Fi scanning. See [Hardware setup](../hardware-setup.md#nrf54lm20b-dk--nrf7002-eb2-wi-fi-location) for wiring and build commands.
+The module is only built with the location overlay, which requires an nRF7002-EB2 shield for Wi-Fi scanning. See [Hardware setup](../hardware-setup.md#nrf54lm20b-dk-with-nrf7002-eb2-for-wi-fi-location) for wiring and build commands.
 
 ## Architecture
 
