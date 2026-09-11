@@ -10,14 +10,9 @@ The module reacts to `NET_EVENT_L4_CONNECTED` and `NET_EVENT_L4_DISCONNECTED` ne
 
 ### State diagram
 
-The Network module implements a flat state machine with the following states and transitions:
+The Network module implements a flat state machine with the following states and transitions. See [State diagram notation](../../../../doc/architecture.md#state-diagram-notation) for how to read it:
 
-```mermaid
-stateDiagram-v2
-    [*] --> STATE_DISCONNECTED
-    STATE_DISCONNECTED --> STATE_CONNECTED : NETWORK_CONNECTED
-    STATE_CONNECTED --> STATE_DISCONNECTED : NETWORK_DISCONNECTED
-```
+![Network module state machine](../diagrams/network.svg)
 
 ### States
 

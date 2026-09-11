@@ -53,3 +53,10 @@ The modem is its own nRF Cloud client. It needs to be registered to your account
 5. Review and confirm.
 
 The device should appear in the device list within a few seconds. It may take a little longer to show as **Connected**.
+
+## Documentation
+
+| Document | Contents |
+|----------|----------|
+| [State machines](state-machines.md) | Module relationships and the state machine of each module |
+| [Architecture](../../../doc/architecture.md) | The zbus and SMF patterns shared by all the applications |
