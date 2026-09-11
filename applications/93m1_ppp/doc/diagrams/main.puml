@@ -1,0 +1,59 @@
+@startuml
+' Source of truth for the Main module state machine in src/main.c.
+' Notation: /doc/architecture.md#state-diagram-notation
+hide empty description
+
+state STATE_RUNNING {
+    state STATE_DISCONNECTED
+    STATE_DISCONNECTED : entry / running_history = STATE_DISCONNECTED
+
+    state STATE_CONNECTED {
+        state STATE_SYNC_IDLE
+        state STATE_SYNC_CLOUD
+        STATE_SYNC_CLOUD : entry / publish CLOUD_SYNC_REQUEST
+        state STATE_SYNC_LOCATION
+        STATE_SYNC_LOCATION : entry / publish LOCATION_FIX_REQUEST
+        state STATE_SYNC_FOTA
+        STATE_SYNC_FOTA : entry / publish FOTA_POLL_REQUEST
+
+        [*] --> STATE_SYNC_IDLE
+
+        STATE_SYNC_IDLE --> STATE_SYNC_CLOUD : MAIN_SYNC [CONFIG_APP_CLOUD]
+        STATE_SYNC_CLOUD --> STATE_SYNC_LOCATION : CLOUD_SYNC_DONE [CONFIG_APP_LOCATION]
+        STATE_SYNC_LOCATION --> STATE_SYNC_FOTA : LOCATION_SYNC_DONE [CONFIG_APP_FOTA]
+        STATE_SYNC_FOTA --> STATE_SYNC_IDLE : FOTA_ABORTED
+    }
+    STATE_CONNECTED : entry / running_history = STATE_CONNECTED
+    STATE_CONNECTED : entry / schedule sync_work
+    STATE_CONNECTED : exit / cancel sync_work
+
+    [*] --> STATE_DISCONNECTED
+
+    STATE_DISCONNECTED --> STATE_CONNECTED : NETWORK_CONNECTED
+    STATE_CONNECTED --> STATE_DISCONNECTED : NETWORK_DISCONNECTED
+}
+STATE_RUNNING : FOTA_ABORTED / ; [CONFIG_APP_FOTA]
+
+state STATE_FOTA
+STATE_FOTA : FOTA_NETWORK_DISCONNECT_NEEDED / publish NETWORK_DISCONNECT
+STATE_FOTA : NETWORK_DISCONNECTED / publish FOTA_NETWORK_DISCONNECTED, running_history = STATE_DISCONNECTED
+STATE_FOTA : NETWORK_CONNECTED / running_history = STATE_CONNECTED
+
+state STATE_REBOOTING
+STATE_REBOOTING : entry / LOG_PANIC(), sys_reboot(SYS_REBOOT_COLD)
+
+[*] --> STATE_RUNNING
+
+STATE_RUNNING --> STATE_FOTA : FOTA_STARTING [CONFIG_APP_FOTA]
+STATE_RUNNING --> STATE_REBOOTING : FOTA_SUCCESS [CONFIG_APP_FOTA]
+
+STATE_FOTA --> STATE_REBOOTING : FOTA_SUCCESS
+STATE_FOTA --> STATE_DISCONNECTED : FOTA_ABORTED && running_history == STATE_DISCONNECTED
+STATE_FOTA --> STATE_CONNECTED : FOTA_ABORTED && running_history == STATE_CONNECTED
+
+note as SyncChain
+  The sync stages are compile-time optional. Each hop
+  targets the next enabled stage, and the last enabled
+  stage returns to STATE_SYNC_IDLE.
+end note
+@enduml

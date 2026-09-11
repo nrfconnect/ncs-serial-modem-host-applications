@@ -20,22 +20,9 @@ The periodic synchronization runs on a dedicated workqueue rather than in the st
 
 ### State diagram
 
-The Main module implements a hierarchical state machine with the following states and transitions:
+The Main module implements a hierarchical state machine with the following states and transitions. See [State diagram notation](../../../../doc/architecture.md#state-diagram-notation) for how to read it:
 
-```mermaid
-stateDiagram-v2
-    [*] --> STATE_RUNNING
-    state STATE_RUNNING {
-        [*] --> STATE_CLOUD_DISCONNECTED
-        STATE_CLOUD_DISCONNECTED --> STATE_CLOUD_CONNECTED : CLOUD_CONNECTED
-        STATE_CLOUD_CONNECTED --> STATE_CLOUD_DISCONNECTED : CLOUD_DISCONNECTED
-        STATE_CLOUD_DISCONNECTED --> STATE_FOTA : FOTA_STARTING
-        STATE_CLOUD_CONNECTED --> STATE_FOTA : FOTA_STARTING
-        STATE_FOTA --> STATE_CLOUD_DISCONNECTED : FOTA_ABORTED
-        STATE_FOTA --> STATE_CLOUD_CONNECTED : FOTA_ABORTED
-    }
-    STATE_FOTA --> STATE_REBOOTING : FOTA_REBOOT_REQUEST
-```
+![Main module state machine](../diagrams/main.svg)
 
 ### States
 

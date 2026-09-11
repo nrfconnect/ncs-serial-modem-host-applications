@@ -23,7 +23,7 @@ Supported product targets:
 | [`applications/91m1_ppp/`](applications/91m1_ppp/) | nRF91M1 PPP host application |
 | [`applications/93m1_ppp/`](applications/93m1_ppp/) | nRF93M1 PPP host application |
 | [`applications/93m1_at/`](applications/93m1_at/) | nRF93M1 AT host application |
-| [`doc/`](doc/) | Repository-wide docs (CI and contribution, release artifacts) |
+| [`doc/`](doc/) | Repository-wide docs (architecture, CI and contribution, release artifacts) |
 | [`scripts/`](scripts/) | CI and gitlint helper scripts |
 | [`tests/on_target/`](tests/on_target/) | On-target (hardware-in-the-loop) test suite |
 
@@ -74,6 +74,8 @@ Follow the application documentation for hardware setup, build, flash, and (wher
 | **91m1_ppp** | [applications/91m1_ppp/doc/](applications/91m1_ppp/doc/README.md) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP just carries IP to the nRF91M1 modem |
 | **93m1_ppp** | [applications/93m1_ppp/doc/](applications/93m1_ppp/doc/README.md) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP just carries IP to the nRF93M1 modem |
 | **93m1_at** | [applications/93m1_at/doc/](applications/93m1_at/doc/README.md) | Modem terminates the connection itself with its built-in AT client. Host just sends AT commands |
+
+The applications share a zbus and SMF architecture, described in [Architecture](doc/architecture.md). Each application documents its own modules and state machines: [91m1_ppp](applications/91m1_ppp/doc/architecture.md), [93m1_ppp](applications/93m1_ppp/doc/state-machines.md), and [93m1_at](applications/93m1_at/doc/state-machines.md).
 
 ---
 

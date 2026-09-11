@@ -1,0 +1,36 @@
+@startuml
+' Module relationships. Solid arrows are zbus channels, dashed arrows are
+' direct calls. Private channels are internal to their module and not shown.
+left to right direction
+
+component "Network module" as Network
+component "Main module" as Main
+component "Cloud module" as Cloud
+component "Location module" as Location
+component "FOTA module" as Fota
+component "Battery module" as Battery
+component "Modem AT module" as ModemAt
+
+Network --> Main : network_chan:\nconnectivity status
+Main --> Network : network_chan:\ndisconnect for reboot
+
+Main --> Cloud : cloud_chan:\nsync request
+Cloud --> Main : cloud_chan:\nsync done
+
+Main --> Location : location_chan:\nfix request
+Location --> Main : location_chan:\nfix done
+Location --> Cloud : location_chan:\ncell and Wi-Fi measurements
+
+Main --> Fota : fota_chan:\npoll, cancel, network disconnected
+Fota --> Main : fota_chan:\njob status, network disconnect needed
+
+Main --> Battery : battery_chan:\nsample request
+
+Location ..> ModemAt : modem_at_run():\nAT%BCINFO, AT%WIFISCAN
+
+note as SyncNote
+  Only Main, Network, Cloud and FOTA run state machines.
+  Location and Battery are threads driven by their channel,
+  and Modem AT serializes AT commands without using zbus.
+end note
+@enduml

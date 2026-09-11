@@ -183,6 +183,23 @@ Set `SERIAL_MODEM_RELEASE` to pin a specific upstream tag when running tests or 
 
 Full LTE and IP-level modem traces (`AT#XTRACE=1`) are a further step still, and they need a trace database to decode. Note that the UART trace backend shares `uart1` with the log backend and the two are mutually exclusive, so capturing traces that way costs the application log; `overlay-trace-backend-cmux.conf` routes traces over a dedicated CMUX channel instead and leaves `AT#XLOG=1` usable.
 
+## Diagrams
+
+The diagrams in the application documentation are PlantUML. Each one has a source under `applications/<app>/doc/diagrams/` and a rendered `.svg` of the same name next to it, which is what the Markdown links to, since GitHub does not render PlantUML inline. Both are committed, so editing a diagram means editing the `.puml` and regenerating:
+
+```shell
+scripts/render_diagrams.py
+```
+
+That renders every diagram through a PlantUML server, which needs no local Java. Pass paths to render only some of them, and `--server` to use a local server instead of the public one:
+
+```shell
+docker run -d -p 8080:8080 plantuml/plantuml-server:jetty
+scripts/render_diagrams.py --server http://localhost:8080
+```
+
+The state diagrams are meant to be a source of truth for their module rather than an illustration, so a change to a module's states, transitions, guards, or handled-but-ignored events belongs in the same commit as the code. They document internal actions and entry and exit behavior as well as transitions, using the notation defined under [State diagram notation](architecture.md#state-diagram-notation).
+
 ## Commit messages
 
 We use a title format that combines [Conventional Commits](https://www.conventionalcommits.org/) semver types with [Zephyr-style](https://docs.zephyrproject.org/latest/contribute/guidelines.html#commit-guidelines) subsystem prefixes:

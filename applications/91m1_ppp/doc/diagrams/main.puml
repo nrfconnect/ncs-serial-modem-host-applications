@@ -1,0 +1,37 @@
+@startuml
+' Source of truth for the Main module state machine in src/main.c.
+' Notation: /doc/architecture.md#state-diagram-notation
+hide empty description
+
+state STATE_RUNNING {
+    state STATE_CLOUD_DISCONNECTED
+    STATE_CLOUD_DISCONNECTED : entry / cloud_history = STATE_CLOUD_DISCONNECTED
+
+    state STATE_CLOUD_CONNECTED
+    STATE_CLOUD_CONNECTED : entry / cloud_history = STATE_CLOUD_CONNECTED
+    STATE_CLOUD_CONNECTED : entry / cloud_sync_schedule(), cloud_sync_run()
+    STATE_CLOUD_CONNECTED : exit / cloud_sync_cancel()
+    STATE_CLOUD_CONNECTED : MAIN_PRIV_CLOUD_SYNCHRONIZATION / cloud_sync_run()
+
+    state STATE_FOTA
+    STATE_FOTA : CLOUD_DISCONNECTED / cloud_history = STATE_CLOUD_DISCONNECTED
+
+    [*] --> STATE_CLOUD_DISCONNECTED
+
+    STATE_CLOUD_DISCONNECTED --> STATE_CLOUD_CONNECTED : CLOUD_CONNECTED
+    STATE_CLOUD_CONNECTED --> STATE_CLOUD_DISCONNECTED : CLOUD_DISCONNECTED
+
+    STATE_FOTA --> STATE_CLOUD_CONNECTED : FOTA_ABORTED && cloud_history == STATE_CLOUD_CONNECTED
+    STATE_FOTA --> STATE_CLOUD_DISCONNECTED : FOTA_ABORTED && cloud_history == STATE_CLOUD_DISCONNECTED
+}
+STATE_RUNNING : NETWORK_CONNECTED / cloud_connect_request()
+STATE_RUNNING : NETWORK_DISCONNECTED / cloud_disconnect_request()
+STATE_RUNNING : LOCATION_CLOUD_REQUEST / location_request_forward() [CONFIG_APP_LOCATION]
+
+state STATE_REBOOTING
+STATE_REBOOTING : entry / LOG_PANIC(), sys_reboot(SYS_REBOOT_COLD)
+
+[*] --> STATE_RUNNING
+STATE_RUNNING --> STATE_FOTA : FOTA_STARTING [CONFIG_APP_FOTA]
+STATE_FOTA --> STATE_REBOOTING : FOTA_REBOOT_REQUEST
+@enduml

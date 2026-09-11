@@ -14,23 +14,9 @@ On startup, the module confirms the running MCUboot image with `boot_write_img_c
 
 ### State diagram
 
-The FOTA module implements a hierarchical state machine with the following states and transitions:
+The FOTA module implements a hierarchical state machine with the following states and transitions. See [State diagram notation](../../../../doc/architecture.md#state-diagram-notation) for how to read it:
 
-```mermaid
-stateDiagram-v2
-    [*] --> STATE_RUNNING
-    state STATE_RUNNING {
-        [*] --> STATE_WAITING_FOR_POLL_REQUEST
-        STATE_WAITING_FOR_POLL_REQUEST --> STATE_POLLING_FOR_UPDATE : FOTA_POLL_REQUEST
-        STATE_POLLING_FOR_UPDATE --> STATE_DOWNLOADING_UPDATE : FOTA_PRIV_DOWNLOADING
-        STATE_POLLING_FOR_UPDATE --> STATE_WAITING_FOR_POLL_REQUEST : FOTA_PRIV_ABORTED
-        STATE_DOWNLOADING_UPDATE --> STATE_WAITING_FOR_POLL_REQUEST : FOTA_PRIV_ABORTED
-        STATE_DOWNLOADING_UPDATE --> STATE_REBOOT_PENDING : FOTA_PRIV_REBOOT_NEEDED
-        STATE_WAITING_FOR_POLL_REQUEST --> STATE_REBOOT_PENDING : FOTA_PRIV_REBOOT_NEEDED
-        STATE_DOWNLOADING_UPDATE --> STATE_CANCELING : FOTA_DOWNLOAD_CANCEL
-        STATE_CANCELING --> STATE_WAITING_FOR_POLL_REQUEST : FOTA_PRIV_ABORTED
-    }
-```
+![FOTA module state machine](../diagrams/fota.svg)
 
 ### States
 

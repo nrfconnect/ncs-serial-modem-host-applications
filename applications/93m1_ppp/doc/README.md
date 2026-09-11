@@ -77,3 +77,10 @@ Wait for the cellular link, then for the connection and first upload:
 Heartbeats and metrics appear in the linked nRF Cloud project. Location and FOTA use the same CoAP session.
 
 See the [91m1_ppp README](../../91m1_ppp/doc/README.md) for credential and troubleshooting detail, which applies here too.
+
+## Documentation
+
+| Document | Contents |
+|----------|----------|
+| [State machines](state-machines.md) | Module relationships and the state machine of each module |
+| [Architecture](../../../doc/architecture.md) | The zbus and SMF patterns shared by all the applications |
