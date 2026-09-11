@@ -15,6 +15,12 @@ that AT interface.
 
 ## Building and flashing
 
+Run `west` from inside the nRF Connect SDK toolchain environment (see [Initialize the workspace](../../../README.md#initialize-the-workspace)):
+
+```shell
+nrfutil sdk-manager toolchain launch --ncs-version v3.4.0 --shell
+```
+
 ```shell
 cd applications/93m1_at
 west build -p -b nrf93m1dk/nrf54l15/cpuapp/ns
