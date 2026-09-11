@@ -12,6 +12,12 @@ The application runs on the nRF54L15 host of the nRF93M1 DK, with cellular over 
 
 ## 1. Build and flash
 
+Run `west` from inside the nRF Connect SDK toolchain environment (see [Initialize the workspace](../../../README.md#initialize-the-workspace)):
+
+```shell
+nrfutil sdk-manager toolchain launch --ncs-version v3.4.0 --shell
+```
+
 ```shell
 cd applications/93m1_ppp
 west build -p -b nrf93m1dk/nrf54l15/cpuapp/ns

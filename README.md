@@ -16,12 +16,16 @@ Supported product targets:
 
 | Path | Purpose |
 |------|---------|
-| [`west.yml`](west.yml) | West manifest, pins NCS to `v3.4-branch` |
+| [`west.yml`](west.yml) | West manifest, pins the NCS and Memfault SDK revisions |
 | [`zephyr/module.yml`](zephyr/module.yml) | Registers this repo as a Zephyr module |
 | [`lib/include/`](lib/include/) | Shared headers (`app_common.h`) |
-| [`applications/91m1_ppp/`](applications/91m1_ppp/) | nRF91M1 host application |
+| [`cmake/`](cmake/) | Shared CMake helpers (`merged_hex.cmake`) |
+| [`applications/91m1_ppp/`](applications/91m1_ppp/) | nRF91M1 PPP host application |
 | [`applications/93m1_ppp/`](applications/93m1_ppp/) | nRF93M1 PPP host application |
 | [`applications/93m1_at/`](applications/93m1_at/) | nRF93M1 AT host application |
+| [`doc/`](doc/) | Repository-wide docs (CI and contribution, release artifacts) |
+| [`scripts/`](scripts/) | CI and gitlint helper scripts |
+| [`tests/on_target/`](tests/on_target/) | On-target (hardware-in-the-loop) test suite |
 
 ## Getting started
 
