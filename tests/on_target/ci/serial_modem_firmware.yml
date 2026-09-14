@@ -1,13 +1,16 @@
 # Serial Modem firmware settings for 91m1 host + nRF9151 DK setups.
 #
-# CI resolves the newest upstream release that ships the extmcu zip (including
+# CI resolves the newest upstream release that ships the nRF91M1 zip (including
 # prereleases) and locks that tag for the whole pipeline run. Tests flash it on
 # the nRF9151 DK; release bundles copy the same archive. Override locally with
 # SERIAL_MODEM_RELEASE when you need a specific tag.
 #
+# Upstream renamed this asset from _nrf9151dk_extmcu.zip in v2.0.0-preview3, so
+# releases older than that no longer resolve.
+#
 # Log capture reads zephyr,console = &uart1 (P0.28/P0.29 -> VCOM1). Re-check
-# console_baudrate when upstream changes the external-MCU overlay.
+# console_baudrate when upstream changes the nRF91M1 overlay.
 
 upstream_repo: nrfconnect/ncs-serial-modem
-asset_suffix: _nrf9151dk_extmcu.zip
+asset_suffix: _nrf9151dk_nrf91m1.zip
 console_baudrate: 1000000

@@ -15,19 +15,19 @@ from utils.serial_modem_firmware import (
 
 STATIC_CONFIG = {
     "upstream_repo": "nrfconnect/ncs-serial-modem",
-    "asset_suffix": "_nrf9151dk_extmcu.zip",
+    "asset_suffix": "_nrf9151dk_nrf91m1.zip",
     "console_baudrate": 1000000,
 }
 
-PREVIEW2_RELEASE = {
-    "tag_name": "v2.0.0-preview2",
-    "html_url": "https://github.com/nrfconnect/ncs-serial-modem/releases/tag/v2.0.0-preview2",
+NEWEST_RELEASE = {
+    "tag_name": "v2.0.0",
+    "html_url": "https://github.com/nrfconnect/ncs-serial-modem/releases/tag/v2.0.0",
     "assets": [
         {
-            "name": "serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip",
+            "name": "serial_modem_v2.0.0_nrf9151dk_nrf91m1.zip",
             "browser_download_url": (
                 "https://github.com/nrfconnect/ncs-serial-modem/releases/download/"
-                "v2.0.0-preview2/serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip"
+                "v2.0.0/serial_modem_v2.0.0_nrf9151dk_nrf91m1.zip"
             ),
         }
     ],
@@ -38,19 +38,30 @@ STABLE_HEX_ONLY_RELEASE = {
     "html_url": "https://github.com/nrfconnect/ncs-serial-modem/releases/tag/v1.0.1",
     "assets": [
         {
-            "name": "serial_modem_v1.0.1_nrf9151dk_extmcu.hex",
+            "name": "serial_modem_v1.0.1_nrf9151dk_nrf91m1.hex",
             "browser_download_url": "https://example.com/v1.0.1.hex",
         }
     ],
 }
 
-PREVIEW1_RELEASE = {
-    "tag_name": "v2.0.0-preview1",
-    "html_url": "https://github.com/nrfconnect/ncs-serial-modem/releases/tag/v2.0.0-preview1",
+LEGACY_EXTMCU_RELEASE = {
+    "tag_name": "v2.0.0-preview2",
+    "html_url": "https://github.com/nrfconnect/ncs-serial-modem/releases/tag/v2.0.0-preview2",
     "assets": [
         {
-            "name": "serial_modem_v2.0.0-preview1_nrf9151dk_extmcu.zip",
-            "browser_download_url": "https://example.com/preview1.zip",
+            "name": "serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip",
+            "browser_download_url": "https://example.com/preview2.zip",
+        }
+    ],
+}
+
+PREVIEW3_RELEASE = {
+    "tag_name": "v2.0.0-preview3",
+    "html_url": "https://github.com/nrfconnect/ncs-serial-modem/releases/tag/v2.0.0-preview3",
+    "assets": [
+        {
+            "name": "serial_modem_v2.0.0-preview3_nrf9151dk_nrf91m1.zip",
+            "browser_download_url": "https://example.com/preview3.zip",
         }
     ],
 }
@@ -62,19 +73,19 @@ def isolate_resolution(monkeypatch: pytest.MonkeyPatch) -> None:
     clear_serial_modem_release_cache()
 
 
-def test_resolve_latest_prefers_newest_extmcu_zip() -> None:
+def test_resolve_latest_prefers_newest_nrf91m1_zip() -> None:
     with patch(
         "utils.serial_modem_firmware.load_serial_modem_static_config",
         return_value=STATIC_CONFIG,
     ), patch(
         "utils.serial_modem_firmware._github_api_request",
-        return_value=[PREVIEW2_RELEASE, STABLE_HEX_ONLY_RELEASE, PREVIEW1_RELEASE],
+        return_value=[NEWEST_RELEASE, STABLE_HEX_ONLY_RELEASE, PREVIEW3_RELEASE],
     ):
         resolved = resolve_serial_modem_release()
 
-    assert resolved["release"] == "v2.0.0-preview2"
-    assert resolved["bundle"] == "serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip"
-    assert resolved["hex"] == "serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.hex"
+    assert resolved["release"] == "v2.0.0"
+    assert resolved["bundle"] == "serial_modem_v2.0.0_nrf9151dk_nrf91m1.zip"
+    assert resolved["hex"] == "serial_modem_v2.0.0_nrf9151dk_nrf91m1.hex"
 
 
 def test_resolve_skips_hex_only_releases() -> None:
@@ -83,11 +94,24 @@ def test_resolve_skips_hex_only_releases() -> None:
         return_value=STATIC_CONFIG,
     ), patch(
         "utils.serial_modem_firmware._github_api_request",
-        return_value=[STABLE_HEX_ONLY_RELEASE, PREVIEW1_RELEASE],
+        return_value=[STABLE_HEX_ONLY_RELEASE, PREVIEW3_RELEASE],
     ):
         resolved = resolve_serial_modem_release()
 
-    assert resolved["release"] == "v2.0.0-preview1"
+    assert resolved["release"] == "v2.0.0-preview3"
+
+
+def test_resolve_skips_releases_with_the_legacy_extmcu_asset() -> None:
+    with patch(
+        "utils.serial_modem_firmware.load_serial_modem_static_config",
+        return_value=STATIC_CONFIG,
+    ), patch(
+        "utils.serial_modem_firmware._github_api_request",
+        return_value=[LEGACY_EXTMCU_RELEASE, PREVIEW3_RELEASE],
+    ):
+        resolved = resolve_serial_modem_release()
+
+    assert resolved["release"] == "v2.0.0-preview3"
 
 
 def test_resolve_pinned_tag() -> None:
@@ -96,30 +120,30 @@ def test_resolve_pinned_tag() -> None:
         return_value=STATIC_CONFIG,
     ), patch(
         "utils.serial_modem_firmware._github_api_request",
-        return_value=PREVIEW1_RELEASE,
+        return_value=PREVIEW3_RELEASE,
     ) as api_request:
-        resolved = resolve_serial_modem_release("v2.0.0-preview1")
+        resolved = resolve_serial_modem_release("v2.0.0-preview3")
 
     api_request.assert_called_once_with(
-        "https://api.github.com/repos/nrfconnect/ncs-serial-modem/releases/tags/v2.0.0-preview1"
+        "https://api.github.com/repos/nrfconnect/ncs-serial-modem/releases/tags/v2.0.0-preview3"
     )
-    assert resolved["release"] == "v2.0.0-preview1"
+    assert resolved["release"] == "v2.0.0-preview3"
 
 
 def test_load_config_uses_serial_modem_release_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("SERIAL_MODEM_RELEASE", "v2.0.0-preview1")
+    monkeypatch.setenv("SERIAL_MODEM_RELEASE", "v2.0.0-preview3")
 
     with patch(
         "utils.serial_modem_firmware.load_serial_modem_static_config",
         return_value=STATIC_CONFIG,
     ), patch(
         "utils.serial_modem_firmware._github_api_request",
-        return_value=PREVIEW1_RELEASE,
+        return_value=PREVIEW3_RELEASE,
     ) as api_request:
         config = load_serial_modem_firmware_config()
 
     api_request.assert_called_once()
-    assert config["release"] == "v2.0.0-preview1"
+    assert config["release"] == "v2.0.0-preview3"
     assert config["console_baudrate"] == 1000000
 
 
@@ -129,7 +153,7 @@ def test_repeated_resolution_hits_the_api_once() -> None:
         return_value=STATIC_CONFIG,
     ), patch(
         "utils.serial_modem_firmware._github_api_request",
-        return_value=[PREVIEW2_RELEASE],
+        return_value=[NEWEST_RELEASE],
     ) as api_request:
         first = resolve_serial_modem_release()
         second = resolve_serial_modem_release()
@@ -144,10 +168,10 @@ def test_cached_release_is_not_mutated_by_callers() -> None:
         return_value=STATIC_CONFIG,
     ), patch(
         "utils.serial_modem_firmware._github_api_request",
-        return_value=[PREVIEW2_RELEASE],
+        return_value=[NEWEST_RELEASE],
     ):
         resolve_serial_modem_release()["release"] = "tampered"
-        assert resolve_serial_modem_release()["release"] == "v2.0.0-preview2"
+        assert resolve_serial_modem_release()["release"] == "v2.0.0"
 
 
 def test_resolve_raises_when_no_matching_asset() -> None:
