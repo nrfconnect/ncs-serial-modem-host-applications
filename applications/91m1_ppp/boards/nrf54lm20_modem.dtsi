@@ -14,8 +14,5 @@ modem: modem {
 	mdm-ring-gpios = <&gpio1 12 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
 	mdm-dtr-gpios = <&gpio1 11 GPIO_ACTIVE_LOW>;
 	zephyr,pm-device-runtime-auto;
-	cmux-enable-runtime-power-save;
-	cmux-close-pipe-on-power-save;
-	cmux-idle-timeout-ms = <5000>;
 	autostarts;
 };
