@@ -8,17 +8,10 @@ manifest:
   remotes:
     - name: ncs
       url-base: https://github.com/nrfconnect
-    - name: memfault
-      url-base: https://github.com/memfault
 
   projects:
     - name: nrf
       remote: ncs
       repo-path: sdk-nrf
-      revision: 16b9fb9100174fa363feef216d6f1ea407f4ed76
+      revision: 8a3adfcc385686b1764ff4a3e1c37df0036cde3f
       import: true
-    - name: memfault-firmware-sdk
-      remote: memfault
-      repo-path: memfault-firmware-sdk
-      path: modules/lib/memfault-firmware-sdk
-      revision: 1.40.0

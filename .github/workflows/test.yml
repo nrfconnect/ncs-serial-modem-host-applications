@@ -115,10 +115,23 @@ permissions:
   contents: read
 
 jobs:
+  setup:
+    runs-on: ubuntu-24.04
+    outputs:
+      toolchain-version: ${{ steps.setup.outputs.toolchain-version }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/toolchain
+        id: setup
+
   plan:
+    needs: setup
     runs-on: self-hosted-test
     container:
-      image: ghcr.io/zephyrproject-rtos/ci:v0.29.2
+      image: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.setup.outputs.toolchain-version }}
+    defaults:
+      run:
+        shell: bash
     outputs:
       run_provision: ${{ steps.resolve.outputs.run_provision }}
       run_provision_nrf54lm20b: ${{ steps.resolve.outputs.run_provision_nrf54lm20b }}
@@ -142,15 +155,17 @@ jobs:
           PYTHONPATH=tests/on_target python3 -m ci.catalog matrix --filter "$TEST_FILTER"
 
   hardware_provision:
-    needs: plan
+    needs: [plan, setup]
     if: needs.plan.outputs.run_provision == 'true'
     name: 91m1_ppp-provision-nrf54l15-nrf91
     runs-on: self-hosted-provisioning
     container:
-      image: ghcr.io/zephyrproject-rtos/ci:v0.29.2
+      image: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.setup.outputs.toolchain-version }}
       options: --privileged -v /dev:/dev
+    defaults:
+      run:
+        shell: bash
     env:
-      CMAKE_PREFIX_PATH: /opt/toolchains
       NRFUTIL_HOME: /usr/local/share/nrfutil
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
@@ -181,15 +196,17 @@ jobs:
           use_prebuilt_firmware: ${{ inputs.use_prebuilt_firmware }}
 
   hardware_provision_nrf54lm20b:
-    needs: plan
+    needs: [plan, setup]
     if: needs.plan.outputs.run_provision_nrf54lm20b == 'true'
     name: 91m1_ppp-provision-nrf54lm20b-nrf91
     runs-on: self-hosted-provisioning
     container:
-      image: ghcr.io/zephyrproject-rtos/ci:v0.29.2
+      image: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.setup.outputs.toolchain-version }}
       options: --privileged -v /dev:/dev
+    defaults:
+      run:
+        shell: bash
     env:
-      CMAKE_PREFIX_PATH: /opt/toolchains
       NRFUTIL_HOME: /usr/local/share/nrfutil
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
@@ -220,15 +237,17 @@ jobs:
           use_prebuilt_firmware: ${{ inputs.use_prebuilt_firmware }}
 
   hardware_provision_location:
-    needs: plan
+    needs: [plan, setup]
     if: needs.plan.outputs.run_provision_location == 'true'
     name: 91m1_ppp-provision-location-nrf54lm20b-nrf91
     runs-on: self-hosted-provisioning
     container:
-      image: ghcr.io/zephyrproject-rtos/ci:v0.29.2
+      image: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.setup.outputs.toolchain-version }}
       options: --privileged -v /dev:/dev
+    defaults:
+      run:
+        shell: bash
     env:
-      CMAKE_PREFIX_PATH: /opt/toolchains
       NRFUTIL_HOME: /usr/local/share/nrfutil
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
@@ -259,15 +278,17 @@ jobs:
           use_prebuilt_firmware: ${{ inputs.use_prebuilt_firmware }}
 
   hardware_coredump:
-    needs: plan
+    needs: [plan, setup]
     if: needs.plan.outputs.run_coredump == 'true'
     name: 91m1_ppp-memfault-coredump-nrf54l15-nrf91
     runs-on: self-hosted-test
     container:
-      image: ghcr.io/zephyrproject-rtos/ci:v0.29.2
+      image: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.setup.outputs.toolchain-version }}
       options: --privileged -v /dev:/dev
+    defaults:
+      run:
+        shell: bash
     env:
-      CMAKE_PREFIX_PATH: /opt/toolchains
       NRFUTIL_HOME: /usr/local/share/nrfutil
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
@@ -298,15 +319,17 @@ jobs:
           use_prebuilt_firmware: ${{ inputs.use_prebuilt_firmware }}
 
   hardware_fota:
-    needs: plan
+    needs: [plan, setup]
     if: needs.plan.outputs.run_fota == 'true'
     name: 91m1_ppp-application-fota-nrf54l15-nrf91
     runs-on: self-hosted-test
     container:
-      image: ghcr.io/zephyrproject-rtos/ci:v0.29.2
+      image: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.setup.outputs.toolchain-version }}
       options: --privileged -v /dev:/dev
+    defaults:
+      run:
+        shell: bash
     env:
-      CMAKE_PREFIX_PATH: /opt/toolchains
       NRFUTIL_HOME: /usr/local/share/nrfutil
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
@@ -337,15 +360,17 @@ jobs:
           use_prebuilt_firmware: ${{ inputs.use_prebuilt_firmware }}
 
   hardware_fota_nrf54lm20b:
-    needs: plan
+    needs: [plan, setup]
     if: needs.plan.outputs.run_fota_nrf54lm20b == 'true'
     name: 91m1_ppp-application-fota-nrf54lm20b-nrf91
     runs-on: self-hosted-provisioning
     container:
-      image: ghcr.io/zephyrproject-rtos/ci:v0.29.2
+      image: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.setup.outputs.toolchain-version }}
       options: --privileged -v /dev:/dev
+    defaults:
+      run:
+        shell: bash
     env:
-      CMAKE_PREFIX_PATH: /opt/toolchains
       NRFUTIL_HOME: /usr/local/share/nrfutil
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
