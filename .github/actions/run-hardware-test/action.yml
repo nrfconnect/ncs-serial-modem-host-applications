@@ -61,7 +61,10 @@ runs:
       shell: bash
       run: |
         set -eu
-        apt-get update && apt-get install --no-install-recommends -y curl
+        # Install libnghttp2-14 alongside curl: the toolchain container ships an
+        # older libnghttp2 than the libcurl security update apt pulls in, and the
+        # mismatch makes curl fail with an nghttp2 symbol lookup error.
+        apt-get update && apt-get install --no-install-recommends -y curl libnghttp2-14
         work_dir="$(mktemp -d)"
         curl -fsSL \
           https://files.nordicsemi.com/artifactory/swtools/external/nrfutil/executables/x86_64-unknown-linux-gnu/nrfutil \
