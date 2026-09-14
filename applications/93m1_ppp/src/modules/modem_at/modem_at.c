@@ -102,7 +102,7 @@ int modem_at_run(const char *req, char *resp, size_t resp_size, uint32_t timeout
 
 	k_mutex_lock(&at_ctx.run_lock, K_FOREVER);
 
-	ret = modem_at_user_pipe_claim();
+	ret = modem_at_user_pipe_claim(&at_ctx.chat, K_FOREVER);
 	if (ret < 0) {
 		k_mutex_unlock(&at_ctx.run_lock);
 		return ret;
@@ -173,8 +173,6 @@ static int modem_at_init(void)
 	at_ctx.script.abort_matches_size = ARRAY_SIZE(abort_matches);
 	at_ctx.script.callback = NULL;
 	at_ctx.script.timeout = CONFIG_APP_MODEM_AT_TIMEOUT_SECONDS;
-
-	modem_at_user_pipe_init(&at_ctx.chat);
 
 	return 0;
 }

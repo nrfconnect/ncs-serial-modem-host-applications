@@ -211,7 +211,8 @@ int modem_at_run(const char *req, char *resp, size_t resp_size, uint32_t timeout
 		return ret;
 	}
 
-	ret = modem_at_user_pipe_claim();
+	ret = modem_at_user_pipe_claim(&at_ctx.chat,
+				       K_SECONDS(CONFIG_APP_MODEM_AT_PIPE_WAIT_TIMEOUT_SECONDS));
 	if (ret < 0) {
 		k_mutex_unlock(&at_ctx.run_lock);
 		return ret;
@@ -277,8 +278,6 @@ static int modem_at_init(void)
 	}
 
 	init_script_chat();
-
-	modem_at_user_pipe_init(&at_ctx.chat);
 
 	return 0;
 }
