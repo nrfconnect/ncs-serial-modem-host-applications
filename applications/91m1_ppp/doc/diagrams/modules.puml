@@ -1,0 +1,23 @@
+@startuml
+' Module relationships and the zbus channels they communicate over.
+' Only public channels are shown; see ../architecture.md#private-channels.
+left to right direction
+
+component "Network module" as Network
+component "Main module" as Main
+component "Cloud module" as Cloud
+component "FOTA module" as Fota
+component "Location module" as Location
+
+Network --> Main : network_chan:\nconnectivity status
+Main --> Network : network_chan:\nconnect, disconnect
+
+Main --> Cloud : cloud_chan:\nconnect, send message, poll shadow,\npost Memfault data, resolve position
+Cloud --> Main : cloud_chan:\nconnection status
+
+Main --> Fota : fota_chan:\npoll, cancel
+Fota --> Main : fota_chan:\njob status, reboot request
+
+Main --> Location : location_chan:\nsearch trigger
+Location --> Main : location_chan:\nsearch status, Wi-Fi scan result
+@enduml

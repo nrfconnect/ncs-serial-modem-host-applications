@@ -1,0 +1,32 @@
+@startuml
+' Module relationships. Solid arrows are zbus channels, dashed arrows are
+' direct calls. All cloud traffic is AT commands to the modem's own nRF Cloud
+' client, so no module terminates a connection on the host.
+left to right direction
+
+component "Network module" as Network
+component "Main module" as Main
+component "Location module" as Location
+component "Cloud module" as Cloud
+component "Battery module" as Battery
+component "Modem AT module" as ModemAt
+
+Network --> Main : network_chan:\nconnectivity status
+
+Main --> Location : location_chan:\nfix request
+Main --> Cloud : cloud_chan:\nbattery sample with percentage
+Main --> Battery : battery_chan:\nsample request
+
+Battery ..> Main : battery_percent_get()
+
+Network ..> ModemAt : modem_at_run():\nAT+CPSMS
+Location ..> ModemAt : modem_at_run():\nAT%NRFCLOUDLOCATION
+Cloud ..> ModemAt : modem_at_run():\nAT%NRFCLOUDMESSAGE
+
+note as StateMachineNote
+  Only Main and Network run state machines. Location,
+  Cloud and Battery are threads driven by their channel,
+  and Modem AT serializes AT commands and routes the
+  modem's unsolicited responses without using zbus.
+end note
+@enduml

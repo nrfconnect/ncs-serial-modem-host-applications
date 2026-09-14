@@ -1,0 +1,22 @@
+@startuml
+' Source of truth for the Main module state machine in src/main.c.
+' Notation: /doc/architecture.md#state-diagram-notation
+hide empty description
+
+state STATE_DISCONNECTED
+
+state STATE_CONNECTED
+STATE_CONNECTED : entry / schedule telemetry_timer
+STATE_CONNECTED : exit / cancel telemetry_timer
+STATE_CONNECTED : MAIN_SYNC / report_telemetry(), reschedule telemetry_timer
+
+[*] --> STATE_DISCONNECTED
+STATE_DISCONNECTED --> STATE_CONNECTED : NETWORK_CONNECTED
+STATE_CONNECTED --> STATE_DISCONNECTED : NETWORK_DISCONNECTED
+
+note as TelemetryNote
+  report_telemetry() publishes LOCATION_FIX_REQUEST
+  [CONFIG_APP_LOCATION] and CLOUD_BATTERY_SAMPLE
+  [CONFIG_APP_BATTERY].
+end note
+@enduml

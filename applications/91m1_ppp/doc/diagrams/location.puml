@@ -1,0 +1,24 @@
+@startuml
+' Source of truth for the Location module state machine in
+' src/modules/location/location.c.
+' Notation: /doc/architecture.md#state-diagram-notation
+hide empty description
+
+state STATE_RUNNING {
+    state STATE_LOCATION_SEARCH_INACTIVE
+    STATE_LOCATION_SEARCH_INACTIVE : LOCATION_SEARCH_CANCEL / ;
+
+    state STATE_LOCATION_SEARCH_ACTIVE
+    STATE_LOCATION_SEARCH_ACTIVE : LOCATION_SEARCH_TRIGGER / ;
+    STATE_LOCATION_SEARCH_ACTIVE : LOCATION_SEARCH_CANCEL / location_request_cancel(), publish LOCATION_SEARCH_DONE
+
+    [*] --> STATE_LOCATION_SEARCH_INACTIVE
+
+    STATE_LOCATION_SEARCH_INACTIVE --> STATE_LOCATION_SEARCH_ACTIVE : LOCATION_SEARCH_TRIGGER && location_request() == 0
+    STATE_LOCATION_SEARCH_ACTIVE --> STATE_LOCATION_SEARCH_INACTIVE : LOCATION_SEARCH_DONE
+}
+STATE_RUNNING : entry / location_init()
+STATE_RUNNING : entry / publish LOCATION_MODULE_READY
+
+[*] --> STATE_RUNNING
+@enduml

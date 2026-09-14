@@ -1,0 +1,17 @@
+@startuml
+' Source of truth for the Network module state machine in
+' src/modules/network/network.c.
+' Notation: /doc/architecture.md#state-diagram-notation
+hide empty description
+
+state STATE_DISCONNECTED
+STATE_DISCONNECTED : NETWORK_CONNECT / conn_mgr_all_if_up(), conn_mgr_all_if_connect()
+
+state STATE_CONNECTED
+STATE_CONNECTED : entry / configure_psm()
+STATE_CONNECTED : NETWORK_DISCONNECT / conn_mgr_all_if_down()
+
+[*] --> STATE_DISCONNECTED
+STATE_DISCONNECTED --> STATE_CONNECTED : NETWORK_CONNECTED
+STATE_CONNECTED --> STATE_DISCONNECTED : NETWORK_DISCONNECTED
+@enduml

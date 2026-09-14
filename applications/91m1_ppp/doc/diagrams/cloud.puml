@@ -1,0 +1,26 @@
+@startuml
+' Source of truth for the Cloud module state machine in
+' src/modules/cloud/cloud.c.
+' Notation: /doc/architecture.md#state-diagram-notation
+hide empty description
+
+state STATE_DISCONNECTED
+
+state STATE_CONNECTING
+STATE_CONNECTING : entry / publish CLOUD_PRIV_CONNECT_ATTEMPT
+STATE_CONNECTING : exit / cancel connect_retry_work
+STATE_CONNECTING : CLOUD_PRIV_CONNECT_ATTEMPT / connect_attempt()
+
+state STATE_CONNECTED
+STATE_CONNECTED : CLOUD_MESSAGE_SEND / nrf_cloud_coap_json_message_send()
+STATE_CONNECTED : CLOUD_SHADOW_POLL_REQUEST / cloud_shadow_poll()
+STATE_CONNECTED : CLOUD_MEMFAULT_POST_REQUEST / memfault_data_post()
+STATE_CONNECTED : CLOUD_LOCATION_REQUEST / cloud_location_request_handle() [CONFIG_APP_LOCATION]
+STATE_CONNECTED : exit / nrf_cloud_coap_disconnect()
+
+[*] --> STATE_DISCONNECTED
+STATE_DISCONNECTED --> STATE_CONNECTING : CLOUD_CONNECT
+STATE_CONNECTING --> STATE_CONNECTED : CLOUD_CONNECTED
+STATE_CONNECTING --> STATE_DISCONNECTED : CLOUD_DISCONNECT / nrf_cloud_coap_disconnect(), publish CLOUD_DISCONNECTED
+STATE_CONNECTED --> STATE_DISCONNECTED : CLOUD_DISCONNECT / publish CLOUD_DISCONNECTED
+@enduml
