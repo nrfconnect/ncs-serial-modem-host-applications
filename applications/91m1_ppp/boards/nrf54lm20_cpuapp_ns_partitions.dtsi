@@ -12,7 +12,7 @@
  * Memory-optimized SFN TF-M sizing (see board conf).
  */
 
-/delete-node/ &slot0_partition;
+/delete-node/ &slot0_s_partition;
 /delete-node/ &storage_partition;
 /delete-node/ &slot0_ns_partition;
 /delete-node/ &tfm_its_partition;
