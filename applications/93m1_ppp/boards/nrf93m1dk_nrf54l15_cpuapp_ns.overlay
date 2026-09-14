@@ -34,7 +34,8 @@
 	status = "okay";
 };
 
-&mx25r64 {
+/* External SPI flash (Puya P25Q64 on board HW v0.4.0+) is unused. */
+&p25q64 {
 	status = "disabled";
 };
 
