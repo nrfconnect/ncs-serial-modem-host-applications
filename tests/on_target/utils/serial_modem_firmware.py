@@ -62,25 +62,37 @@ def _github_api_request(url: str) -> object:
         raise RuntimeError(f"GitHub API request failed ({exc.code}): {body}") from exc
 
 
+def _asset_suffixes(static: dict) -> list[str]:
+    suffixes = static.get("asset_suffixes")
+    if suffixes:
+        return list(suffixes)
+    legacy = static.get("asset_suffix")
+    if legacy:
+        return [legacy]
+    raise RuntimeError("serial_modem_firmware.yml must set asset_suffixes")
+
+
 def _release_config_from_payload(
     release: dict,
     *,
-    asset_suffix: str,
+    asset_suffixes: list[str],
 ) -> dict:
     tag = release["tag_name"]
-    for asset in release.get("assets", []):
-        name = asset["name"]
-        if name.endswith(asset_suffix):
-            return {
-                "release": tag,
-                "bundle": name,
-                "hex": f"{Path(name).stem}.hex",
-                "download_url": asset["browser_download_url"],
-                "upstream_release_url": release["html_url"],
-            }
+    for suffix in asset_suffixes:
+        for asset in release.get("assets", []):
+            name = asset["name"]
+            if name.endswith(suffix):
+                return {
+                    "release": tag,
+                    "bundle": name,
+                    "hex": f"{Path(name).stem}.hex",
+                    "download_url": asset["browser_download_url"],
+                    "upstream_release_url": release["html_url"],
+                }
 
     raise RuntimeError(
-        f"Serial Modem release {tag!r} has no asset ending with {asset_suffix!r}"
+        f"Serial Modem release {tag!r} has no asset ending with any of "
+        f"{asset_suffixes!r}"
     )
 
 
@@ -92,25 +104,40 @@ def resolve_serial_modem_release(
     """Resolve a Serial Modem release from GitHub.
 
     When *tag* is set, fetch that release. Otherwise walk upstream releases
-    newest-first and return the first that ships the configured extmcu zip.
+    newest-first and return the first that ships a recognised bundle.
     """
     static = load_serial_modem_static_config(root)
     repo = static["upstream_repo"]
-    asset_suffix = static["asset_suffix"]
+    asset_suffixes = _asset_suffixes(static)
 
-    cache_key = (repo, asset_suffix, tag)
+    cache_key = (repo, tuple(asset_suffixes), tag)
     if cache_key in _release_cache:
         return dict(_release_cache[cache_key])
 
-    resolved = _resolve_uncached(repo, asset_suffix, tag)
+    pinned_asset_suffix = None
+    if tag and tag == _pinned_release_tag(static):
+        yaml_suffix = static.get("pinned_asset_suffix")
+        if yaml_suffix:
+            pinned_asset_suffix = str(yaml_suffix).strip() or None
+
+    resolved = _resolve_uncached(
+        repo, asset_suffixes, tag, pinned_asset_suffix=pinned_asset_suffix
+    )
     _release_cache[cache_key] = resolved
     return dict(resolved)
 
 
-def _resolve_uncached(repo: str, asset_suffix: str, tag: str | None) -> dict:
+def _resolve_uncached(
+    repo: str,
+    asset_suffixes: list[str],
+    tag: str | None,
+    *,
+    pinned_asset_suffix: str | None = None,
+) -> dict:
     if tag:
         release = _github_api_request(f"{GITHUB_API}/repos/{repo}/releases/tags/{tag}")
-        return _release_config_from_payload(release, asset_suffix=asset_suffix)
+        suffixes = [pinned_asset_suffix] if pinned_asset_suffix else asset_suffixes
+        return _release_config_from_payload(release, asset_suffixes=suffixes)
 
     releases = _github_api_request(f"{GITHUB_API}/repos/{repo}/releases")
     if not isinstance(releases, list):
@@ -118,20 +145,29 @@ def _resolve_uncached(repo: str, asset_suffix: str, tag: str | None) -> dict:
 
     for release in releases:
         try:
-            return _release_config_from_payload(release, asset_suffix=asset_suffix)
+            return _release_config_from_payload(release, asset_suffixes=asset_suffixes)
         except RuntimeError:
             continue
 
     raise RuntimeError(
-        f"No Serial Modem release in {repo!r} ships an asset ending with "
-        f"{asset_suffix!r}"
+        f"No Serial Modem release in {repo!r} ships an asset ending with any of "
+        f"{asset_suffixes!r}"
     )
+
+
+def _pinned_release_tag(static: dict) -> str | None:
+    pinned = os.environ.get("SERIAL_MODEM_RELEASE", "").strip()
+    if pinned:
+        return pinned
+    yaml_pin = static.get("pinned_release")
+    if yaml_pin:
+        return str(yaml_pin).strip() or None
+    return None
 
 
 def load_serial_modem_firmware_config(root: Path | None = None) -> dict:
     static = load_serial_modem_static_config(root)
-    pinned = os.environ.get("SERIAL_MODEM_RELEASE", "").strip() or None
-    resolved = resolve_serial_modem_release(pinned, root=root)
+    resolved = resolve_serial_modem_release(_pinned_release_tag(static), root=root)
     return {**static, **resolved}
 
 

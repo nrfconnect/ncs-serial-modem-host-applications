@@ -17,9 +17,26 @@ Supported host boards:
 On both DKs:
 
 - Set matching VDD on both boards (typically **1.8 V**).
-- Leave **VCOM1** enabled on the **nRF9151 / nRF9151 SMA DK**. Serial Modem logs to uart1 (P0.28/P0.29 → VCOM1), which is the only window into the modem side when the link misbehaves. The external host link uses uart2 on P0.02–P0.07 and does not collide with either VCOM, so neither has to be disabled.
+
+On the **nRF9151 / nRF9151 SMA DK** (Serial Modem):
+
+- Disable **VCOM0** so uart0 (P0.26–P0.27, P0.14–P0.15) is free for the external host link. Upstream Serial Modem v2.0.0-preview3 and later use the [nRF91M1 pinout](https://nrfconnectdocs.nordicsemi.com/addons/addon-serial_modem/latest/main/uart_configuration.html#nrf91m1-pre-programmed-sm-application) on uart0 instead of uart2.
+- Leave **VCOM1** enabled for modem logs (uart1, P0.28/P0.29). CI captures this port at 1000000 baud.
 
 Host-specific settings are listed in each section below.
+
+### Serial Modem release and UART pinout
+
+Upstream renamed the published bundle in v2.0.0-preview3 (`*_nrf9151dk_nrf91m1.zip`) and moved the host UART from **uart2** (P0.02–P0.07) to **uart0** (P0.26/P0.27, P0.14/P0.15). DTR (P0.31) and RI (P0.30) are unchanged.
+
+| Release | Bundle suffix | Host UART on modem | Data pins (modem) |
+|---|---|---|---|
+| v2.0.0-preview2 and earlier | `_nrf9151dk_extmcu.zip` | uart2 | P0.02 TX, P0.03 RX, P0.06 RTS, P0.07 CTS |
+| v2.0.0-preview3 and later | `_nrf9151dk_nrf91m1.zip` | uart0 | P0.27 TX, P0.26 RX, P0.14 RTS, P0.15 CTS |
+
+Nordic is standardising on the nRF91M1 layout for all setups. Until the nRF9151 DK Board Configurator can route DTR automatically, preview3 also expects **P0.31 (DTR) jumpered to GND** on the modem DK when a PC host is used; an external MCU host should drive DTR from its GPIO instead (as this application does via P1.11).
+
+CI currently pins `v2.0.0-preview2` until the bench is rewired for the nrf91m1 pinout. Remove `pinned_release` from [`tests/on_target/ci/serial_modem_firmware.yml`](../../../tests/on_target/ci/serial_modem_firmware.yml) once the wiring below matches preview3.
 
 ## nRF54L15 DK + nRF9151 DK
 
@@ -31,19 +48,21 @@ On the nRF54L15 DK:
 
 ### Wiring
 
-| nRF54L15 DK | nRF9151 DK | Signal |
-|---|---|---|
-| P0.00 | P0.03 | UART TX → RX |
-| P0.01 | P0.02 | UART RX ← TX |
-| P0.02 | P0.07 | UART RTS → CTS |
-| P0.03 | P0.06 | UART CTS ← RTS |
-| P1.11 | P0.31 | DTR |
-| P1.12 | P0.30 | RI |
-| **P1.10** | **P20 pin 7** | **nRESET** |
-| GND | GND | Ground |
+Use the **nrf91m1 / preview3** column when running Serial Modem v2.0.0-preview3 or later. The **legacy extmcu** column matches v2.0.0-preview2 and earlier.
 
-- **P0 connector:** UART signals.
-- **P1 connector:** DTR, RI, and modem reset.
+| nRF54L15 DK | nRF9151 DK (nrf91m1) | nRF9151 DK (legacy extmcu) | Signal |
+|---|---|---|---|
+| P0.00 | P0.26 | P0.03 | UART TX → RX |
+| P0.01 | P0.27 | P0.02 | UART RX ← TX |
+| P0.02 | P0.15 | P0.07 | UART RTS → CTS |
+| P0.03 | P0.14 | P0.06 | UART CTS ← RTS |
+| P1.11 | P0.31 | P0.31 | DTR |
+| P1.12 | P0.30 | P0.30 | RI |
+| **P1.10** | **P20 pin 7** | **P20 pin 7** | **nRESET** |
+| GND | GND | GND | Ground |
+
+- **P0 connector:** UART signals on the host; on the modem, nrf91m1 uart0 pins are on the DK edge (not P4).
+- **P1 connector:** DTR, RI, and modem reset on the host.
 - Add a **1 kΩ** series resistor on the reset wire if IO levels differ.
 
 ### Build
@@ -73,19 +92,20 @@ On the nRF54LM20B DK, no Board Configurator changes are required for the plain b
 
 The Serial Modem link uses **uart21** on the P1 connector (P1.8/P1.9 for TX/RX, P1.23/P1.24 for RTS/CTS).
 
-| nRF54LM20B DK | nRF9151 / SMA DK | Signal |
-|---|---|---|
-| P1.8 | P0.03 (P4) | UART TX → RX |
-| P1.9 | P0.02 (P4) | UART RX ← TX |
-| P1.23 | P0.07 (P4) | UART RTS → CTS |
-| P1.24 | P0.06 (P4) | UART CTS ← RTS |
-| P1.11 | P0.31 (P3) | DTR |
-| P1.12 | P0.30 (P3) | RI |
-| **P1.10** | **P20 pin 7** | **nRESET** |
-| GND | GND | Ground |
+| nRF54LM20B DK | nRF9151 / SMA DK (nrf91m1) | nRF9151 / SMA DK (legacy extmcu) | Signal |
+|---|---|---|---|
+| P1.8 | P0.26 | P0.03 (P4) | UART TX → RX |
+| P1.9 | P0.27 | P0.02 (P4) | UART RX ← TX |
+| P1.23 | P0.15 | P0.07 (P4) | UART RTS → CTS |
+| P1.24 | P0.14 | P0.06 (P4) | UART CTS ← RTS |
+| P1.11 | P0.31 (P3) | P0.31 (P3) | DTR |
+| P1.12 | P0.30 (P3) | P0.30 (P3) | RI |
+| **P1.10** | **P20 pin 7** | **P20 pin 7** | **nRESET** |
+| GND | GND | GND | Ground |
 
 - **Host P1/P2 connector:** UART (uart21 on P1.8/P1.9 and P1.23/P1.24), DTR (P1.11), RI (P1.12), modem reset (P1.10).
-- **Modem side:** UART and HWFC on **P4**; DTR and RI on **P3**; nRESET on **P20 pin 7** (debug-out connector).
+- **Modem side (legacy):** UART and HWFC on **P4**; DTR and RI on **P3**; nRESET on **P20 pin 7**.
+- **Modem side (nrf91m1):** uart0 data pins on the DK edge; DTR and RI still on **P3**; nRESET on **P20 pin 7**.
 - Add a **1 kΩ** series resistor on the reset wire if IO levels differ.
 
 > **Note:** DTR/RI use P1.11/P1.12, which conflict with the DK default uart21 HWFC pins. The overlay maps RTS/CTS to P1.23/P1.24 instead. All four UART wires plus DTR/RI must be connected for reliable operation.

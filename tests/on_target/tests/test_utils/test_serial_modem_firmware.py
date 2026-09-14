@@ -15,7 +15,10 @@ from utils.serial_modem_firmware import (
 
 STATIC_CONFIG = {
     "upstream_repo": "nrfconnect/ncs-serial-modem",
-    "asset_suffix": "_nrf9151dk_nrf91m1.zip",
+    "asset_suffixes": [
+        "_nrf9151dk_nrf91m1.zip",
+        "_nrf9151dk_extmcu.zip",
+    ],
     "console_baudrate": 1000000,
 }
 
@@ -101,17 +104,34 @@ def test_resolve_skips_hex_only_releases() -> None:
     assert resolved["release"] == "v2.0.0-preview3"
 
 
-def test_resolve_skips_releases_with_the_legacy_extmcu_asset() -> None:
+def test_resolve_falls_back_to_legacy_extmcu_asset() -> None:
     with patch(
         "utils.serial_modem_firmware.load_serial_modem_static_config",
         return_value=STATIC_CONFIG,
     ), patch(
         "utils.serial_modem_firmware._github_api_request",
-        return_value=[LEGACY_EXTMCU_RELEASE, PREVIEW3_RELEASE],
+        return_value=[LEGACY_EXTMCU_RELEASE],
     ):
         resolved = resolve_serial_modem_release()
 
-    assert resolved["release"] == "v2.0.0-preview3"
+    assert resolved["release"] == "v2.0.0-preview2"
+    assert resolved["bundle"] == "serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip"
+
+
+def test_resolve_pinned_legacy_release_uses_extmcu_asset() -> None:
+    with patch(
+        "utils.serial_modem_firmware.load_serial_modem_static_config",
+        return_value=STATIC_CONFIG,
+    ), patch(
+        "utils.serial_modem_firmware._github_api_request",
+        return_value=LEGACY_EXTMCU_RELEASE,
+    ) as api_request:
+        resolved = resolve_serial_modem_release("v2.0.0-preview2")
+
+    api_request.assert_called_once_with(
+        "https://api.github.com/repos/nrfconnect/ncs-serial-modem/releases/tags/v2.0.0-preview2"
+    )
+    assert resolved["bundle"] == "serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip"
 
 
 def test_resolve_pinned_tag() -> None:
@@ -145,6 +165,26 @@ def test_load_config_uses_serial_modem_release_env(monkeypatch: pytest.MonkeyPat
     api_request.assert_called_once()
     assert config["release"] == "v2.0.0-preview3"
     assert config["console_baudrate"] == 1000000
+
+
+def test_load_config_uses_pinned_release_from_yaml() -> None:
+    config_with_pin = {
+        **STATIC_CONFIG,
+        "pinned_release": "v2.0.0-preview2",
+        "pinned_asset_suffix": "_nrf9151dk_extmcu.zip",
+    }
+
+    with patch(
+        "utils.serial_modem_firmware.load_serial_modem_static_config",
+        return_value=config_with_pin,
+    ), patch(
+        "utils.serial_modem_firmware._github_api_request",
+        return_value=LEGACY_EXTMCU_RELEASE,
+    ) as api_request:
+        config = load_serial_modem_firmware_config()
+
+    api_request.assert_called_once()
+    assert config["release"] == "v2.0.0-preview2"
 
 
 def test_repeated_resolution_hits_the_api_once() -> None:
@@ -206,5 +246,5 @@ def test_resolve_pinned_tag_missing_asset() -> None:
         "utils.serial_modem_firmware._github_api_request",
         return_value=release_without_asset,
     ):
-        with pytest.raises(RuntimeError, match="has no asset ending with"):
+        with pytest.raises(RuntimeError, match="has no asset ending with any of"):
             resolve_serial_modem_release("v9.9.9")
