@@ -166,7 +166,6 @@ jobs:
       run:
         shell: bash
     env:
-      NRFUTIL_HOME: /usr/local/share/nrfutil
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
       SERIAL_MODEM_RELEASE: ${{ inputs.serial_modem_release }}
@@ -207,7 +206,6 @@ jobs:
       run:
         shell: bash
     env:
-      NRFUTIL_HOME: /usr/local/share/nrfutil
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
       SERIAL_MODEM_RELEASE: ${{ inputs.serial_modem_release }}
@@ -248,7 +246,6 @@ jobs:
       run:
         shell: bash
     env:
-      NRFUTIL_HOME: /usr/local/share/nrfutil
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
       SERIAL_MODEM_RELEASE: ${{ inputs.serial_modem_release }}
@@ -289,7 +286,6 @@ jobs:
       run:
         shell: bash
     env:
-      NRFUTIL_HOME: /usr/local/share/nrfutil
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
       SERIAL_MODEM_RELEASE: ${{ inputs.serial_modem_release }}
@@ -330,7 +326,6 @@ jobs:
       run:
         shell: bash
     env:
-      NRFUTIL_HOME: /usr/local/share/nrfutil
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
       SERIAL_MODEM_RELEASE: ${{ inputs.serial_modem_release }}
@@ -371,7 +366,6 @@ jobs:
       run:
         shell: bash
     env:
-      NRFUTIL_HOME: /usr/local/share/nrfutil
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
       SERIAL_MODEM_RELEASE: ${{ inputs.serial_modem_release }}
