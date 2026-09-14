@@ -41,6 +41,7 @@ target_sources_ifdef(CONFIG_APP_LOCATION app PRIVATE src/modules/location/locati
 target_sources_ifdef(CONFIG_APP_LOCATION_SHELL app PRIVATE src/modules/location/location_shell.c)
 target_sources_ifdef(CONFIG_APP_FOTA app PRIVATE src/modules/fota/fota.c)
 target_sources_ifdef(CONFIG_APP_FOTA_SHELL app PRIVATE src/modules/fota/fota_shell.c)
+target_sources_ifdef(CONFIG_APP_BUTTONS app PRIVATE src/modules/buttons/buttons.c)
 
 # Memfault SDK guards new features with the minimum NCS version 3.4.0, which is yet to be released.
 # Remove when the sdk tags 3.4.0.

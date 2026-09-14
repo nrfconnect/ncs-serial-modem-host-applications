@@ -6,6 +6,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/net/tls_credentials.h>
 #include <zephyr/settings/settings.h>
 #include <zephyr/task_wdt/task_wdt.h>
 #include <zephyr/zbus/zbus.h>
@@ -167,9 +168,9 @@ static void publish_priv_cloud(enum priv_cloud_msg_type type)
 	}
 }
 
-static void publish_sync_done(void)
+static void publish_cloud_event(enum cloud_msg_type type)
 {
-	struct cloud_msg msg = { .type = CLOUD_SYNC_DONE };
+	struct cloud_msg msg = { .type = type };
 	int err = zbus_chan_pub(&cloud_chan, &msg, PUB_TIMEOUT);
 
 	if (err) {
@@ -246,6 +247,15 @@ static int ground_fix(const struct location_msg *msg)
 }
 #endif /* CONFIG_APP_LOCATION */
 
+static bool cloud_sec_tag_provisioned(void)
+{
+	size_t len = 0;
+	int err = tls_credential_get(CONFIG_NRF_CLOUD_SEC_TAG, TLS_CREDENTIAL_PRIVATE_KEY,
+				     NULL, &len);
+
+	return err != -ENOENT;
+}
+
 /* State handlers */
 
 static void state_init_entry(void *obj)
@@ -305,6 +315,14 @@ static void state_connecting_entry(void *obj)
 
 	LOG_DBG("%s", __func__);
 
+	if (!cloud_sec_tag_provisioned()) {
+		LOG_ERR("Sec tag %d has no TLS credentials, skipping connect attempt",
+			CONFIG_NRF_CLOUD_SEC_TAG);
+		publish_priv_cloud(CLOUD_PRIV_SESSION_FAILED);
+
+		return;
+	}
+
 	if (!date_time_is_valid()) {
 		LOG_DBG("Updating date/time for the CoAP JWT");
 		date_time_update_async(date_time_evt_handler);
@@ -344,10 +362,7 @@ static enum smf_state_result state_connecting_run(void *obj)
 		case CLOUD_PRIV_SESSION_FAILED:
 			switch (state_object->pending) {
 			case PENDING_DIAGNOSTICS:
-				/* main is waiting on CLOUD_SYNC_DONE to advance, send it
-				 * even though nothing was uploaded, or main stalls.
-				 */
-				publish_sync_done();
+				publish_cloud_event(CLOUD_SYNC_UNREACHABLE);
 				break;
 #if defined(CONFIG_APP_LOCATION)
 			case PENDING_GROUND_FIX:
@@ -412,7 +427,7 @@ static void state_connected_entry(void *obj)
 			publish_priv_cloud(CLOUD_PRIV_SESSION_FAILED);
 		}
 
-		publish_sync_done();
+		publish_cloud_event(CLOUD_SYNC_DONE);
 		break;
 #if defined(CONFIG_APP_LOCATION)
 	case PENDING_GROUND_FIX:
@@ -438,7 +453,7 @@ static enum smf_state_result state_connected_run(void *obj)
 				publish_priv_cloud(CLOUD_PRIV_SESSION_FAILED);
 			}
 
-			publish_sync_done();
+			publish_cloud_event(CLOUD_SYNC_DONE);
 
 			return SMF_EVENT_HANDLED;
 		}

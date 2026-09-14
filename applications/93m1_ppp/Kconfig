@@ -13,6 +13,7 @@ rsource "src/modules/fota/Kconfig.fota"
 rsource "src/modules/battery/Kconfig.battery"
 rsource "src/modules/modem_at/Kconfig.modem_at"
 rsource "src/modules/location/Kconfig.location"
+rsource "src/modules/buttons/Kconfig.buttons"
 
 endmenu
 

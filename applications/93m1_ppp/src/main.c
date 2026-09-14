@@ -35,6 +35,15 @@
 #else
 #define CLOUD_CHANNEL(X)
 #endif
+#if defined(CONFIG_APP_BUTTONS)
+#include "modules/buttons/buttons.h"
+#define BUTTONS_CHANNEL(X) X(button_chan, struct button_msg)
+#if defined(CONFIG_APP_CLOUD)
+#include <memfault/metrics/metrics.h>
+#endif
+#else
+#define BUTTONS_CHANNEL(X)
+#endif
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_MAIN_LOG_LEVEL);
 
@@ -64,7 +73,8 @@ ZBUS_MSG_SUBSCRIBER_DEFINE(main_subscriber);
 	X(network_chan, struct network_msg) \
 	CLOUD_CHANNEL(X) \
 	LOCATION_CHANNEL(X) \
-	FOTA_CHANNEL(X)
+	FOTA_CHANNEL(X) \
+	BUTTONS_CHANNEL(X)
 
 #define MAX_MSG_SIZE MAX_MSG_SIZE_FROM_LIST(CHANNEL_LIST)
 
@@ -184,9 +194,11 @@ static void battery_sample_handler(struct k_work *work)
 
 static enum smf_state_result running_run(void *obj)
 {
-#if defined(CONFIG_APP_FOTA)
+#if defined(CONFIG_APP_FOTA) || defined(CONFIG_APP_BUTTONS)
 	struct main_state *state_object = obj;
+#endif
 
+#if defined(CONFIG_APP_FOTA)
 	if (state_object->chan == &fota_chan) {
 		const struct fota_msg *msg = (const struct fota_msg *)state_object->msg_buf;
 
@@ -209,6 +221,45 @@ static enum smf_state_result running_run(void *obj)
 		}
 	}
 #endif /* CONFIG_APP_FOTA */
+
+#if defined(CONFIG_APP_BUTTONS)
+	if (state_object->chan == &button_chan) {
+		const struct button_msg *msg = (const struct button_msg *)state_object->msg_buf;
+		int err;
+
+		switch (msg->type) {
+		case BUTTON_1:
+			LOG_INF("Button 1: sync requested");
+
+			err = k_work_reschedule(&sync_work, K_NO_WAIT);
+			if (err < 0) {
+				LOG_ERR("k_work_reschedule sync_work, error: %d", err);
+			}
+			break;
+#if defined(CONFIG_APP_CLOUD)
+		case BUTTON_2: {
+			struct cloud_msg cloud_msg = { .type = CLOUD_SYNC_REQUEST };
+
+			LOG_INF("Button 2: heartbeat and diagnostics upload requested");
+
+			memfault_metrics_heartbeat_debug_trigger();
+
+			err = zbus_chan_pub(&cloud_chan, &cloud_msg, PUB_TIMEOUT);
+			if (err) {
+				LOG_ERR("zbus_chan_pub cloud_chan, error: %d", err);
+				FATAL_ERROR();
+			}
+			break;
+		}
+#endif /* CONFIG_APP_CLOUD */
+		default:
+			LOG_WRN("Button %u: no action defined", msg->type);
+			break;
+		}
+
+		return SMF_EVENT_HANDLED;
+	}
+#endif /* CONFIG_APP_BUTTONS */
 
 	return SMF_EVENT_PROPAGATE;
 }
@@ -328,7 +379,8 @@ static enum smf_state_result sync_cloud_run(void *obj)
 	if (state_object->chan == &cloud_chan) {
 		const struct cloud_msg *msg = (const struct cloud_msg *)state_object->msg_buf;
 
-		if (msg->type == CLOUD_SYNC_DONE) {
+		switch (msg->type) {
+		case CLOUD_SYNC_DONE:
 #if defined(CONFIG_APP_LOCATION)
 			smf_set_state(SMF_CTX(state_object), &states[STATE_SYNC_LOCATION]);
 #elif defined(CONFIG_APP_FOTA)
@@ -338,6 +390,13 @@ static enum smf_state_result sync_cloud_run(void *obj)
 #endif
 
 			return SMF_EVENT_HANDLED;
+		case CLOUD_SYNC_UNREACHABLE:
+			LOG_WRN("No cloud session this cycle, skipping location/FOTA");
+			smf_set_state(SMF_CTX(state_object), &states[STATE_SYNC_IDLE]);
+
+			return SMF_EVENT_HANDLED;
+		default:
+			break;
 		}
 	}
 #endif

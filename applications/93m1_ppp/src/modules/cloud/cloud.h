@@ -19,6 +19,9 @@ enum cloud_msg_type {
 
 	/* Output: the sync finished, successfully or not. */
 	CLOUD_SYNC_DONE,
+
+	/* Output: no CoAP session could be established this cycle. */
+	CLOUD_SYNC_UNREACHABLE,
 };
 
 struct cloud_msg {
