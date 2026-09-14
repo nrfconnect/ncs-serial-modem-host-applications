@@ -2,7 +2,7 @@
 
 ## Continuous integration
 
-A nightly schedule on `main` runs the [Build, Test, and Release workflow](../.github/workflows/ci.yml) at 03:00 UTC (05:00 GMT+2 during CEST):
+A nightly schedule on `main` runs the [Build, Test, and Release workflow](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/.github/workflows/ci.yml) at 03:00 UTC (05:00 GMT+2 during CEST):
 
 1. Resolve the next semver from commit history since the last tag
 2. Resolve the newest upstream Serial Modem release that ships the external-MCU zip
@@ -27,11 +27,11 @@ The version is derived from conventional commit prefixes in merged commits:
 | `BREAKING CHANGE` or `type!:` | Major |
 | `chore:`, `docs:`, `ci:`, etc. | No release |
 
-Firmware built for a release embeds that version via each application's [`VERSION`](../applications/91m1_ppp/VERSION) file. The CI build step overwrites `VERSION` from the resolved semver before compiling (without committing the change); Memfault reads it through NCS (`CONFIG_MEMFAULT_NCS_FW_VERSION_STATIC` defaults to `APP_VERSION_TWEAK_STRING`). The `VERSION` files checked into the repository are for local development only.
+Firmware built for a release embeds that version via each application's [`VERSION`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/VERSION) file. The CI build step overwrites `VERSION` from the resolved semver before compiling (without committing the change); Memfault reads it through NCS (`CONFIG_MEMFAULT_NCS_FW_VERSION_STATIC` defaults to `APP_VERSION_TWEAK_STRING`). The `VERSION` files checked into the repository are for local development only.
 
-FOTA hardware tests on `main` use the same release semver as the baseline: CI passes `FIRMWARE_VERSION` to the Test workflow, flashes the Build artifact's `merged.hex` without rebuilding, then builds and deploys a patch-bumped update image (e.g. `1.2.3` → `1.2.4`) for OTA verification. Local runs fall back to `baseline_version` in [`.github/test/tests.yml`](../.github/test/tests.yml) and flash with `west flash --recover`.
+FOTA hardware tests on `main` use the same release semver as the baseline: CI passes `FIRMWARE_VERSION` to the Test workflow, flashes the Build artifact's `merged.hex` without rebuilding, then builds and deploys a patch-bumped update image (e.g. `1.2.3` → `1.2.4`) for OTA verification. Local runs fall back to `baseline_version` in [`.github/test/tests.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/.github/test/tests.yml) and flash with `west flash --recover`.
 
-Hardware tests use three rigs on two self-hosted runners (see [`.github/test/tests.yml`](../.github/test/tests.yml)):
+Hardware tests use three rigs on two self-hosted runners (see [`.github/test/tests.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/.github/test/tests.yml)):
 
 | CI job | Runner | DUT | Every CI run |
 |--------|--------|-----|--------------|
@@ -44,7 +44,7 @@ Hardware tests use three rigs on two self-hosted runners (see [`.github/test/tes
 
 Provisioning runs in parallel with the first queued test job on the separate runners. Jobs sharing a runner run one at a time; GitHub queues whichever job does not get the runner first (coredump and FOTA on the test runner; the three provisioning jobs plus LM20B FOTA on the provisioning runner).
 
-DUT 3 is an nRF54LM20B DK with an [nRF7002-EB2](../applications/91m1_ppp/doc/hardware-setup.md) shield, wired to an nRF91 Serial Modem. Both lm20b tests use host console **VCOM0** (uart30): `91m1_ppp-provision-nrf54lm20b-nrf91` flashes the plain `nrf54lm20b` build and runs `test_cloud_provision`; `91m1_ppp-provision-location-nrf54lm20b-nrf91` flashes the Wi-Fi location build and verifies Wi-Fi scan plus nRF Cloud ground-fix. Local run for plain provisioning:
+DUT 3 is an nRF54LM20B DK with an [nRF7002-EB2](applications/91m1_ppp/hardware-setup.md) shield, wired to an nRF91 Serial Modem. Both lm20b tests use host console **VCOM0** (uart30): `91m1_ppp-provision-nrf54lm20b-nrf91` flashes the plain `nrf54lm20b` build and runs `test_cloud_provision`; `91m1_ppp-provision-location-nrf54lm20b-nrf91` flashes the Wi-Fi location build and verifies Wi-Fi scan plus nRF Cloud ground-fix. Local run for plain provisioning:
 
 ```shell
 export REPO_ROOT=$PWD
@@ -104,11 +104,11 @@ Both runners need Docker and USB access to their DKs (`--privileged -v /dev:/dev
 
 The test DUT must be provisioned once (manually or by running the provisioning flow locally against it). CI flashes baseline firmware without recover so TF-M credentials persist. FOTA and coredump do not remove the device from nRF Cloud or Memfault after each run.
 
-First-time setup for the test DUT (`CI_NRF54L15_*`): follow [91m1_ppp cloud provisioning](../applications/91m1_ppp/doc/README.md) steps 3–6 on that board, or run the provisioning test locally with `TEST_JSON` from `91m1_ppp-provision-nrf54l15-nrf91` while pointing the `CI_NRF54L15_PROVISION_*` variables at the test board (once only). Register the device in the shared Memfault cohort `ci-91m1-test-nrf54l15-nrf91` (used by both coredump and FOTA tests).
+First-time setup for the test DUT (`CI_NRF54L15_*`): follow [91m1_ppp cloud provisioning](applications/91m1_ppp/README.md) steps 3–6 on that board, or run the provisioning test locally with `TEST_JSON` from `91m1_ppp-provision-nrf54l15-nrf91` while pointing the `CI_NRF54L15_PROVISION_*` variables at the test board (once only). Register the device in the shared Memfault cohort `ci-91m1-test-nrf54l15-nrf91` (used by both coredump and FOTA tests).
 
 The nRF54LM20B FOTA test reuses DUT 3 (`CI_NRF54LM20B_PROVISION_*`) on the provisioning runner. The device must reach cloud connect before CI; the test calls `ensure_provisioned()` on first run if credentials are missing, and assigns the DUT to Memfault cohort `ci-91m1-test-nrf54lm20b-nrf91` (separate from the provision cohort). When provision and FOTA run in the same CI batch, the FOTA test moves the device into the test cohort automatically.
 
-The nRF54LM20B build reports Memfault hardware version `smha-nrf54lm20dk` instead of the NCS default board name (see [`boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.conf`](../applications/91m1_ppp/boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.conf)). The shared Memfault project binds `nrf54lm20dk` to another software type, so OTA payloads for `smha-91m1` are rejected under that name.
+The nRF54LM20B build reports Memfault hardware version `smha-nrf54lm20dk` instead of the NCS default board name (see [`boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.conf`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.conf)). The shared Memfault project binds `nrf54lm20dk` to another software type, so OTA payloads for `smha-91m1` are rejected under that name.
 
 Memfault coredump tests connect to nRF Cloud, trigger `mflt test busfault` over the shell, and verify a new bus fault coredump for the device appears in the Memfault Traces REST API. "New" means newer than the device's newest coredump recorded before the fault, so the check does not depend on the device clock agreeing with the runner. A bus fault is used because TF-M traps HardFaults before Memfault's handler runs. Local run:
 
@@ -136,7 +136,7 @@ export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load 91m1_p
 PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_fota/ -c tests/on_target/tests/pytest.ini -v
 ```
 
-Set `NRF_CLOUD_*`, `MEMFAULT_*`, and the host plus Serial Modem `CI_NRF54L15_*` / `CI_NRF54L15_PROVISION_*` / `CI_NRF54LM20B_PROVISION_*` variables/secrets documented in [`.github/workflows/test.yml`](../.github/workflows/test.yml).
+Set `NRF_CLOUD_*`, `MEMFAULT_*`, and the host plus Serial Modem `CI_NRF54L15_*` / `CI_NRF54L15_PROVISION_*` / `CI_NRF54LM20B_PROVISION_*` variables/secrets documented in [`.github/workflows/test.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/.github/workflows/test.yml).
 
 ### Serial logs
 
@@ -163,9 +163,9 @@ Three further consequences worth knowing:
 
 #### Requirements and failure modes
 
-The Serial Modem console runs at **1000000 baud**, not the usual 115200 — it is sized for modem traces — and `uart0` (VCOM0) is disabled by the external-MCU overlay so VCOM0 stays silent. `console_baudrate` is recorded in [`tests/on_target/ci/serial_modem_firmware.yml`](../tests/on_target/ci/serial_modem_firmware.yml); re-check it when upstream changes the overlay, because a baud mismatch produces an empty log rather than an error.
+The Serial Modem console runs at **1000000 baud**, not the usual 115200 — it is sized for modem traces — and `uart0` (VCOM0) is disabled by the external-MCU overlay so VCOM0 stays silent. `console_baudrate` is recorded in [`tests/on_target/ci/serial_modem_firmware.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/tests/on_target/ci/serial_modem_firmware.yml); re-check it when upstream changes the overlay, because a baud mismatch produces an empty log rather than an error.
 
-Modem capture also requires **VCOM1 enabled** in Board Configurator on the nRF9151 / SMA DK, which is the documented [hardware setup](../applications/91m1_ppp/doc/hardware-setup.md). The port is resolved from the rig's `CI_*_SERIAL_MODEM_SEGGER_SN`; set the matching `CI_*_SERIAL_MODEM_SERIAL_PORT` variable to pin it explicitly.
+Modem capture also requires **VCOM1 enabled** in Board Configurator on the nRF9151 / SMA DK, which is the documented [hardware setup](applications/91m1_ppp/hardware-setup.md). The port is resolved from the rig's `CI_*_SERIAL_MODEM_SEGGER_SN`; set the matching `CI_*_SERIAL_MODEM_SERIAL_PORT` variable to pin it explicitly.
 
 Capture starts immediately after the modem is programmed, so the boot that programming triggers is always recorded even on rigs where the host nRESET line is not wired. Everything here is best-effort and never fails a test: if the port cannot be resolved, stays silent, or the modem never accepts `AT#XLOG=1`, the run warns and continues with host logs only. Use those warnings to tell the cases apart — a completely empty `modem-serial.log` points at VCOM1 or the baud rate, while a log holding only boot output means either `AT#XLOG=1` never got through or the captured board is not the one the host is talking to, which the next section covers.
 
@@ -179,7 +179,7 @@ Identities are therefore compared rather than assumed. `AT+CGSN=1` gives the IME
 
 The modem image is never built from source here. Nightly CI resolves the newest published [ncs-serial-modem](https://github.com/nrfconnect/ncs-serial-modem/releases) release that ships the `*_nrf9151dk_extmcu.zip` asset (including prereleases), locks that tag for the whole pipeline run, and passes it to every 91m1 hardware test and to the Release workflow. Tests download the archive, cache it under `build/serial-modem-firmware/<tag>/`, and flash the `.hex` from it; release bundles copy the same archive unextracted into every `91m1_ppp` zip, so what ships is what CI tested that night.
 
-Set `SERIAL_MODEM_RELEASE` to pin a specific upstream tag when running tests or the release workflow locally. Static settings such as `console_baudrate` live in [`tests/on_target/ci/serial_modem_firmware.yml`](../tests/on_target/ci/serial_modem_firmware.yml).
+Set `SERIAL_MODEM_RELEASE` to pin a specific upstream tag when running tests or the release workflow locally. Static settings such as `console_baudrate` live in [`tests/on_target/ci/serial_modem_firmware.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/tests/on_target/ci/serial_modem_firmware.yml).
 
 Full LTE and IP-level modem traces (`AT#XTRACE=1`) are a further step still, and they need a trace database to decode. Note that the UART trace backend shares `uart1` with the log backend and the two are mutually exclusive, so capturing traces that way costs the application log; `overlay-trace-backend-cmux.conf` routes traces over a dedicated CMUX channel instead and leaves `AT#XLOG=1` usable.
 
@@ -203,4 +203,4 @@ Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `buil
 
 The commit body must include at least one line of description (max 72 characters per line) and a `Signed-off-by: Full Name <email>` footer. Use `BREAKING CHANGE:` in the body when the title includes `!`.
 
-Pull requests enforce these rules via gitlint. All rules live in [`scripts/gitlint/commit_rules.py`](../scripts/gitlint/commit_rules.py) with configuration in [`.gitlint`](../.gitlint).
+Pull requests enforce these rules via gitlint. All rules live in [`scripts/gitlint/commit_rules.py`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/scripts/gitlint/commit_rules.py) with configuration in [`.gitlint`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/.gitlint).
