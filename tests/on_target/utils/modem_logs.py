@@ -206,8 +206,12 @@ def enable_modem_application_logs(
         if confirmed:
             logger.info("Serial Modem application logs enabled (%s)", ENABLE_LOGS_AT_COMMAND)
             _reopen_modem_capture(dut)
-            _log_reported_state(dut, timeout=timeout)
-            _verify_captured_console(dut, timeout=timeout)
+            # Deliberately no follow-up AT queries here. Each `modem at` runs a
+            # chat script on the CMUX AT user pipe, and the Zephyr shell returns
+            # as soon as it prints OK, before that script releases the pipe.
+            # Firing AT#XLOG?/AT+CGSN=1 straight after AT#XLOG=1 collides on the
+            # not-yet-released pipe ("script is already running"), which jams the
+            # mux and takes down the PPP/CoAP link. One enable command is enough.
             return True
         if attempt < attempts:
             logger.info(
