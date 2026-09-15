@@ -154,6 +154,7 @@ static void state_cloud_disconnected_exit(void *obj);
 static void state_cloud_connected_entry(void *obj);
 static enum smf_state_result state_cloud_connected_run(void *obj);
 static void state_cloud_connected_exit(void *obj);
+static void state_sync_idle_entry(void *obj);
 static enum smf_state_result state_sync_idle_run(void *obj);
 static void state_sync_demo_entry(void *obj);
 static enum smf_state_result state_sync_demo_run(void *obj);
@@ -201,7 +202,7 @@ static const struct smf_state states[] = {
 				 &states[STATE_RUNNING],
 				 &states[STATE_SYNC_IDLE]),
 	[STATE_SYNC_IDLE] =
-		SMF_CREATE_STATE(NULL,
+		SMF_CREATE_STATE(state_sync_idle_entry,
 				 state_sync_idle_run,
 				 NULL,
 				 &states[STATE_CLOUD_CONNECTED],
@@ -571,6 +572,13 @@ static enum smf_state_result state_cloud_connected_run(void *obj)
 	return SMF_EVENT_PROPAGATE;
 }
 
+static void state_sync_idle_entry(void *obj)
+{
+	struct main_state *state_object = obj;
+
+	cloud_sync_schedule(state_object);
+}
+
 static enum smf_state_result state_sync_idle_run(void *obj)
 {
 	struct main_state *state_object = obj;
@@ -681,10 +689,14 @@ static enum smf_state_result state_sync_shadow_run(void *obj)
 #if defined(CONFIG_APP_FOTA)
 static void state_sync_fota_entry(void *obj)
 {
-	ARG_UNUSED(obj);
+	struct main_state *state_object = obj;
 
 	LOG_INF("state_sync_fota_entry");
 
+	/* FOTA poll and download can run for minutes; stop the sync timer so
+	 * demo/shadow/memfault CoAP traffic does not contend with the download.
+	 */
+	cloud_sync_cancel(state_object);
 	fota_poll_request();
 }
 
