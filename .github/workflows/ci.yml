@@ -54,8 +54,8 @@ jobs:
           set -eu
           pip install --quiet pyyaml
           release="$(PYTHONPATH=tests/on_target python3 -c "
-          from utils.serial_modem_firmware import resolve_serial_modem_release
-          print(resolve_serial_modem_release()['release'])
+          from utils.serial_modem_firmware import load_serial_modem_firmware_config
+          print(load_serial_modem_firmware_config()['release'])
           ")"
           echo "release=$release" >> "$GITHUB_OUTPUT"
 
