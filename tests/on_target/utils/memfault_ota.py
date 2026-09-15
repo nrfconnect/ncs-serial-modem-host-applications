@@ -663,43 +663,65 @@ def delete_device_if_exists(
     logger.info("DUT %s deleted from Memfault", validated)
 
 
-def ensure_device_in_cohort(
+def _create_memfault_device(
     env: dict[str, str],
     device_id: str,
     *,
     hardware_version: str,
 ) -> None:
-    status, _ = _memfault_json_request(
+    logger.info(
+        "Creating Memfault device %s before assigning cohort %r",
+        device_id,
+        env["cohort"],
+    )
+    create_status, _ = _memfault_json_request(
+        env,
+        "POST",
+        _devices_url(env),
+        body={
+            "device_serial": device_id,
+            "hardware_version": hardware_version,
+        },
+        allowed_statuses={200, 409},
+    )
+    if create_status not in {200, 409}:
+        raise RuntimeError(
+            f"Unexpected status {create_status} creating Memfault device {device_id}"
+        )
+
+
+def _get_memfault_device_payload(
+    env: dict[str, str],
+    device_id: str,
+    *,
+    hardware_version: str,
+) -> dict:
+    """Return the Memfault device payload, creating the device when absent."""
+    status, payload = _memfault_json_request(
         env,
         "GET",
         _device_url(env, device_id),
         allowed_statuses={200, 404},
     )
     if status == 404:
-        logger.info(
-            "Creating Memfault device %s before assigning cohort %r",
-            device_id,
-            env["cohort"],
-        )
-        create_status, _ = _memfault_json_request(
-            env,
-            "POST",
-            _devices_url(env),
-            body={
-                "device_serial": device_id,
-                "hardware_version": hardware_version,
-            },
-            allowed_statuses={200, 409},
-        )
-        if create_status not in {200, 409}:
-            raise RuntimeError(
-                f"Unexpected status {create_status} creating Memfault device {device_id}"
-            )
-
-    _, payload = _memfault_json_request(env, "GET", _device_url(env, device_id))
+        _create_memfault_device(env, device_id, hardware_version=hardware_version)
+        _, payload = _memfault_json_request(env, "GET", _device_url(env, device_id))
     if payload is None:
         raise RuntimeError(f"Memfault device lookup for {device_id} returned no payload")
+    return payload
 
+
+def ensure_device_in_cohort(
+    env: dict[str, str],
+    device_id: str,
+    *,
+    hardware_version: str,
+) -> None:
+    payload = _get_memfault_device_payload(
+        env,
+        device_id,
+        hardware_version=hardware_version,
+    )
     device = _device_from_payload(payload)
     current_cohort = _device_cohort_slug(device)
     if current_cohort == env["cohort"]:

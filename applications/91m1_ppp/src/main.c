@@ -736,9 +736,10 @@ static enum smf_state_result state_sync_memfault_run(void *obj)
 #if defined(CONFIG_APP_FOTA)
 static void state_fota_entry(void *obj)
 {
-	ARG_UNUSED(obj);
+	struct main_state *state_object = obj;
 
 	LOG_INF("state_fota_entry");
+	cloud_sync_cancel(state_object);
 }
 
 static enum smf_state_result state_fota_run(void *obj)

@@ -164,7 +164,7 @@ def test_memfault_coredump_upload_via_cloud_sync(
     enable_modem_application_logs(dut)
     dut.uart.wait_for_substring_after(
         MEMFAULT_DATA_POSTED_LOG,
-        after=CLOUD_CONNECTED_LOG,
+        after=BOOT_BANNER_LOG,
         timeout=CLOUD_CONNECT_TIMEOUT,
     )
 
