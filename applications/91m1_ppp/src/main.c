@@ -11,6 +11,8 @@
 #include <zephyr/task_wdt/task_wdt.h>
 #include <zephyr/smf.h>
 #include <zephyr/sys/reboot.h>
+#include <date_time.h>
+#include <stdio.h>
 
 #include "app_common.h"
 #include "modules/network/network.h"
@@ -68,9 +70,9 @@ ZBUS_CHAN_DEFINE(main_priv_chan,
 /* Expand to a call to ZBUS_CHAN_ADD_OBS for each channel in the list. */
 CHANNEL_LIST(ADD_OBSERVERS)
 
-/** Demo cloud payload */
-#define DEMO_CLOUD_PAYLOAD \
-	"{\"appId\":\"SMHA\",\"messageType\":\"DATA\",\"data\":\"hello\"}"
+/** Demo cloud payload template */
+#define DEMO_CLOUD_PAYLOAD_FMT \
+	"{\"appId\":\"SMHA\",\"messageType\":\"DATA\",\"data\":\"hello\",\"timestamp\":%lld}"
 
 /** Application SMF states. */
 enum main_app_state {
@@ -256,12 +258,27 @@ static const struct smf_state states[] = {
 static void demo_cloud_message_send(void)
 {
 	int err;
+	int64_t unix_time_ms;
 	struct cloud_msg msg = {
 		.type = CLOUD_MESSAGE_SEND,
-		.payload = DEMO_CLOUD_PAYLOAD,
 	};
 
-	msg.payload_len = sizeof(DEMO_CLOUD_PAYLOAD) - 1;
+	err = date_time_now(&unix_time_ms);
+	if (err) {
+		LOG_ERR("date_time_now, error: %d", err);
+		FATAL_ERROR();
+	}
+
+	err = snprintk(msg.payload, sizeof(msg.payload), DEMO_CLOUD_PAYLOAD_FMT,
+		       (long long)unix_time_ms);
+	if (err < 0 || err >= (int)sizeof(msg.payload)) {
+		LOG_ERR("Demo payload formatting failed, error: %d", err);
+		FATAL_ERROR();
+	}
+
+	msg.payload_len = (size_t)err;
+	LOG_INF("Sending demo cloud payload: %s", msg.payload);
+
 	err = zbus_chan_pub(&cloud_chan, &msg, PUB_TIMEOUT);
 	if (err) {
 		LOG_ERR("zbus_chan_pub, error: %d", err);
