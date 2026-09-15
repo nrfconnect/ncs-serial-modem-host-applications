@@ -17,17 +17,17 @@ Cooperating modules run as dedicated threads, each owning an SMF state machine a
 
 ## Cloud synchronization
 
-While nRF Cloud is connected, main keeps a periodic timer on a dedicated workqueue (`CONFIG_APP_MAIN_CLOUD_SYNCHRONIZATION_PERIOD_SECONDS`, default **30 s**). Each synchronization:
+While nRF Cloud is connected, main keeps a periodic timer on a dedicated workqueue (`CONFIG_APP_MAIN_CLOUD_SYNCHRONIZATION_PERIOD_SECONDS`, default **30 s**). Each synchronization runs through a sequence of substates, waiting for the current step to finish before starting the next:
 
-1. Publishes a demo JSON device message on `cloud_chan` (payload: `{"appId":"SMHA","messageType":"DATA","data":"hello"}`).
-2. Publishes `LOCATION_SEARCH_TRIGGER` on `location_chan` when the application is built with the location overlay (`CONFIG_APP_LOCATION`).
-3. Publishes `CLOUD_SHADOW_POLL_REQUEST` on `cloud_chan` to pick up any desired configuration from the device shadow.
-4. Publishes `FOTA_POLL_REQUEST` on `fota_chan` to check for firmware updates.
-5. Publishes `CLOUD_MEMFAULT_POST_REQUEST` on `cloud_chan` to post any pending Memfault data.
+1. Sends a demo JSON device message on `cloud_chan` (payload: `{"appId":"SMHA","messageType":"DATA","data":"hello"}`), then waits for `CLOUD_MESSAGE_SENT`.
+2. Publishes `LOCATION_SEARCH_TRIGGER` on `location_chan` when the application is built with the location overlay (`CONFIG_APP_LOCATION`), then waits for `LOCATION_SEARCH_DONE`.
+3. Publishes `CLOUD_SHADOW_POLL_REQUEST` on `cloud_chan` to pick up any desired configuration from the device shadow, then waits for `CLOUD_SHADOW_POLLED`.
+4. Publishes `FOTA_POLL_REQUEST` on `fota_chan` to check for firmware updates, then waits for `FOTA_ABORTED` or enters the FOTA download state on `FOTA_STARTING`.
+5. Publishes `CLOUD_MEMFAULT_POST_REQUEST` on `cloud_chan` to post any pending Memfault data, then waits for `CLOUD_MEMFAULT_POSTED`.
 
-An initial synchronization runs immediately on cloud connect. The timer is cancelled when cloud disconnects.
+An initial synchronization runs immediately on cloud connect. The timer is cancelled when cloud disconnects. A new periodic trigger is only acted on while main is idle between synchronizations.
 
-A location search runs asynchronously: the location module scans for Wi-Fi access points and publishes the result as `LOCATION_CLOUD_REQUEST`, which main forwards to the cloud module. The cloud module resolves it into a position with an nRF Cloud CoAP ground-fix request and logs the position together with a Google Maps URL. A trigger that arrives while a search is still in progress is ignored, so a scan timeout longer than the synchronization period simply means fewer position updates.
+During the location step, the location module scans for Wi-Fi access points and publishes the result as `LOCATION_CLOUD_REQUEST`, which main forwards to the cloud module. The cloud module resolves it into a position with an nRF Cloud CoAP ground-fix request and logs the position together with a Google Maps URL. Main does not advance past the location step until `LOCATION_SEARCH_DONE` is published.
 
 ## Memfault
 

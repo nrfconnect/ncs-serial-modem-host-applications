@@ -33,6 +33,18 @@ stateDiagram-v2
         STATE_CLOUD_CONNECTED --> STATE_FOTA : FOTA_STARTING
         STATE_FOTA --> STATE_CLOUD_DISCONNECTED : FOTA_ABORTED
         STATE_FOTA --> STATE_CLOUD_CONNECTED : FOTA_ABORTED
+        state STATE_CLOUD_CONNECTED {
+            [*] --> STATE_SYNC_IDLE
+            STATE_SYNC_IDLE --> STATE_SYNC_DEMO : periodic trigger or connect
+            STATE_SYNC_DEMO --> STATE_SYNC_SHADOW : CLOUD_MESSAGE_SENT
+            STATE_SYNC_DEMO --> STATE_SYNC_LOCATION : CLOUD_MESSAGE_SENT
+            STATE_SYNC_LOCATION --> STATE_SYNC_SHADOW : LOCATION_SEARCH_DONE
+            STATE_SYNC_SHADOW --> STATE_SYNC_FOTA : CLOUD_SHADOW_POLLED
+            STATE_SYNC_SHADOW --> STATE_SYNC_MEMFAULT : CLOUD_SHADOW_POLLED
+            STATE_SYNC_FOTA --> STATE_SYNC_MEMFAULT : FOTA_ABORTED
+            STATE_SYNC_MEMFAULT --> STATE_SYNC_IDLE : CLOUD_MEMFAULT_POSTED
+            STATE_SYNC_FOTA --> STATE_FOTA : FOTA_STARTING
+        }
     }
     STATE_FOTA --> STATE_REBOOTING : FOTA_REBOOT_REQUEST
 ```
@@ -41,21 +53,27 @@ stateDiagram-v2
 
 - **STATE_RUNNING:** Parent state entered on initialization. It handles the messages that are relevant in every state: network connectivity, which it answers with `CLOUD_CONNECT` or `CLOUD_DISCONNECT`, location results, which it forwards to the Cloud module, and `FOTA_STARTING`.
     - **STATE_CLOUD_DISCONNECTED:** Default substate, in which the cloud connection is down and synchronization triggers are ignored.
-    - **STATE_CLOUD_CONNECTED:** The cloud connection is up. The entry function schedules the periodic synchronization and runs one immediately, and the exit function cancels it.
+    - **STATE_CLOUD_CONNECTED:** The cloud connection is up. The entry function schedules the periodic synchronization and starts one immediately, and the exit function cancels it. While connected, synchronization runs through the sync substates below.
+        - **STATE_SYNC_IDLE:** Waiting for the next periodic synchronization trigger.
+        - **STATE_SYNC_DEMO:** Sending the demo cloud payload.
+        - **STATE_SYNC_LOCATION:** Scanning for Wi-Fi access points and resolving location. Only present with the location overlay.
+        - **STATE_SYNC_SHADOW:** Polling the device shadow.
+        - **STATE_SYNC_FOTA:** Polling for a FOTA job. Only present when the FOTA module is enabled.
+        - **STATE_SYNC_MEMFAULT:** Posting pending Memfault data.
     - **STATE_FOTA:** A firmware download is in progress. Cloud synchronization is not scheduled in this state, so the download is not competing with device messages for the connection.
 - **STATE_REBOOTING:** Terminal state entered when the FOTA module asks for a reboot. Its entry function flushes the logs and calls `sys_reboot()`.
 
 ### Cloud synchronization
 
-While the cloud connection is up, the module performs a synchronization every `CONFIG_APP_MAIN_CLOUD_SYNCHRONIZATION_PERIOD_SECONDS`, and once immediately on connect. Each synchronization publishes the following requests in order:
+While the cloud connection is up, the module performs a synchronization every `CONFIG_APP_MAIN_CLOUD_SYNCHRONIZATION_PERIOD_SECONDS`, and once immediately on connect. Each synchronization advances through the sync substates in order, waiting for the current step to complete before starting the next:
 
-1. `CLOUD_MESSAGE_SEND` with a demo JSON payload: `{"appId":"SMHA","messageType":"DATA","data":"hello"}`.
-1. `LOCATION_SEARCH_TRIGGER`, when the application is built with the location overlay.
-1. `CLOUD_SHADOW_POLL_REQUEST`, to pick up any desired configuration from the device shadow.
-1. `FOTA_POLL_REQUEST`, when the FOTA module is enabled.
-1. `CLOUD_MEMFAULT_POST_REQUEST`, to post any pending Memfault data. It goes last so that the Cloud module handles it once the requests above are done with the CoAP client.
+1. `CLOUD_MESSAGE_SEND` with a demo JSON payload: `{"appId":"SMHA","messageType":"DATA","data":"hello"}`. Advances on `CLOUD_MESSAGE_SENT`.
+1. `LOCATION_SEARCH_TRIGGER`, when the application is built with the location overlay. Advances on `LOCATION_SEARCH_DONE`.
+1. `CLOUD_SHADOW_POLL_REQUEST`, to pick up any desired configuration from the device shadow. Advances on `CLOUD_SHADOW_POLLED`.
+1. `FOTA_POLL_REQUEST`, when the FOTA module is enabled. Advances on `FOTA_ABORTED`, or moves to `STATE_FOTA` on `FOTA_STARTING`.
+1. `CLOUD_MEMFAULT_POST_REQUEST`, to post any pending Memfault data. Advances on `CLOUD_MEMFAULT_POSTED`.
 
-The requests are only published, not awaited. Each module handles its request in its own thread, and results arrive later as messages.
+The periodic timer only publishes its trigger while the module is in `STATE_SYNC_IDLE`, so a synchronization already in progress is not restarted.
 
 ### FOTA coordination
 

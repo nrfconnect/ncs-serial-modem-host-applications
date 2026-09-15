@@ -186,6 +186,10 @@ enum cloud_msg_type {
 	CLOUD_CONNECTED,
 	/* The device shadow has been polled. */
 	CLOUD_SHADOW_POLLED,
+	/* The device message in cloud_msg::payload has been sent. */
+	CLOUD_MESSAGE_SENT,
+	/* Pending Memfault data has been posted. */
+	CLOUD_MEMFAULT_POSTED,
 
 	/* Input message types */
 

@@ -376,6 +376,7 @@ static enum smf_state_result state_connected_run(void *obj)
 		return SMF_EVENT_HANDLED;
 	case CLOUD_MEMFAULT_POST_REQUEST:
 		memfault_data_post();
+		cloud_msg_publish(CLOUD_MEMFAULT_POSTED, NULL, 0);
 
 		return SMF_EVENT_HANDLED;
 	case CLOUD_MESSAGE_SEND:
@@ -383,6 +384,8 @@ static enum smf_state_result state_connected_run(void *obj)
 		if (err) {
 			LOG_ERR("nrf_cloud_coap_json_message_send, error: %d", err);
 		}
+
+		cloud_msg_publish(CLOUD_MESSAGE_SENT, NULL, 0);
 
 		return SMF_EVENT_HANDLED;
 #if defined(CONFIG_APP_LOCATION)

@@ -53,6 +53,8 @@ The Cloud module communicates on the `cloud_chan` channel, and uses `priv_cloud_
 - **CLOUD_CONNECTED**: The cloud connection is established.
 - **CLOUD_DISCONNECTED**: The cloud connection is down.
 - **CLOUD_SHADOW_POLLED**: The device shadow has been polled.
+- **CLOUD_MESSAGE_SENT**: The device message in `.payload` has been sent, or the send attempt finished.
+- **CLOUD_MEMFAULT_POSTED**: Pending Memfault data has been posted, or the post attempt finished.
 
 ### Message structure
 

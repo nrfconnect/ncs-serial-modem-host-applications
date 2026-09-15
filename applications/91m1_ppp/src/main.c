@@ -88,20 +88,33 @@ enum main_app_state {
 		 * Cloud is connected. Periodic synchronization is scheduled on the
 		 * dedicated cloud-sync workqueue.
 		 *
-		 * Each synchronization:
-		 * - Sends demo payload
-		 * - Sends location via scanned Wi-Fi Access Point MAC addresses. (Optional)
-		 * - Polls device shadow
-		 * - Polls for any available FOTA job. (Optional)
-		 * - Posts any pending Memfault data
+		 * The initial substate is @ref STATE_SYNC_IDLE. Each synchronization
+		 * advances through the sync substates in order, waiting for each step
+		 * to complete before starting the next.
 		 */
 		STATE_CLOUD_CONNECTED,
+			/** Waiting for the next synchronization trigger. */
+			STATE_SYNC_IDLE,
+			/** Sending the demo cloud payload. */
+			STATE_SYNC_DEMO,
+#if defined(CONFIG_APP_LOCATION)
+			/** Scanning for Wi-Fi access points and resolving location. */
+			STATE_SYNC_LOCATION,
+#endif /* CONFIG_APP_LOCATION */
+			/** Polling the device shadow. */
+			STATE_SYNC_SHADOW,
 #if defined(CONFIG_APP_FOTA)
-	/**
-	 * A FOTA download is in progress. Cloud state at entry is saved in
-	 * @ref main_state::cloud_history for restore on @ref FOTA_ABORTED.
-	 */
-	STATE_FOTA,
+			/** Polling for a FOTA job. */
+			STATE_SYNC_FOTA,
+#endif /* CONFIG_APP_FOTA */
+			/** Posting pending Memfault data. */
+			STATE_SYNC_MEMFAULT,
+#if defined(CONFIG_APP_FOTA)
+		/**
+		 * A FOTA download is in progress. Cloud state at entry is saved in
+		 * @ref main_state::cloud_history for restore on @ref FOTA_ABORTED.
+		 */
+		STATE_FOTA,
 	/**
 	 * FOTA completed; application cleanup runs before reboot.
 	 */
@@ -139,6 +152,25 @@ static void state_cloud_disconnected_exit(void *obj);
 static void state_cloud_connected_entry(void *obj);
 static enum smf_state_result state_cloud_connected_run(void *obj);
 static void state_cloud_connected_exit(void *obj);
+static enum smf_state_result state_sync_idle_run(void *obj);
+static void state_sync_demo_entry(void *obj);
+static enum smf_state_result state_sync_demo_run(void *obj);
+
+#if defined(CONFIG_APP_LOCATION)
+static void state_sync_location_entry(void *obj);
+static enum smf_state_result state_sync_location_run(void *obj);
+
+#endif /* CONFIG_APP_LOCATION */
+static void state_sync_shadow_entry(void *obj);
+static enum smf_state_result state_sync_shadow_run(void *obj);
+
+#if defined(CONFIG_APP_FOTA)
+static void state_sync_fota_entry(void *obj);
+static enum smf_state_result state_sync_fota_run(void *obj);
+#endif /* CONFIG_APP_FOTA */
+
+static void state_sync_memfault_entry(void *obj);
+static enum smf_state_result state_sync_memfault_run(void *obj);
 
 #if defined(CONFIG_APP_FOTA)
 static void state_fota_entry(void *obj);
@@ -165,6 +197,46 @@ static const struct smf_state states[] = {
 				 state_cloud_connected_run,
 				 state_cloud_connected_exit,
 				 &states[STATE_RUNNING],
+				 &states[STATE_SYNC_IDLE]),
+	[STATE_SYNC_IDLE] =
+		SMF_CREATE_STATE(NULL,
+				 state_sync_idle_run,
+				 NULL,
+				 &states[STATE_CLOUD_CONNECTED],
+				 NULL),
+	[STATE_SYNC_DEMO] =
+		SMF_CREATE_STATE(state_sync_demo_entry,
+				 state_sync_demo_run,
+				 NULL,
+				 &states[STATE_CLOUD_CONNECTED],
+				 NULL),
+#if defined(CONFIG_APP_LOCATION)
+	[STATE_SYNC_LOCATION] =
+		SMF_CREATE_STATE(state_sync_location_entry,
+				 state_sync_location_run,
+				 NULL,
+				 &states[STATE_CLOUD_CONNECTED],
+				 NULL),
+#endif /* CONFIG_APP_LOCATION */
+	[STATE_SYNC_SHADOW] =
+		SMF_CREATE_STATE(state_sync_shadow_entry,
+				 state_sync_shadow_run,
+				 NULL,
+				 &states[STATE_CLOUD_CONNECTED],
+				 NULL),
+#if defined(CONFIG_APP_FOTA)
+	[STATE_SYNC_FOTA] =
+		SMF_CREATE_STATE(state_sync_fota_entry,
+				 state_sync_fota_run,
+				 NULL,
+				 &states[STATE_CLOUD_CONNECTED],
+				 NULL),
+#endif /* CONFIG_APP_FOTA */
+	[STATE_SYNC_MEMFAULT] =
+		SMF_CREATE_STATE(state_sync_memfault_entry,
+				 state_sync_memfault_run,
+				 NULL,
+				 &states[STATE_CLOUD_CONNECTED],
 				 NULL),
 #if defined(CONFIG_APP_FOTA)
 	[STATE_FOTA] =
@@ -299,24 +371,6 @@ static void memfault_post_request(void)
 		LOG_ERR("zbus_chan_pub, error: %d", err);
 		FATAL_ERROR();
 	}
-}
-
-static void cloud_sync_run(void)
-{
-	demo_cloud_message_send();
-
-#if defined(CONFIG_APP_LOCATION)
-	location_search_request();
-#endif /* CONFIG_APP_LOCATION */
-
-	shadow_poll_request();
-
-#if defined(CONFIG_APP_FOTA)
-	fota_poll_request();
-#endif /* CONFIG_APP_FOTA */
-
-	/* Posted last so the module handles it once its own requests above are done. */
-	memfault_post_request();
 }
 
 static void cloud_sync_schedule(struct main_state *state)
@@ -469,7 +523,7 @@ static void state_cloud_connected_entry(void *obj)
 	cloud_sync_schedule(state_object);
 
 	/* Synchronize once immediately so connecting always syncs without waiting a period. */
-	cloud_sync_run();
+	smf_set_state(SMF_CTX(state_object), &states[STATE_SYNC_DEMO]);
 }
 
 static void state_cloud_connected_exit(void *obj)
@@ -497,12 +551,163 @@ static enum smf_state_result state_cloud_connected_run(void *obj)
 		}
 	}
 
+	return SMF_EVENT_PROPAGATE;
+}
+
+static enum smf_state_result state_sync_idle_run(void *obj)
+{
+	struct main_state *state_object = obj;
+
 	if (state_object->chan == &main_priv_chan) {
 		const struct priv_main_msg *msg =
 			(const struct priv_main_msg *)state_object->msg_buf;
 
 		if (msg->type == MAIN_PRIV_CLOUD_SYNCHRONIZATION) {
-			cloud_sync_run();
+			smf_set_state(SMF_CTX(state_object), &states[STATE_SYNC_DEMO]);
+
+			return SMF_EVENT_HANDLED;
+		}
+	}
+
+	return SMF_EVENT_PROPAGATE;
+}
+
+static void state_sync_demo_entry(void *obj)
+{
+	ARG_UNUSED(obj);
+
+	LOG_INF("state_sync_demo_entry");
+
+	demo_cloud_message_send();
+}
+
+static enum smf_state_result state_sync_demo_run(void *obj)
+{
+	struct main_state *state_object = obj;
+
+	if (state_object->chan == &cloud_chan) {
+		const struct cloud_msg *msg = (const struct cloud_msg *)state_object->msg_buf;
+
+		if (msg->type == CLOUD_MESSAGE_SENT) {
+#if defined(CONFIG_APP_LOCATION)
+			smf_set_state(SMF_CTX(state_object), &states[STATE_SYNC_LOCATION]);
+#else
+			smf_set_state(SMF_CTX(state_object), &states[STATE_SYNC_SHADOW]);
+#endif /* CONFIG_APP_LOCATION */
+
+			return SMF_EVENT_HANDLED;
+		}
+	}
+
+	return SMF_EVENT_PROPAGATE;
+}
+
+#if defined(CONFIG_APP_LOCATION)
+static void state_sync_location_entry(void *obj)
+{
+	ARG_UNUSED(obj);
+
+	LOG_INF("state_sync_location_entry");
+
+	location_search_request();
+}
+
+static enum smf_state_result state_sync_location_run(void *obj)
+{
+	struct main_state *state_object = obj;
+
+	if (state_object->chan == &location_chan) {
+		const struct location_msg *msg =
+			(const struct location_msg *)state_object->msg_buf;
+
+		if (msg->type == LOCATION_SEARCH_DONE) {
+			smf_set_state(SMF_CTX(state_object), &states[STATE_SYNC_SHADOW]);
+
+			return SMF_EVENT_HANDLED;
+		}
+	}
+
+	return SMF_EVENT_PROPAGATE;
+}
+#endif /* CONFIG_APP_LOCATION */
+
+static void state_sync_shadow_entry(void *obj)
+{
+	ARG_UNUSED(obj);
+
+	LOG_INF("state_sync_shadow_entry");
+
+	shadow_poll_request();
+}
+
+static enum smf_state_result state_sync_shadow_run(void *obj)
+{
+	struct main_state *state_object = obj;
+
+	if (state_object->chan == &cloud_chan) {
+		const struct cloud_msg *msg = (const struct cloud_msg *)state_object->msg_buf;
+
+		if (msg->type == CLOUD_SHADOW_POLLED) {
+#if defined(CONFIG_APP_FOTA)
+			smf_set_state(SMF_CTX(state_object), &states[STATE_SYNC_FOTA]);
+#else
+			smf_set_state(SMF_CTX(state_object), &states[STATE_SYNC_MEMFAULT]);
+#endif /* CONFIG_APP_FOTA */
+
+			return SMF_EVENT_HANDLED;
+		}
+	}
+
+	return SMF_EVENT_PROPAGATE;
+}
+
+#if defined(CONFIG_APP_FOTA)
+static void state_sync_fota_entry(void *obj)
+{
+	ARG_UNUSED(obj);
+
+	LOG_INF("state_sync_fota_entry");
+
+	fota_poll_request();
+}
+
+static enum smf_state_result state_sync_fota_run(void *obj)
+{
+	struct main_state *state_object = obj;
+
+	if (state_object->chan == &fota_chan) {
+		const struct fota_msg *msg = (const struct fota_msg *)state_object->msg_buf;
+
+		/* FOTA_STARTING propagates to STATE_RUNNING, which enters STATE_FOTA. */
+		if (msg->type == FOTA_ABORTED) {
+			smf_set_state(SMF_CTX(state_object), &states[STATE_SYNC_MEMFAULT]);
+
+			return SMF_EVENT_HANDLED;
+		}
+	}
+
+	return SMF_EVENT_PROPAGATE;
+}
+#endif /* CONFIG_APP_FOTA */
+
+static void state_sync_memfault_entry(void *obj)
+{
+	ARG_UNUSED(obj);
+
+	LOG_INF("state_sync_memfault_entry");
+
+	memfault_post_request();
+}
+
+static enum smf_state_result state_sync_memfault_run(void *obj)
+{
+	struct main_state *state_object = obj;
+
+	if (state_object->chan == &cloud_chan) {
+		const struct cloud_msg *msg = (const struct cloud_msg *)state_object->msg_buf;
+
+		if (msg->type == CLOUD_MEMFAULT_POSTED) {
+			smf_set_state(SMF_CTX(state_object), &states[STATE_SYNC_IDLE]);
 
 			return SMF_EVENT_HANDLED;
 		}
@@ -553,6 +758,7 @@ static void state_rebooting_entry(void *obj)
 {
 	ARG_UNUSED(obj);
 
+	LOG_INF("state_rebooting_entry");
 	LOG_INF("FOTA successful, rebooting to apply the update");
 	LOG_PANIC();
 

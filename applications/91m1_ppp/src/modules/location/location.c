@@ -199,6 +199,7 @@ static enum smf_state_result state_location_search_inactive_run(void *obj)
 			err = location_request(NULL);
 			if (err) {
 				LOG_WRN("location_request, error: %d", err);
+				message_send(LOCATION_SEARCH_DONE);
 
 				return SMF_EVENT_HANDLED;
 			}
