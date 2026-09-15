@@ -12,6 +12,16 @@ from utils.logger import get_logger
 
 logger = get_logger()
 
+# Whether the built-in CONFIG_MODEM_AT_SHELL AT path can coexist with an active
+# PPP session. It cannot on the current SDK: issuing any AT over the CMUX AT
+# user pipe (even a single AT#XLOG=1 with no other traffic) wedges the modem mux
+# and takes the PPP/CoAP link down with -116. This regressed with the modem
+# PPP/AT user pipe API migration (modem_at_user_pipe_claim() gaining a chat
+# instance and wait timeout). Flip back to True once the SDK modem-AT-shell/CMUX
+# pipe handling is fixed, so enable_modem_application_logs() resumes capturing
+# runtime modem logs instead of only boot output.
+_MODEM_AT_SHELL_COEXISTS_WITH_PPP = False
+
 ENABLE_LOGS_AT_COMMAND = "AT#XLOG=1"
 # Reports the mode the modem believes it is in. Worth recording because Serial
 # Modem answers OK without touching the backend when the mode asked for already
@@ -188,7 +198,16 @@ def enable_modem_application_logs(
     Returns True once the modem acknowledges. Modem logs are a diagnostic aid,
     so failure is warned about rather than raised: it must not fail a test whose
     functional assertions all pass.
+
+    Disabled while ``_MODEM_AT_SHELL_COEXISTS_WITH_PPP`` is False: see the flag.
     """
+    if not _MODEM_AT_SHELL_COEXISTS_WITH_PPP:
+        logger.warning(
+            "Serial Modem log enable is disabled: AT over the CMUX pipe wedges "
+            "the modem link on the current SDK; capturing boot output only"
+        )
+        return False
+
     if dut.modem_uart is None:
         return False
 

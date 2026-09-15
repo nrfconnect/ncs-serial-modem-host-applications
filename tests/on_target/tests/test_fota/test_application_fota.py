@@ -153,16 +153,6 @@ def test_application_fota_via_cloud_sync(
             update_version,
             timeout=MEMFAULT_RELEASE_DEPLOY_TIMEOUT,
         )
-
-        # Enable Serial Modem logs once now, while the device is cloud-connected
-        # but idle. AT#XLOG travels over the CMUX AT pipe, which shares the modem
-        # link with PPP; issuing it once the FOTA download has saturated the PPP
-        # DLCI wedges the mux and kills the transfer. Enable it before the release
-        # override can trigger the download, then leave the link alone.
-        logger.info("Verify cloud connect and enable modem logs before FOTA")
-        dut.uart.wait_for_substring(CLOUD_CONNECTED_LOG, timeout=CLOUD_CONNECT_TIMEOUT)
-        enable_modem_application_logs(dut)
-
         set_device_release_override(session.memfault_env, session.device_id, update_version)
         release_override_set = True
         logger.info(
@@ -171,7 +161,9 @@ def test_application_fota_via_cloud_sync(
         )
         time.sleep(NRF_CLOUD_OTA_PROPAGATION_DELAY)
 
-        logger.info("Wait for automatic FOTA via cloud sync")
+        logger.info("Wait for cloud connect and automatic FOTA via cloud sync")
+        dut.uart.wait_for_substring(CLOUD_CONNECTED_LOG, timeout=CLOUD_CONNECT_TIMEOUT)
+        enable_modem_application_logs(dut)
         _wait_for_fota_log_after_cloud_connect(
             dut.uart,
             FOTA_DOWNLOAD_STARTING_LOG,
