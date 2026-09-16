@@ -40,7 +40,7 @@ Everything sits at the top level, with no nested directories:
 ├── zephyr.signed.bin
 ├── dfu_application.zip
 ├── .config
-└── serial_modem_v{VERSION}_nrf9151dk_extmcu.zip              firmware for the companion nRF9151 / SMA DK
+└── serial_modem_v{VERSION}_nrf9151dk_nrf91m1.zip              firmware for the companion nRF9151 / SMA DK
 ```
 
 `93m1_ppp` bundles carry no modem archive, their board having an integrated modem, and `93m1_at` additionally has neither `zephyr.signed.bin` nor `dfu_application.zip`. File names are fixed so scripts and documentation stay valid after extraction.
@@ -55,7 +55,7 @@ Everything sits at the top level, with no nested directories:
 | `zephyr.signed.bin` | MCUboot-signed application image | FOTA through Memfault (not included in `93m1_at` bundles) |
 | `dfu_application.zip` | DFU package wrapping the signed image with its manifest | nRF Cloud FOTA jobs (not included in `93m1_at` bundles) |
 | `.config` | Kconfig snapshot from the release build | Inspecting which options were enabled without rebuilding |
-| `serial_modem_*_nrf9151dk_extmcu.zip` | Serial Modem release tested by CI that night, exactly as published upstream | Programming the companion DK (`91m1_ppp` bundles only) |
+| `serial_modem_*_nrf9151dk_nrf91m1.zip` | Serial Modem release tested by CI that night, exactly as published upstream | Programming the companion DK (`91m1_ppp` bundles only) |
 
 ### `merged.hex`
 
@@ -89,7 +89,7 @@ Only the files above ship. Per-domain MCUboot and TF-M output, `.map` and `.dts`
 
 ## Serial Modem firmware (nRF9151 DK)
 
-91m1 host applications (`91m1_ppp` on nRF54L15 or nRF54LM20B) need a separate Serial Modem image on the wired nRF9151 / SMA DK, configured for PPP + CMUX on uart2 for an external host MCU. Every `91m1_ppp` bundle carries the upstream archive CI tested that night, so there is no separate asset to download — and on-target tests flash that same archive, so what ships beside the host build is what CI verified against it.
+91m1 host applications (`91m1_ppp` on nRF54L15 or nRF54LM20B) need a separate Serial Modem image on the wired nRF9151 / SMA DK, configured for PPP + CMUX on uart0 for an external host MCU. Every `91m1_ppp` bundle carries the upstream archive CI tested that night, so there is no separate asset to download — and on-target tests flash that same archive, so what ships beside the host build is what CI verified against it.
 
 The exact tag varies by SMHA release. Each bundle's `README.md` names the Serial Modem version and links to the upstream release page. Browse [ncs-serial-modem releases](https://github.com/nrfconnect/ncs-serial-modem/releases) for the source, or use the zip already in your download.
 
@@ -98,12 +98,12 @@ Besides the full-flash `.hex`, the archive holds the ELF with debug symbols, a K
 Extract it, flash the `.hex` on the **Serial Modem DK** first, then flash the host bundle's `merged.hex` on the **host DK**:
 
 ```shell
-unzip serial_modem_v<tag>_nrf9151dk_extmcu.zip
+unzip serial_modem_v<tag>_nrf9151dk_nrf91m1.zip
 nrfutil device program \
-  --firmware serial_modem_v<tag>_nrf9151dk_extmcu.hex --recover
+  --firmware serial_modem_v<tag>_nrf9151dk_nrf91m1.hex --recover
 ```
 
-Replace `<tag>` with the version named in the bundle `README.md` (for example `2.0.0-preview2`).
+Replace `<tag>` with the version named in the bundle `README.md` (for example `2.0.0-preview3`).
 
 See [91m1_ppp hardware setup](../applications/91m1_ppp/doc/hardware-setup.md#serial-modem-firmware) for wiring and Board Configurator settings.
 

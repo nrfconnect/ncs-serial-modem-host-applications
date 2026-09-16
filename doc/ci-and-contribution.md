@@ -177,9 +177,9 @@ Identities are therefore compared rather than assumed. `AT+CGSN=1` gives the IME
 
 #### Serial Modem release
 
-The modem image is never built from source here. Nightly CI resolves the newest published [ncs-serial-modem](https://github.com/nrfconnect/ncs-serial-modem/releases) release that ships a recognised bundle (`*_nrf9151dk_nrf91m1.zip` or the legacy `*_nrf9151dk_extmcu.zip`, including prereleases), locks that tag for the whole pipeline run, and passes it to every 91m1 hardware test and to the Release workflow. Tests download the archive, cache it under `build/serial-modem-firmware/<tag>/`, and flash the `.hex` from it; release bundles copy the same archive unextracted into every `91m1_ppp` zip, so what ships is what CI tested that night.
+The modem image is never built from source here. Nightly CI resolves the newest published [ncs-serial-modem](https://github.com/nrfconnect/ncs-serial-modem/releases) release that ships the nrf91m1 bundle (`*_nrf9151dk_nrf91m1.zip`, including prereleases), locks that tag for the whole pipeline run, and passes it to every 91m1 hardware test and to the Release workflow. Tests download the archive, cache it under `build/serial-modem-firmware/<tag>/`, and flash the `.hex` from it; release bundles copy the same archive unextracted into every `91m1_ppp` zip, so what ships is what CI tested that night.
 
-Upstream v2.0.0-preview3 moved the host UART to the nRF91M1 pinout; CI pins `v2.0.0-preview2` until the bench is rewired — see [`applications/91m1_ppp/doc/hardware-setup.md`](../applications/91m1_ppp/doc/hardware-setup.md).
+The Serial Modem uses the nRF91M1 UART pinout; the bench is wired for it — see [`applications/91m1_ppp/doc/hardware-setup.md`](../applications/91m1_ppp/doc/hardware-setup.md).
 
 Set `SERIAL_MODEM_RELEASE` to pin a specific upstream tag when running tests or the release workflow locally. Static settings such as `console_baudrate` live in [`tests/on_target/ci/serial_modem_firmware.yml`](../tests/on_target/ci/serial_modem_firmware.yml).
 

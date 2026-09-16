@@ -20,23 +20,18 @@ On both DKs:
 
 On the **nRF9151 / nRF9151 SMA DK** (Serial Modem):
 
-- Disable **VCOM0** so uart0 (P0.26–P0.27, P0.14–P0.15) is free for the external host link. Upstream Serial Modem v2.0.0-preview3 and later use the [nRF91M1 pinout](https://nrfconnectdocs.nordicsemi.com/addons/addon-serial_modem/latest/main/uart_configuration.html#nrf91m1-pre-programmed-sm-application) on uart0 instead of uart2.
+- Disable **VCOM0** so uart0 (P0.26–P0.27, P0.14–P0.15) is free for the external host link. Serial Modem uses the [nRF91M1 pinout](https://nrfconnectdocs.nordicsemi.com/addons/addon-serial_modem/latest/main/uart_configuration.html#nrf91m1-pre-programmed-sm-application) on uart0.
 - Leave **VCOM1** enabled for modem logs (uart1, P0.28/P0.29). CI captures this port at 1000000 baud.
 
 Host-specific settings are listed in each section below.
 
 ### Serial Modem release and UART pinout
 
-Upstream renamed the published bundle in v2.0.0-preview3 (`*_nrf9151dk_nrf91m1.zip`) and moved the host UART from **uart2** (P0.02–P0.07) to **uart0** (P0.26/P0.27, P0.14/P0.15). DTR (P0.31) and RI (P0.30) are unchanged.
+The Serial Modem bundle is `*_nrf9151dk_nrf91m1.zip`. The host UART is the nRF91M1 pinout on **uart0** (P0.27 TX, P0.26 RX, P0.15 RTS, P0.14 CTS). DTR is on P0.31 and RI on P0.30.
 
-| Release | Bundle suffix | Host UART on modem | Data pins (modem) |
-|---|---|---|---|
-| v2.0.0-preview2 and earlier | `_nrf9151dk_extmcu.zip` | uart2 | P0.02 TX, P0.03 RX, P0.06 RTS, P0.07 CTS |
-| v2.0.0-preview3 and later | `_nrf9151dk_nrf91m1.zip` | uart0 | P0.27 TX, P0.26 RX, P0.14 RTS, P0.15 CTS |
+Until the nRF9151 DK Board Configurator can route DTR automatically, the modem DK also expects **P0.31 (DTR) jumpered to GND** when a PC host is used; an external MCU host should drive DTR from its GPIO instead (as this application does via P1.11).
 
-Nordic is standardising on the nRF91M1 layout for all setups. Until the nRF9151 DK Board Configurator can route DTR automatically, preview3 also expects **P0.31 (DTR) jumpered to GND** on the modem DK when a PC host is used; an external MCU host should drive DTR from its GPIO instead (as this application does via P1.11).
-
-CI currently pins `v2.0.0-preview2` until the bench is rewired for the nrf91m1 pinout. Remove `pinned_release` from [`tests/on_target/ci/serial_modem_firmware.yml`](../../../tests/on_target/ci/serial_modem_firmware.yml) once the wiring below matches preview3.
+CI tracks the newest upstream release that ships the nrf91m1 bundle. Static settings such as `console_baudrate` live in [`tests/on_target/ci/serial_modem_firmware.yml`](../../../tests/on_target/ci/serial_modem_firmware.yml); set `SERIAL_MODEM_RELEASE` to pin a specific tag locally.
 
 ## nRF54L15 DK + nRF9151 DK
 
@@ -48,20 +43,18 @@ On the nRF54L15 DK:
 
 ### Wiring
 
-Use the **nrf91m1 / preview3** column when running Serial Modem v2.0.0-preview3 or later. The **legacy extmcu** column matches v2.0.0-preview2 and earlier.
+| nRF54L15 DK | nRF9151 DK | Signal |
+|---|---|---|
+| P0.00 | P0.26 | UART TX → RX |
+| P0.01 | P0.27 | UART RX ← TX |
+| P0.02 | P0.15 | UART RTS → CTS |
+| P0.03 | P0.14 | UART CTS ← RTS |
+| P1.11 | P0.31 | DTR |
+| P1.12 | P0.30 | RI |
+| **P1.10** | **P20 pin 7** | **nRESET** |
+| GND | GND | Ground |
 
-| nRF54L15 DK | nRF9151 DK (nrf91m1) | nRF9151 DK (legacy extmcu) | Signal |
-|---|---|---|---|
-| P0.00 | P0.26 | P0.03 | UART TX → RX |
-| P0.01 | P0.27 | P0.02 | UART RX ← TX |
-| P0.02 | P0.15 | P0.07 | UART RTS → CTS |
-| P0.03 | P0.14 | P0.06 | UART CTS ← RTS |
-| P1.11 | P0.31 | P0.31 | DTR |
-| P1.12 | P0.30 | P0.30 | RI |
-| **P1.10** | **P20 pin 7** | **P20 pin 7** | **nRESET** |
-| GND | GND | GND | Ground |
-
-- **P0 connector:** UART signals on the host; on the modem, nrf91m1 uart0 pins are on the DK edge (not P4).
+- **P0 connector:** UART signals on the host; on the modem, the uart0 pins are on the DK edge.
 - **P1 connector:** DTR, RI, and modem reset on the host.
 - Add a **1 kΩ** series resistor on the reset wire if IO levels differ.
 
@@ -92,25 +85,24 @@ On the nRF54LM20B DK, no Board Configurator changes are required for the plain b
 
 The Serial Modem link uses **uart21** on the P1 connector (P1.8/P1.9 for TX/RX, P1.23/P1.24 for RTS/CTS).
 
-| nRF54LM20B DK | nRF9151 / SMA DK (nrf91m1) | nRF9151 / SMA DK (legacy extmcu) | Signal |
-|---|---|---|---|
-| P1.8 | P0.26 | P0.03 (P4) | UART TX → RX |
-| P1.9 | P0.27 | P0.02 (P4) | UART RX ← TX |
-| P1.23 | P0.15 | P0.07 (P4) | UART RTS → CTS |
-| P1.24 | P0.14 | P0.06 (P4) | UART CTS ← RTS |
-| P1.11 | P0.31 (P3) | P0.31 (P3) | DTR |
-| P1.12 | P0.30 (P3) | P0.30 (P3) | RI |
-| **P1.10** | **P20 pin 7** | **P20 pin 7** | **nRESET** |
-| GND | GND | GND | Ground |
+| nRF54LM20B DK | nRF9151 / SMA DK | Signal |
+|---|---|---|
+| P1.8 | P0.26 | UART TX → RX |
+| P1.9 | P0.27 | UART RX ← TX |
+| P1.23 | P0.15 | UART RTS → CTS |
+| P1.24 | P0.14 | UART CTS ← RTS |
+| P1.11 | P0.31 (P3) | DTR |
+| P1.12 | P0.30 (P3) | RI |
+| **P1.10** | **P20 pin 7** | **nRESET** |
+| GND | GND | Ground |
 
 - **Host P1/P2 connector:** UART (uart21 on P1.8/P1.9 and P1.23/P1.24), DTR (P1.11), RI (P1.12), modem reset (P1.10).
-- **Modem side (legacy):** UART and HWFC on **P4**; DTR and RI on **P3**; nRESET on **P20 pin 7**.
-- **Modem side (nrf91m1):** uart0 data pins on the DK edge; DTR and RI still on **P3**; nRESET on **P20 pin 7**.
+- **Modem side:** uart0 data pins on the DK edge; DTR and RI on **P3**; nRESET on **P20 pin 7**.
 - Add a **1 kΩ** series resistor on the reset wire if IO levels differ.
 
 > **Note:** DTR/RI use P1.11/P1.12, which conflict with the DK default uart21 HWFC pins. The overlay maps RTS/CTS to P1.23/P1.24 instead. All four UART wires plus DTR/RI must be connected for reliable operation.
 
-> **Note:** The `UART_TX`/`UART_RX` psels in the host overlay must match the orientation in the table above — host TX on P1.8 drives the modem's RX (P0.03). Swapping the two leaves both sides transmitting into each other's transmitters, and the only symptom is that the modem never answers the init chat script.
+> **Note:** The `UART_TX`/`UART_RX` psels in the host overlay must match the orientation in the table above — host TX on P1.8 drives the modem's RX (P0.26). Swapping the two leaves both sides transmitting into each other's transmitters, and the only symptom is that the modem never answers the init chat script.
 
 ### Build
 
@@ -178,14 +170,14 @@ On host boot, [`src/modem_reset.c`](../src/modem_reset.c) pulses nRESET (500 ms)
 
 ## Serial Modem firmware
 
-The 91m1_ppp host application is tested against the newest [ncs-serial-modem](https://github.com/nrfconnect/ncs-serial-modem/releases) release that ships the external-MCU zip for the nRF9151 / SMA DK. Download `serial_modem_<tag>_nrf9151dk_extmcu.zip` from the upstream release page, or use the copy at the top level of your [SMHA release bundle](../../../doc/release-artifacts.md#serial-modem-firmware-nrf9151-dk).
+The 91m1_ppp host application is tested against the newest [ncs-serial-modem](https://github.com/nrfconnect/ncs-serial-modem/releases) release that ships the nrf91m1 zip for the nRF9151 / SMA DK. Download `serial_modem_<tag>_nrf9151dk_nrf91m1.zip` from the upstream release page, or use the copy at the top level of your [SMHA release bundle](../../../doc/release-artifacts.md#serial-modem-firmware-nrf9151-dk).
 
-This build enables PPP and CMUX on **uart2** routed to the host (P0.02/P0.03 TX/RX, P0.06/P0.07 RTS/CTS, DTR/RI on P0.31/P0.30). Without the external-MCU variant, the modem listens on the USB VCOM UART instead — the host will see `init_chat_script: timed out`.
+This build enables PPP and CMUX on **uart0** routed to the host (P0.27/P0.26 TX/RX, P0.15/P0.14 RTS/CTS, DTR/RI on P0.31/P0.30). Without the nrf91m1 variant, the modem listens on the USB VCOM UART instead — the host will see `init_chat_script: timed out`.
 
 Extract the zip and flash the `.hex` on the nRF9151 / SMA DK:
 
 ```shell
-nrfutil device program --firmware serial_modem_<tag>_nrf9151dk_extmcu.hex --recover
+nrfutil device program --firmware serial_modem_<tag>_nrf9151dk_nrf91m1.hex --recover
 ```
 
 CI on-target tests resolve and flash the same archive before each 91m1 run — see [Serial logs](../../../doc/ci-and-contribution.md#serial-logs).

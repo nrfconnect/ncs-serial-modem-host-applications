@@ -37,6 +37,8 @@ target_sources(app PRIVATE
 )
 
 target_sources_ifdef(CONFIG_SHELL app PRIVATE src/modules/network/network_shell.c)
+target_sources_ifdef(CONFIG_APP_MODEM_AT app PRIVATE src/modules/modem_at/modem_at.c)
+target_sources_ifdef(CONFIG_APP_MODEM_AT_SHELL app PRIVATE src/modules/modem_at/modem_at_shell.c)
 target_sources_ifdef(CONFIG_APP_FOTA app PRIVATE src/modules/fota/fota.c)
 target_sources_ifdef(CONFIG_APP_FOTA_SHELL app PRIVATE src/modules/fota/fota_shell.c)
 target_sources_ifdef(CONFIG_APP_LOCATION app PRIVATE

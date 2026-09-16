@@ -12,16 +12,6 @@ from utils.logger import get_logger
 
 logger = get_logger()
 
-# Whether the built-in CONFIG_MODEM_AT_SHELL AT path can coexist with an active
-# PPP session. It cannot on the current SDK: issuing any AT over the CMUX AT
-# user pipe (even a single AT#XLOG=1 with no other traffic) wedges the modem mux
-# and takes the PPP/CoAP link down with -116. This regressed with the modem
-# PPP/AT user pipe API migration (modem_at_user_pipe_claim() gaining a chat
-# instance and wait timeout). Flip back to True once the SDK modem-AT-shell/CMUX
-# pipe handling is fixed, so enable_modem_application_logs() resumes capturing
-# runtime modem logs instead of only boot output.
-_MODEM_AT_SHELL_COEXISTS_WITH_PPP = False
-
 ENABLE_LOGS_AT_COMMAND = "AT#XLOG=1"
 # Reports the mode the modem believes it is in. Worth recording because Serial
 # Modem answers OK without touching the backend when the mode asked for already
@@ -33,16 +23,16 @@ QUERY_LOGS_AT_COMMAND = "AT#XLOG?"
 # acknowledges AT#XLOG=1 and then logs nothing.
 QUERY_IMEI_AT_COMMAND = "AT+CGSN=1"
 
-# Responses from the in-tree `modem at` shell when the CMUX AT pipe is not
-# usable. CMUX runtime power save closes the pipe after the idle timeout, so
-# this is an expected transient worth retrying.
+# Responses from the app `at` shell when the CMUX AT pipe is not usable. CMUX
+# runtime power save closes the pipe after the idle timeout, so this is an
+# expected transient worth retrying.
 PIPE_UNAVAILABLE_RESPONSES = (
     "modem is not ready",
     "AT pipe busy",
     "AT command failed",
 )
-# The running image predates CONFIG_MODEM_AT_SHELL. Retrying cannot help; a FOTA
-# update payload built before that option was added behaves this way.
+# The running image predates the `at` shell command. Retrying cannot help; a
+# FOTA update payload built before that command was added behaves this way.
 SHELL_MISSING_RESPONSE = "command not found"
 
 _OK_RESPONSE = re.compile(r"^OK\s*$", re.MULTILINE)
@@ -53,18 +43,18 @@ _CONSOLE_IMEI = re.compile(r"IMEI:\s*(\d{15})")
 
 
 class _ShellCommandMissing(Exception):
-    """The running firmware does not have the `modem at` shell command."""
+    """The running firmware does not have the `at` shell command."""
 
 
 def _send_at(
     dut: types.SimpleNamespace, at_command: str, *, timeout: float
 ) -> str | None:
-    """Run *at_command* through the host's `modem at` shell.
+    """Run *at_command* through the host's `at` shell.
 
     Returns the modem's response once it ends in `OK`, or None if the AT pipe is
     unavailable or no verdict arrives within *timeout*.
     """
-    shell_command = f'modem at "{at_command}"'
+    shell_command = f'at "{at_command}"'
     offset = len(dut.uart.snapshot_log())
 
     try:
@@ -198,16 +188,7 @@ def enable_modem_application_logs(
     Returns True once the modem acknowledges. Modem logs are a diagnostic aid,
     so failure is warned about rather than raised: it must not fail a test whose
     functional assertions all pass.
-
-    Disabled while ``_MODEM_AT_SHELL_COEXISTS_WITH_PPP`` is False: see the flag.
     """
-    if not _MODEM_AT_SHELL_COEXISTS_WITH_PPP:
-        logger.warning(
-            "Serial Modem log enable is disabled: AT over the CMUX pipe wedges "
-            "the modem link on the current SDK; capturing boot output only"
-        )
-        return False
-
     if dut.modem_uart is None:
         return False
 
@@ -216,8 +197,8 @@ def enable_modem_application_logs(
             confirmed = _send_at(dut, ENABLE_LOGS_AT_COMMAND, timeout=timeout) is not None
         except _ShellCommandMissing as exc:
             logger.warning(
-                "Host firmware has no `modem at` shell command (%s); it predates "
-                "CONFIG_MODEM_AT_SHELL, so Serial Modem logs stay at boot output only",
+                "Host firmware has no `at` shell command (%s); it predates the "
+                "app modem-AT shell, so Serial Modem logs stay at boot output only",
                 exc,
             )
             return False
@@ -225,12 +206,10 @@ def enable_modem_application_logs(
         if confirmed:
             logger.info("Serial Modem application logs enabled (%s)", ENABLE_LOGS_AT_COMMAND)
             _reopen_modem_capture(dut)
-            # Deliberately no follow-up AT queries here. Each `modem at` runs a
-            # chat script on the CMUX AT user pipe, and the Zephyr shell returns
-            # as soon as it prints OK, before that script releases the pipe.
-            # Firing AT#XLOG?/AT+CGSN=1 straight after AT#XLOG=1 collides on the
-            # not-yet-released pipe ("script is already running"), which jams the
-            # mux and takes down the PPP/CoAP link. One enable command is enough.
+            # The app `at` shell runs each command synchronously and releases the
+            # CMUX AT pipe before returning, so follow-up queries are safe.
+            _log_reported_state(dut, timeout=timeout)
+            _verify_captured_console(dut, timeout=timeout)
             return True
         if attempt < attempts:
             logger.info(

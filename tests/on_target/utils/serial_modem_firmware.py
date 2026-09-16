@@ -62,37 +62,32 @@ def _github_api_request(url: str) -> object:
         raise RuntimeError(f"GitHub API request failed ({exc.code}): {body}") from exc
 
 
-def _asset_suffixes(static: dict) -> list[str]:
-    suffixes = static.get("asset_suffixes")
-    if suffixes:
-        return list(suffixes)
-    legacy = static.get("asset_suffix")
-    if legacy:
-        return [legacy]
-    raise RuntimeError("serial_modem_firmware.yml must set asset_suffixes")
+def _asset_suffix(static: dict) -> str:
+    suffix = static.get("asset_suffix")
+    if suffix:
+        return str(suffix)
+    raise RuntimeError("serial_modem_firmware.yml must set asset_suffix")
 
 
 def _release_config_from_payload(
     release: dict,
     *,
-    asset_suffixes: list[str],
+    asset_suffix: str,
 ) -> dict:
     tag = release["tag_name"]
-    for suffix in asset_suffixes:
-        for asset in release.get("assets", []):
-            name = asset["name"]
-            if name.endswith(suffix):
-                return {
-                    "release": tag,
-                    "bundle": name,
-                    "hex": f"{Path(name).stem}.hex",
-                    "download_url": asset["browser_download_url"],
-                    "upstream_release_url": release["html_url"],
-                }
+    for asset in release.get("assets", []):
+        name = asset["name"]
+        if name.endswith(asset_suffix):
+            return {
+                "release": tag,
+                "bundle": name,
+                "hex": f"{Path(name).stem}.hex",
+                "download_url": asset["browser_download_url"],
+                "upstream_release_url": release["html_url"],
+            }
 
     raise RuntimeError(
-        f"Serial Modem release {tag!r} has no asset ending with any of "
-        f"{asset_suffixes!r}"
+        f"Serial Modem release {tag!r} has no asset ending with {asset_suffix!r}"
     )
 
 
@@ -104,40 +99,29 @@ def resolve_serial_modem_release(
     """Resolve a Serial Modem release from GitHub.
 
     When *tag* is set, fetch that release. Otherwise walk upstream releases
-    newest-first and return the first that ships a recognised bundle.
+    newest-first and return the first that ships the nrf91m1 bundle.
     """
     static = load_serial_modem_static_config(root)
     repo = static["upstream_repo"]
-    asset_suffixes = _asset_suffixes(static)
+    asset_suffix = _asset_suffix(static)
 
-    cache_key = (repo, tuple(asset_suffixes), tag)
+    cache_key = (repo, asset_suffix, tag)
     if cache_key in _release_cache:
         return dict(_release_cache[cache_key])
 
-    pinned_asset_suffix = None
-    if tag and tag == _pinned_release_tag(static):
-        yaml_suffix = static.get("pinned_asset_suffix")
-        if yaml_suffix:
-            pinned_asset_suffix = str(yaml_suffix).strip() or None
-
-    resolved = _resolve_uncached(
-        repo, asset_suffixes, tag, pinned_asset_suffix=pinned_asset_suffix
-    )
+    resolved = _resolve_uncached(repo, asset_suffix, tag)
     _release_cache[cache_key] = resolved
     return dict(resolved)
 
 
 def _resolve_uncached(
     repo: str,
-    asset_suffixes: list[str],
+    asset_suffix: str,
     tag: str | None,
-    *,
-    pinned_asset_suffix: str | None = None,
 ) -> dict:
     if tag:
         release = _github_api_request(f"{GITHUB_API}/repos/{repo}/releases/tags/{tag}")
-        suffixes = [pinned_asset_suffix] if pinned_asset_suffix else asset_suffixes
-        return _release_config_from_payload(release, asset_suffixes=suffixes)
+        return _release_config_from_payload(release, asset_suffix=asset_suffix)
 
     releases = _github_api_request(f"{GITHUB_API}/repos/{repo}/releases")
     if not isinstance(releases, list):
@@ -145,13 +129,13 @@ def _resolve_uncached(
 
     for release in releases:
         try:
-            return _release_config_from_payload(release, asset_suffixes=asset_suffixes)
+            return _release_config_from_payload(release, asset_suffix=asset_suffix)
         except RuntimeError:
             continue
 
     raise RuntimeError(
-        f"No Serial Modem release in {repo!r} ships an asset ending with any of "
-        f"{asset_suffixes!r}"
+        f"No Serial Modem release in {repo!r} ships an asset ending with "
+        f"{asset_suffix!r}"
     )
 
 

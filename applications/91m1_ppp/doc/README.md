@@ -6,7 +6,7 @@ The application connects to nRF Cloud over **CoAP/DTLS** from the host MCU (nRF5
 
 ## Getting started
 
-1. **Wire up the development boards** — Connect the host DK (nRF54L15 or nRF54LM20B) to the nRF9151 DK (Serial Modem). Configure both DKs in the Board Configurator and flash Serial Modem firmware with PPP and CMUX enabled on the nRF9151. Use the `serial_modem_*_nrf9151dk_extmcu.zip` from your [SMHA release bundle](../../../doc/release-artifacts.md#serial-modem-firmware-nrf9151-dk), or download the newest matching archive from [ncs-serial-modem releases](https://github.com/nrfconnect/ncs-serial-modem/releases). See [Hardware setup](hardware-setup.md) for wiring, pin assignments, and how to flash the Serial Modem image.
+1. **Wire up the development boards** — Connect the host DK (nRF54L15 or nRF54LM20B) to the nRF9151 DK (Serial Modem). Configure both DKs in the Board Configurator and flash Serial Modem firmware with PPP and CMUX enabled on the nRF9151. Use the `serial_modem_*_nrf9151dk_nrf91m1.zip` from your [SMHA release bundle](../../../doc/release-artifacts.md#serial-modem-firmware-nrf9151-dk), or download the newest matching archive from [ncs-serial-modem releases](https://github.com/nrfconnect/ncs-serial-modem/releases). See [Hardware setup](hardware-setup.md) for wiring, pin assignments, and how to flash the Serial Modem image.
 
 2. **Build and flash 91m1_ppp on the host DK**
 

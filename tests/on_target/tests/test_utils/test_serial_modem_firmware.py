@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from unittest.mock import patch
 
 import pytest
@@ -13,61 +12,40 @@ from utils.serial_modem_firmware import (
     resolve_serial_modem_release,
 )
 
+REPO = "nrfconnect/ncs-serial-modem"
+
 STATIC_CONFIG = {
-    "upstream_repo": "nrfconnect/ncs-serial-modem",
-    "asset_suffixes": [
-        "_nrf9151dk_nrf91m1.zip",
-        "_nrf9151dk_extmcu.zip",
-    ],
+    "upstream_repo": REPO,
+    "asset_suffix": "_nrf9151dk_nrf91m1.zip",
     "console_baudrate": 1000000,
 }
 
-NEWEST_RELEASE = {
-    "tag_name": "v2.0.0",
-    "html_url": "https://github.com/nrfconnect/ncs-serial-modem/releases/tag/v2.0.0",
-    "assets": [
-        {
-            "name": "serial_modem_v2.0.0_nrf9151dk_nrf91m1.zip",
-            "browser_download_url": (
-                "https://github.com/nrfconnect/ncs-serial-modem/releases/download/"
-                "v2.0.0/serial_modem_v2.0.0_nrf9151dk_nrf91m1.zip"
-            ),
-        }
-    ],
-}
 
-STABLE_HEX_ONLY_RELEASE = {
-    "tag_name": "v1.0.1",
-    "html_url": "https://github.com/nrfconnect/ncs-serial-modem/releases/tag/v1.0.1",
-    "assets": [
-        {
-            "name": "serial_modem_v1.0.1_nrf9151dk_nrf91m1.hex",
-            "browser_download_url": "https://example.com/v1.0.1.hex",
-        }
-    ],
-}
+def _release(tag: str, *, bundle: bool = True) -> dict:
+    """Build a fake upstream release payload for *tag*.
 
-LEGACY_EXTMCU_RELEASE = {
-    "tag_name": "v2.0.0-preview2",
-    "html_url": "https://github.com/nrfconnect/ncs-serial-modem/releases/tag/v2.0.0-preview2",
-    "assets": [
-        {
-            "name": "serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip",
-            "browser_download_url": "https://example.com/preview2.zip",
-        }
-    ],
-}
+    With *bundle* the release ships the nrf91m1 zip CI looks for; otherwise it
+    only ships a bare .hex, which resolution must skip.
+    """
+    ext = "zip" if bundle else "hex"
+    name = f"serial_modem_{tag}_nrf9151dk_nrf91m1.{ext}"
+    return {
+        "tag_name": tag,
+        "html_url": f"https://github.com/{REPO}/releases/tag/{tag}",
+        "assets": [
+            {
+                "name": name,
+                "browser_download_url": f"https://example.com/{tag}.{ext}",
+            }
+        ],
+    }
 
-PREVIEW3_RELEASE = {
-    "tag_name": "v2.0.0-preview3",
-    "html_url": "https://github.com/nrfconnect/ncs-serial-modem/releases/tag/v2.0.0-preview3",
-    "assets": [
-        {
-            "name": "serial_modem_v2.0.0-preview3_nrf9151dk_nrf91m1.zip",
-            "browser_download_url": "https://example.com/preview3.zip",
-        }
-    ],
-}
+
+# Fake, version-neutral fixtures: only the presence of the nrf91m1 zip and the
+# list order matter to the resolver, not the tag values.
+NEWEST_RELEASE = _release("v9.9.9")
+OLDER_RELEASE = _release("v9.9.8")
+HEX_ONLY_RELEASE = _release("v9.9.7", bundle=False)
 
 
 @pytest.fixture(autouse=True)
@@ -82,13 +60,14 @@ def test_resolve_latest_prefers_newest_nrf91m1_zip() -> None:
         return_value=STATIC_CONFIG,
     ), patch(
         "utils.serial_modem_firmware._github_api_request",
-        return_value=[NEWEST_RELEASE, STABLE_HEX_ONLY_RELEASE, PREVIEW3_RELEASE],
+        return_value=[NEWEST_RELEASE, HEX_ONLY_RELEASE, OLDER_RELEASE],
     ):
         resolved = resolve_serial_modem_release()
 
-    assert resolved["release"] == "v2.0.0"
-    assert resolved["bundle"] == "serial_modem_v2.0.0_nrf9151dk_nrf91m1.zip"
-    assert resolved["hex"] == "serial_modem_v2.0.0_nrf9151dk_nrf91m1.hex"
+    tag = NEWEST_RELEASE["tag_name"]
+    assert resolved["release"] == tag
+    assert resolved["bundle"] == f"serial_modem_{tag}_nrf9151dk_nrf91m1.zip"
+    assert resolved["hex"] == f"serial_modem_{tag}_nrf9151dk_nrf91m1.hex"
 
 
 def test_resolve_skips_hex_only_releases() -> None:
@@ -97,94 +76,63 @@ def test_resolve_skips_hex_only_releases() -> None:
         return_value=STATIC_CONFIG,
     ), patch(
         "utils.serial_modem_firmware._github_api_request",
-        return_value=[STABLE_HEX_ONLY_RELEASE, PREVIEW3_RELEASE],
+        return_value=[HEX_ONLY_RELEASE, OLDER_RELEASE],
     ):
         resolved = resolve_serial_modem_release()
 
-    assert resolved["release"] == "v2.0.0-preview3"
-
-
-def test_resolve_falls_back_to_legacy_extmcu_asset() -> None:
-    with patch(
-        "utils.serial_modem_firmware.load_serial_modem_static_config",
-        return_value=STATIC_CONFIG,
-    ), patch(
-        "utils.serial_modem_firmware._github_api_request",
-        return_value=[LEGACY_EXTMCU_RELEASE],
-    ):
-        resolved = resolve_serial_modem_release()
-
-    assert resolved["release"] == "v2.0.0-preview2"
-    assert resolved["bundle"] == "serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip"
-
-
-def test_resolve_pinned_legacy_release_uses_extmcu_asset() -> None:
-    with patch(
-        "utils.serial_modem_firmware.load_serial_modem_static_config",
-        return_value=STATIC_CONFIG,
-    ), patch(
-        "utils.serial_modem_firmware._github_api_request",
-        return_value=LEGACY_EXTMCU_RELEASE,
-    ) as api_request:
-        resolved = resolve_serial_modem_release("v2.0.0-preview2")
-
-    api_request.assert_called_once_with(
-        "https://api.github.com/repos/nrfconnect/ncs-serial-modem/releases/tags/v2.0.0-preview2"
-    )
-    assert resolved["bundle"] == "serial_modem_v2.0.0-preview2_nrf9151dk_extmcu.zip"
+    assert resolved["release"] == OLDER_RELEASE["tag_name"]
 
 
 def test_resolve_pinned_tag() -> None:
+    tag = OLDER_RELEASE["tag_name"]
     with patch(
         "utils.serial_modem_firmware.load_serial_modem_static_config",
         return_value=STATIC_CONFIG,
     ), patch(
         "utils.serial_modem_firmware._github_api_request",
-        return_value=PREVIEW3_RELEASE,
+        return_value=OLDER_RELEASE,
     ) as api_request:
-        resolved = resolve_serial_modem_release("v2.0.0-preview3")
+        resolved = resolve_serial_modem_release(tag)
 
     api_request.assert_called_once_with(
-        "https://api.github.com/repos/nrfconnect/ncs-serial-modem/releases/tags/v2.0.0-preview3"
+        f"https://api.github.com/repos/{REPO}/releases/tags/{tag}"
     )
-    assert resolved["release"] == "v2.0.0-preview3"
+    assert resolved["release"] == tag
 
 
 def test_load_config_uses_serial_modem_release_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("SERIAL_MODEM_RELEASE", "v2.0.0-preview3")
+    tag = NEWEST_RELEASE["tag_name"]
+    monkeypatch.setenv("SERIAL_MODEM_RELEASE", tag)
 
     with patch(
         "utils.serial_modem_firmware.load_serial_modem_static_config",
         return_value=STATIC_CONFIG,
     ), patch(
         "utils.serial_modem_firmware._github_api_request",
-        return_value=PREVIEW3_RELEASE,
+        return_value=NEWEST_RELEASE,
     ) as api_request:
         config = load_serial_modem_firmware_config()
 
     api_request.assert_called_once()
-    assert config["release"] == "v2.0.0-preview3"
+    assert config["release"] == tag
     assert config["console_baudrate"] == 1000000
 
 
 def test_load_config_uses_pinned_release_from_yaml() -> None:
-    config_with_pin = {
-        **STATIC_CONFIG,
-        "pinned_release": "v2.0.0-preview2",
-        "pinned_asset_suffix": "_nrf9151dk_extmcu.zip",
-    }
+    tag = NEWEST_RELEASE["tag_name"]
+    config_with_pin = {**STATIC_CONFIG, "pinned_release": tag}
 
     with patch(
         "utils.serial_modem_firmware.load_serial_modem_static_config",
         return_value=config_with_pin,
     ), patch(
         "utils.serial_modem_firmware._github_api_request",
-        return_value=LEGACY_EXTMCU_RELEASE,
+        return_value=NEWEST_RELEASE,
     ) as api_request:
         config = load_serial_modem_firmware_config()
 
     api_request.assert_called_once()
-    assert config["release"] == "v2.0.0-preview2"
+    assert config["release"] == tag
 
 
 def test_repeated_resolution_hits_the_api_once() -> None:
@@ -211,13 +159,13 @@ def test_cached_release_is_not_mutated_by_callers() -> None:
         return_value=[NEWEST_RELEASE],
     ):
         resolve_serial_modem_release()["release"] = "tampered"
-        assert resolve_serial_modem_release()["release"] == "v2.0.0"
+        assert resolve_serial_modem_release()["release"] == NEWEST_RELEASE["tag_name"]
 
 
 def test_resolve_raises_when_no_matching_asset() -> None:
     release_without_asset = {
-        "tag_name": "v9.9.9",
-        "html_url": "https://example.com/v9.9.9",
+        "tag_name": "v9.9.0",
+        "html_url": "https://example.com/v9.9.0",
         "assets": [{"name": "other.zip", "browser_download_url": "https://example.com/other.zip"}],
     }
 
@@ -234,8 +182,8 @@ def test_resolve_raises_when_no_matching_asset() -> None:
 
 def test_resolve_pinned_tag_missing_asset() -> None:
     release_without_asset = {
-        "tag_name": "v9.9.9",
-        "html_url": "https://example.com/v9.9.9",
+        "tag_name": "v9.9.0",
+        "html_url": "https://example.com/v9.9.0",
         "assets": [],
     }
 
@@ -246,5 +194,5 @@ def test_resolve_pinned_tag_missing_asset() -> None:
         "utils.serial_modem_firmware._github_api_request",
         return_value=release_without_asset,
     ):
-        with pytest.raises(RuntimeError, match="has no asset ending with any of"):
-            resolve_serial_modem_release("v9.9.9")
+        with pytest.raises(RuntimeError, match="has no asset ending with"):
+            resolve_serial_modem_release("v9.9.0")
