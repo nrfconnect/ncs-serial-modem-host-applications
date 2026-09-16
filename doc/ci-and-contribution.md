@@ -185,6 +185,23 @@ Set `SERIAL_MODEM_RELEASE` to pin a specific upstream tag when running tests or 
 
 Full LTE and IP-level modem traces (`AT#XTRACE=1`) are a further step still, and they need a trace database to decode. Note that the UART trace backend shares `uart1` with the log backend and the two are mutually exclusive, so capturing traces that way costs the application log; `overlay-trace-backend-cmux.conf` routes traces over a dedicated CMUX channel instead and leaves `AT#XLOG=1` usable.
 
+## Documentation diagrams
+
+The diagrams in the application documentation are PlantUML sources kept next to their rendered SVGs in `applications/*/doc/diagrams/`, sharing the `style.puml` skin in the same folder. Edit the `.puml`, re-render, and commit both files:
+
+```shell
+scripts/render_diagrams.py
+```
+
+Rendering uses a PlantUML server, so no local Java installation is needed, and `!include` lines are resolved before the source is sent. Pass paths to render only some diagrams, and `--server` to use a local server instead of the public one:
+
+```shell
+docker run -d -p 8080:8080 plantuml/plantuml-server:jetty
+scripts/render_diagrams.py --server http://localhost:8080
+```
+
+A source that does not parse fails with the error and line number the server reports. The notation the diagrams use is documented in [Diagram notation](../applications/91m1_ppp/doc/architecture.md#diagram-notation).
+
 ## Commit messages
 
 We use a title format that combines [Conventional Commits](https://www.conventionalcommits.org/) semver types with [Zephyr-style](https://docs.zephyrproject.org/latest/contribute/guidelines.html#commit-guidelines) subsystem prefixes:

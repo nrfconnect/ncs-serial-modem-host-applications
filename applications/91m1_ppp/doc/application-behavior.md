@@ -15,6 +15,8 @@ Cooperating modules run as dedicated threads, each owning an SMF state machine a
 3. **Cloud** — On network up, the cloud module waits for valid time (NTP over PPP) and installed credentials, then calls `nrf_cloud_coap_connect()`. Missing credentials or time cause a retry every 10 seconds (`CONFIG_APP_CLOUD_CREDENTIAL_RETRY_SECONDS`).
 4. **Main** — When the cloud module publishes `CLOUD_CONNECTED`, main transitions to the cloud-connected state and runs the first cloud synchronization.
 
+![Startup sequence from boot to the first cloud synchronization](diagrams/startup.svg)
+
 ## Cloud synchronization
 
 While nRF Cloud is connected, main keeps a periodic timer on a dedicated workqueue (`CONFIG_APP_MAIN_CLOUD_SYNCHRONIZATION_PERIOD_SECONDS`, default **30 s**). Each synchronization runs through a sequence of substates, waiting for the current step to finish before starting the next:
@@ -24,6 +26,8 @@ While nRF Cloud is connected, main keeps a periodic timer on a dedicated workque
 3. Publishes `CLOUD_SHADOW_POLL_REQUEST` on `cloud_chan` to pick up any desired configuration from the device shadow, then waits for `CLOUD_SHADOW_POLLED`.
 4. Publishes `FOTA_POLL_REQUEST` on `fota_chan` to check for firmware updates, then waits for `FOTA_ABORTED` or enters the FOTA download state on `FOTA_STARTING`.
 5. Publishes `CLOUD_MEMFAULT_POST_REQUEST` on `cloud_chan` to post any pending Memfault data, then waits for `CLOUD_MEMFAULT_POSTED`.
+
+![One cloud synchronization cycle](diagrams/cloud-sync.svg)
 
 An initial synchronization runs immediately on cloud connect. The timer is cancelled when cloud disconnects. A new periodic trigger is only acted on while main is idle between synchronizations.
 

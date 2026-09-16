@@ -1,0 +1,53 @@
+@startuml
+' SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+' One cloud synchronization cycle, described in ../application-behavior.md.
+' The states behind it are in main-sync.puml.
+!include style.puml
+
+box "Host application" #FFFFFF
+    participant "main()" as Main
+    participant "Cloud\nmodule" as Cloud
+    participant "Location\nmodule" as Location
+    participant "FOTA\nmodule" as Fota
+end box
+participant "nRF Cloud" as Cloud9
+
+== STATE_SYNC_DEMO ==
+Main -> Cloud : CLOUD_MESSAGE_SEND
+Cloud -> Cloud9 : demo JSON device message
+Cloud -> Main : CLOUD_MESSAGE_SENT
+
+== STATE_SYNC_LOCATION <i>CONFIG_APP_LOCATION</i> ==
+Main -> Location : LOCATION_SEARCH_TRIGGER
+Location -> Location : Wi-Fi scan
+Location -> Main : LOCATION_CLOUD_REQUEST
+Main -> Cloud : CLOUD_LOCATION_REQUEST
+Cloud -> Cloud9 : ground-fix request
+Cloud9 --> Cloud : resolved position
+Location -> Main : LOCATION_SEARCH_DONE
+
+== STATE_SYNC_SHADOW ==
+Main -> Cloud : CLOUD_SHADOW_POLL_REQUEST
+Cloud -> Cloud9 : shadow poll
+Cloud -> Main : CLOUD_SHADOW_POLLED
+
+== STATE_SYNC_FOTA <i>CONFIG_APP_FOTA</i> ==
+Main -> Fota : FOTA_POLL_REQUEST
+Fota -> Cloud9 : job poll
+Fota -> Main : FOTA_ABORTED\nno job available
+note right of Main
+  A job instead publishes FOTA_STARTING,
+  which moves main() to STATE_FOTA and
+  pauses the synchronization until the
+  download ends.
+end note
+
+== STATE_SYNC_MEMFAULT ==
+Main -> Cloud : CLOUD_MEMFAULT_POST_REQUEST
+Cloud -> Cloud9 : pending Memfault data
+Cloud -> Main : CLOUD_MEMFAULT_POSTED
+
+== STATE_SYNC_IDLE ==
+Main -> Main : reschedule after\nCONFIG_APP_MAIN_CLOUD_SYNCHRONIZATION_PERIOD_SECONDS
+
+@enduml

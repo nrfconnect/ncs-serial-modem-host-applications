@@ -16,14 +16,7 @@ The module posts pending [Memfault](../memfault.md) data over the same CoAP sess
 
 The Cloud module implements a flat state machine with the following states and transitions:
 
-```mermaid
-stateDiagram-v2
-    [*] --> STATE_DISCONNECTED
-    STATE_DISCONNECTED --> STATE_CONNECTING : CLOUD_CONNECT
-    STATE_CONNECTING --> STATE_CONNECTED : CLOUD_CONNECTED
-    STATE_CONNECTING --> STATE_DISCONNECTED : CLOUD_DISCONNECT
-    STATE_CONNECTED --> STATE_DISCONNECTED : CLOUD_DISCONNECT
-```
+![Cloud module state machine](../diagrams/cloud.svg)
 
 ### States
 

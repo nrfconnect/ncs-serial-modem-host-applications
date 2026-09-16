@@ -6,6 +6,20 @@ The architecture is implemented using [Zephyr bus (zbus)](https://docs.nordicsem
 
 This document provides an overview of the architecture, with a focus on the zbus message passing and the modules' state machines. For the runtime behavior of the application as a whole, see [Application behavior](application-behavior.md).
 
+## Diagram notation
+
+The diagrams in this guide and in the module guides are generated from the PlantUML sources in [`doc/diagrams/`](diagrams/), which describe the implementation as it is. They use the following conventions:
+
+| Notation | Meaning |
+|----------|---------|
+| `entry / action` and `exit / action` | An action performed by the state's entry or exit function |
+| `EVENT / action` | An action performed when the state handles `EVENT`, without leaving the state |
+| `EVENT / ;` | An event the state deliberately handles by doing nothing, so that it does not propagate to the parent state |
+| `EVENT [guard]` on a transition | A transition taken only when the guard holds |
+| Dashed state or transition | Present only in some build configurations. The Kconfig symbol is named in the state |
+
+To change a diagram, edit its `.puml` file and regenerate the `.svg` with [`scripts/render_diagrams.py`](../../../scripts/render_diagrams.py), as described in [CI and contribution](../../../doc/ci-and-contribution.md#documentation-diagrams).
+
 ## System overview
 
 The application runs on the host MCU (nRF54L15 or nRF54LM20B) and uses the nRF91M1 Serial Modem as a cellular data interface over PPP. It consists of the following modules:
@@ -15,26 +29,11 @@ The application runs on the host MCU (nRF54L15 or nRF54LM20B) and uses the nRF91
 - **[Cloud module](modules/cloud.md)**: Handles communication with nRF Cloud using CoAP.
 - **[FOTA module](modules/fota.md)**: Manages firmware over-the-air updates of the host application.
 - **[Location module](modules/location.md)**: Provides Wi-Fi based positioning. Only built with the location overlay.
+- **Modem AT module**: Serializes access to the modem AT pipe behind `modem_at_run()`. It is the one module that has no zbus channel and no state machine, and is called directly from the host shell. See [Reaching Serial Modem AT commands](README.md#reaching-serial-modem-at-commands).
 
 The following diagram shows how the modules interact. Each module owns one channel, and both the requests sent to a module and the notifications it publishes go on that channel. All communication passes through the Main module, which is the only module that knows about the others.
 
-```mermaid
-flowchart LR
-    Network["Network module"]
-    Main["Main module"]
-    Cloud["Cloud module"]
-    Fota["FOTA module"]
-    Location["Location module"]
-
-    Network -->|"network_chan: connectivity status"| Main
-    Main -->|"network_chan: connect, disconnect"| Network
-    Main -->|"cloud_chan: connect, send message, poll shadow, post Memfault data, resolve position"| Cloud
-    Cloud -->|"cloud_chan: connection status"| Main
-    Main -->|"fota_chan: poll, cancel"| Fota
-    Fota -->|"fota_chan: job status, reboot request"| Main
-    Main -->|"location_chan: search trigger"| Location
-    Location -->|"location_chan: search status, Wi-Fi scan result"| Main
-```
+![Modules and the zbus channels they communicate over](diagrams/modules.svg)
 
 The following steps show the simplified flow of a typical operation:
 
@@ -299,17 +298,7 @@ This section covers how SMF is used in the modules. See the [SMF documentation](
 
 SMF supports defining a hierarchy of states. For example, the FOTA module's states can be graphically described as follows:
 
-```mermaid
-stateDiagram-v2
-    [*] --> STATE_RUNNING
-    state STATE_RUNNING {
-        [*] --> STATE_WAITING_FOR_POLL_REQUEST
-        STATE_WAITING_FOR_POLL_REQUEST --> STATE_POLLING_FOR_UPDATE
-        STATE_POLLING_FOR_UPDATE --> STATE_DOWNLOADING_UPDATE
-        STATE_DOWNLOADING_UPDATE --> STATE_REBOOT_PENDING
-        STATE_CANCELING
-    }
-```
+![Simplified FOTA module state hierarchy](diagrams/fota-hierarchy.svg)
 
 In the diagram, the black dots with arrows indicate initial transitions. In this case, the initial state of the machine is set to the top-level `STATE_RUNNING` state. In the state definitions, an initial transition is configured such that the state machine ends up in `STATE_WAITING_FOR_POLL_REQUEST` when first initialized. See [FOTA module](modules/fota.md) for the complete set of transitions.
 

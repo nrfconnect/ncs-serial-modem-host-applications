@@ -12,12 +12,7 @@ The module reacts to `NET_EVENT_L4_CONNECTED` and `NET_EVENT_L4_DISCONNECTED` ne
 
 The Network module implements a flat state machine with the following states and transitions:
 
-```mermaid
-stateDiagram-v2
-    [*] --> STATE_DISCONNECTED
-    STATE_DISCONNECTED --> STATE_CONNECTED : NETWORK_CONNECTED
-    STATE_CONNECTED --> STATE_DISCONNECTED : NETWORK_DISCONNECTED
-```
+![Network module state machine](../diagrams/network.svg)
 
 ### States
 

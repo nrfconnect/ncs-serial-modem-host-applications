@@ -1,0 +1,33 @@
+@startuml
+' SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+' Location module state machine in src/modules/location/location.c.
+' Notation: ../architecture.md#diagram-notation
+!include style.puml
+
+state STATE_RUNNING #FFFFFF {
+    state STATE_LOCATION_SEARCH_INACTIVE
+    STATE_LOCATION_SEARCH_INACTIVE : LOCATION_SEARCH_CANCEL / ;
+    STATE_LOCATION_SEARCH_INACTIVE : LOCATION_SEARCH_TRIGGER [location_request() != 0] /\n  publish LOCATION_SEARCH_DONE
+
+    state STATE_LOCATION_SEARCH_ACTIVE
+    STATE_LOCATION_SEARCH_ACTIVE : LOCATION_SEARCH_TRIGGER / ;
+    STATE_LOCATION_SEARCH_ACTIVE : LOCATION_SEARCH_CANCEL /\n  location_request_cancel(), publish LOCATION_SEARCH_DONE
+
+    [*] --> STATE_LOCATION_SEARCH_INACTIVE
+
+    STATE_LOCATION_SEARCH_INACTIVE --> STATE_LOCATION_SEARCH_ACTIVE : LOCATION_SEARCH_TRIGGER\n[location_request() == 0]
+    STATE_LOCATION_SEARCH_ACTIVE --> STATE_LOCATION_SEARCH_INACTIVE : LOCATION_SEARCH_DONE
+}
+STATE_RUNNING : entry / location_init()
+STATE_RUNNING : entry / publish LOCATION_MODULE_READY
+
+[*] -down-> STATE_RUNNING
+
+legend bottom
+  The Location library reports results asynchronously. A found position, a timeout, an
+  error and an unknown result all publish LOCATION_SEARCH_DONE. Scan data is published
+  as LOCATION_CLOUD_REQUEST, immediately followed by LOCATION_SEARCH_CANCEL so the
+  library does not fall back to another positioning method.
+end legend
+
+@enduml

@@ -1,0 +1,22 @@
+@startuml
+' SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+' Network module state machine in src/modules/network/network.c.
+' Notation: ../architecture.md#diagram-notation
+!include style.puml
+
+state STATE_DISCONNECTED
+STATE_DISCONNECTED : NETWORK_CONNECT / conn_mgr_all_if_up(), conn_mgr_all_if_connect()
+
+state STATE_CONNECTED
+STATE_CONNECTED : NETWORK_DISCONNECT / conn_mgr_all_if_down()
+
+[*] --> STATE_DISCONNECTED
+STATE_DISCONNECTED --> STATE_CONNECTED : NETWORK_CONNECTED
+STATE_CONNECTED --> STATE_DISCONNECTED : NETWORK_DISCONNECTED
+
+legend bottom
+  NETWORK_CONNECTED and NETWORK_DISCONNECTED are published by the connection manager
+  L4 event handler, so the state machine follows the link rather than the request.
+end legend
+
+@enduml

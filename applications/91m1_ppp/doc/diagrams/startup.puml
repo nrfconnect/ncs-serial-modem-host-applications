@@ -1,0 +1,50 @@
+@startuml
+' SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+' Startup sequence described in ../application-behavior.md.
+!include style.puml
+
+box "Host application" #FFFFFF
+    participant "main()" as Main
+    participant "Network\nmodule" as Network
+    participant "Cloud\nmodule" as Cloud
+end box
+participant "Serial Modem\nover PPP" as Modem
+participant "nRF Cloud" as Cloud9
+
+Main -> Modem : modem_reset_on_host_boot()\npulses the nRF91 reset line
+activate Main
+Main -> Main : task_wdt_init(),\nsmf_set_initial(STATE_RUNNING)
+deactivate Main
+
+Network -> Network : NETWORK_CONNECT\n<i>CONFIG_APP_NETWORK_SEARCH_NETWORK_ON_STARTUP</i>
+activate Network
+Network -> Modem : conn_mgr_all_if_up(),\nconn_mgr_all_if_connect()
+Modem --> Network : L4 connected
+deactivate Network
+Network -> Main : NETWORK_CONNECTED
+
+Main -> Cloud : CLOUD_CONNECT
+
+loop until credentials and valid time are available
+    activate Cloud
+    Cloud -> Cloud : CLOUD_PRIV_CONNECT_ATTEMPT\nan NTP time request is made\nwhen the clock is not set
+    deactivate Cloud
+end
+
+activate Cloud
+Cloud -> Cloud9 : nrf_cloud_coap_connect()\nDTLS handshake, JWT signed on the host
+Cloud9 --> Cloud : session established
+deactivate Cloud
+Cloud -> Main : CLOUD_CONNECTED
+
+activate Main
+Main -> Main : STATE_CLOUD_CONNECTED:\nschedule the periodic sync and run one now
+deactivate Main
+
+legend bottom
+  Cellular data reaches nRF Cloud through the Serial Modem over PPP, but the CoAP/DTLS
+  session terminates on the host. The first cloud synchronization runs on connect; the
+  cycle it starts is in cloud-sync.svg.
+end legend
+
+@enduml

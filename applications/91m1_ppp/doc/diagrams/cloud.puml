@@ -1,0 +1,34 @@
+@startuml
+' SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+' Cloud module state machine in src/modules/cloud/cloud.c.
+' Notation: ../architecture.md#diagram-notation
+!include style.puml
+
+state STATE_DISCONNECTED
+
+state STATE_CONNECTING
+STATE_CONNECTING : entry / publish CLOUD_PRIV_CONNECT_ATTEMPT
+STATE_CONNECTING : exit / cancel connect_retry_work
+STATE_CONNECTING : CLOUD_PRIV_CONNECT_ATTEMPT / connect_attempt()
+
+state STATE_CONNECTED
+STATE_CONNECTED : CLOUD_MESSAGE_SEND /\n  nrf_cloud_coap_json_message_send(), publish CLOUD_MESSAGE_SENT
+STATE_CONNECTED : CLOUD_SHADOW_POLL_REQUEST /\n  cloud_shadow_poll(), publish CLOUD_SHADOW_POLLED
+STATE_CONNECTED : CLOUD_MEMFAULT_POST_REQUEST /\n  memfault_data_post(), publish CLOUD_MEMFAULT_POSTED
+STATE_CONNECTED : CLOUD_LOCATION_REQUEST /\n  cloud_location_request_handle()  <i>CONFIG_APP_LOCATION</i>
+STATE_CONNECTED : exit / nrf_cloud_coap_disconnect()
+
+[*] -down-> STATE_DISCONNECTED
+STATE_DISCONNECTED -down-> STATE_CONNECTING : CLOUD_CONNECT
+STATE_CONNECTING -down-> STATE_CONNECTED : CLOUD_CONNECTED
+STATE_CONNECTING -left-> STATE_DISCONNECTED : CLOUD_DISCONNECT /\nnrf_cloud_coap_disconnect(),\npublish CLOUD_DISCONNECTED
+STATE_CONNECTED -left-> STATE_DISCONNECTED : CLOUD_DISCONNECT /\npublish CLOUD_DISCONNECTED
+
+legend bottom
+  STATE_CONNECTING makes one attempt per CLOUD_PRIV_CONNECT_ATTEMPT. An attempt that
+  finds no credentials or no valid time, or that fails to connect, schedules the next
+  attempt and leaves the module waiting for messages in the meantime. CLOUD_CONNECTED
+  is published by the attempt that succeeds.
+end legend
+
+@enduml

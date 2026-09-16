@@ -19,20 +19,12 @@ A search trigger that arrives while a search is already active is ignored, so a 
 
 The Location module implements a hierarchical state machine with the following states and transitions:
 
-```mermaid
-stateDiagram-v2
-    [*] --> STATE_RUNNING
-    state STATE_RUNNING {
-        [*] --> STATE_LOCATION_SEARCH_INACTIVE
-        STATE_LOCATION_SEARCH_INACTIVE --> STATE_LOCATION_SEARCH_ACTIVE : LOCATION_SEARCH_TRIGGER
-        STATE_LOCATION_SEARCH_ACTIVE --> STATE_LOCATION_SEARCH_INACTIVE : LOCATION_SEARCH_DONE
-    }
-```
+![Location module state machine](../diagrams/location.svg)
 
 ### States
 
 - **STATE_RUNNING:** Parent state entered on initialization. Its entry function initializes the Location library and publishes `LOCATION_MODULE_READY`.
-    - **STATE_LOCATION_SEARCH_INACTIVE:** Default substate, in which no search is running. A `LOCATION_SEARCH_TRIGGER` starts a search with `location_request()`.
+    - **STATE_LOCATION_SEARCH_INACTIVE:** Default substate, in which no search is running. A `LOCATION_SEARCH_TRIGGER` starts a search with `location_request()`, and the module only moves to the active state if that call succeeds. A failed request is reported as a completed search with `LOCATION_SEARCH_DONE`, so the application is not left waiting.
     - **STATE_LOCATION_SEARCH_ACTIVE:** A Wi-Fi scan is running. Further triggers are ignored. A `LOCATION_SEARCH_CANCEL` cancels the request and completes the search by publishing `LOCATION_SEARCH_DONE`.
 
 Search results arrive asynchronously from the Location library. Location found, timeout, error, and unknown result all lead to `LOCATION_SEARCH_DONE`, which returns the module to the inactive state.

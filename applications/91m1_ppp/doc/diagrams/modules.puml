@@ -1,0 +1,37 @@
+@startuml
+' SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+' Modules and the zbus channels they communicate over. Private channels are
+' left out; see ../architecture.md#private-channels.
+!include style.puml
+
+component "Network module" as Network
+component "Main module" as Main
+component "Cloud module" as Cloud
+component "FOTA module" as Fota
+component "Location module" as Location
+component "Modem AT module" as ModemAt #FFFFFF;line:94A3B8;line.dashed
+rectangle "Host shell" as Shell #FFFFFF;line:94A3B8;line.dashed
+
+Network -down-> Main : network_chan:\nconnectivity status
+Main -up-> Network : network_chan:\nconnect, disconnect
+
+Main -down-> Cloud : cloud_chan:\nconnect, send message, poll shadow,\npost Memfault data, resolve position
+Cloud -up-> Main : cloud_chan:\nconnection status
+
+Main -down-> Fota : fota_chan:\npoll, cancel
+Fota -up-> Main : fota_chan:\njob status, reboot request
+
+Main -down-> Location : location_chan:\nsearch trigger
+Location -up-> Main : location_chan:\nsearch status,\nWi-Fi scan result
+
+Shell -[#94A3B8,dashed]down-> ModemAt : modem_at_run()
+
+legend bottom
+  Every module owns one channel, and both the requests sent to a module and the
+  notifications it publishes go on that channel. All communication passes through the
+  Main module, the only module that knows about the others. The Modem AT module is
+  outside the message graph: it serializes access to the modem AT pipe and is called
+  directly from the host shell.
+end legend
+
+@enduml

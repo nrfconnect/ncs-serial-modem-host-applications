@@ -1,0 +1,51 @@
+@startuml
+' SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+' FOTA module state machine in src/modules/fota/fota.c.
+' Notation: ../architecture.md#diagram-notation
+!include style.puml
+
+state STATE_RUNNING #FFFFFF {
+    state STATE_WAITING_FOR_POLL_REQUEST
+    STATE_WAITING_FOR_POLL_REQUEST : FOTA_DOWNLOAD_CANCEL / ;
+
+    state STATE_POLLING_FOR_UPDATE
+    STATE_POLLING_FOR_UPDATE : entry / nrf_cloud_fota_poll_process()
+    STATE_POLLING_FOR_UPDATE : FOTA_DOWNLOAD_CANCEL / ;
+
+    state STATE_DOWNLOADING_UPDATE
+    STATE_DOWNLOADING_UPDATE : entry / publish FOTA_STARTING
+
+    state STATE_REBOOT_PENDING
+    STATE_REBOOT_PENDING : entry / publish FOTA_REBOOT_REQUEST
+
+    state STATE_CANCELING
+    STATE_CANCELING : entry / fota_download_cancel()
+
+    [*] --> STATE_WAITING_FOR_POLL_REQUEST
+
+    STATE_WAITING_FOR_POLL_REQUEST --> STATE_POLLING_FOR_UPDATE : FOTA_POLL_REQUEST
+    STATE_WAITING_FOR_POLL_REQUEST --> STATE_REBOOT_PENDING : FOTA_PRIV_REBOOT_NEEDED
+
+    STATE_POLLING_FOR_UPDATE --> STATE_DOWNLOADING_UPDATE : FOTA_PRIV_DOWNLOADING
+    STATE_POLLING_FOR_UPDATE --> STATE_WAITING_FOR_POLL_REQUEST : FOTA_PRIV_ABORTED /\npublish FOTA_ABORTED
+
+    STATE_DOWNLOADING_UPDATE --> STATE_REBOOT_PENDING : FOTA_PRIV_REBOOT_NEEDED
+    STATE_DOWNLOADING_UPDATE --> STATE_WAITING_FOR_POLL_REQUEST : FOTA_PRIV_ABORTED /\npublish FOTA_ABORTED
+
+    STATE_CANCELING --> STATE_WAITING_FOR_POLL_REQUEST : FOTA_PRIV_ABORTED /\npublish FOTA_ABORTED
+}
+STATE_RUNNING : entry / nrf_cloud_fota_poll_init()
+STATE_RUNNING : entry / boot_write_img_confirmed()  <i>CONFIG_MCUBOOT_IMG_MANAGER</i>
+STATE_RUNNING : entry / publish FOTA_MODULE_READY
+
+[*] -down-> STATE_RUNNING
+STATE_RUNNING -down-> STATE_CANCELING : FOTA_DOWNLOAD_CANCEL
+
+legend bottom
+  FOTA_DOWNLOAD_CANCEL is handled by STATE_RUNNING on behalf of the substates that do
+  not handle it themselves, so a cancel reaches STATE_CANCELING from
+  STATE_DOWNLOADING_UPDATE and STATE_REBOOT_PENDING. The FOTA_PRIV_* messages come from
+  the nRF Cloud FOTA poll library callbacks.
+end legend
+
+@enduml

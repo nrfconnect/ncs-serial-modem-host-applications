@@ -20,45 +20,24 @@ The periodic synchronization runs on a dedicated workqueue rather than in the st
 
 ### State diagram
 
-The Main module implements a hierarchical state machine with the following states and transitions:
+The Main module implements a hierarchical state machine. The top level tracks the cloud connection and the firmware update:
 
-```mermaid
-stateDiagram-v2
-    [*] --> STATE_RUNNING
-    state STATE_RUNNING {
-        [*] --> STATE_CLOUD_DISCONNECTED
-        STATE_CLOUD_DISCONNECTED --> STATE_CLOUD_CONNECTED : CLOUD_CONNECTED
-        STATE_CLOUD_CONNECTED --> STATE_CLOUD_DISCONNECTED : CLOUD_DISCONNECTED
-        STATE_CLOUD_DISCONNECTED --> STATE_FOTA : FOTA_STARTING
-        STATE_CLOUD_CONNECTED --> STATE_FOTA : FOTA_STARTING
-        STATE_FOTA --> STATE_CLOUD_DISCONNECTED : FOTA_ABORTED
-        STATE_FOTA --> STATE_CLOUD_CONNECTED : FOTA_ABORTED
-        state STATE_CLOUD_CONNECTED {
-            [*] --> STATE_SYNC_IDLE
-            STATE_SYNC_IDLE --> STATE_SYNC_DEMO : periodic trigger or connect
-            STATE_SYNC_DEMO --> STATE_SYNC_SHADOW : CLOUD_MESSAGE_SENT
-            STATE_SYNC_DEMO --> STATE_SYNC_LOCATION : CLOUD_MESSAGE_SENT
-            STATE_SYNC_LOCATION --> STATE_SYNC_SHADOW : LOCATION_SEARCH_DONE
-            STATE_SYNC_SHADOW --> STATE_SYNC_FOTA : CLOUD_SHADOW_POLLED
-            STATE_SYNC_SHADOW --> STATE_SYNC_MEMFAULT : CLOUD_SHADOW_POLLED
-            STATE_SYNC_FOTA --> STATE_SYNC_MEMFAULT : FOTA_ABORTED
-            STATE_SYNC_MEMFAULT --> STATE_SYNC_IDLE : CLOUD_MEMFAULT_POSTED
-            STATE_SYNC_FOTA --> STATE_FOTA : FOTA_STARTING
-        }
-    }
-    STATE_FOTA --> STATE_REBOOTING : FOTA_REBOOT_REQUEST
-```
+![Main module state machine](../diagrams/main.svg)
+
+`STATE_CLOUD_CONNECTED` holds the cloud synchronization cycle in a set of sync substates:
+
+![Cloud synchronization substates of STATE_CLOUD_CONNECTED](../diagrams/main-sync.svg)
 
 ### States
 
 - **STATE_RUNNING:** Parent state entered on initialization. It handles the messages that are relevant in every state: network connectivity, which it answers with `CLOUD_CONNECT` or `CLOUD_DISCONNECT`, location results, which it forwards to the Cloud module, and `FOTA_STARTING`.
     - **STATE_CLOUD_DISCONNECTED:** Default substate, in which the cloud connection is down and synchronization triggers are ignored.
-    - **STATE_CLOUD_CONNECTED:** The cloud connection is up. The entry function schedules the periodic synchronization and starts one immediately, and the exit function cancels it. While connected, synchronization runs through the sync substates below.
-        - **STATE_SYNC_IDLE:** Waiting for the next periodic synchronization trigger.
+    - **STATE_CLOUD_CONNECTED:** The cloud connection is up. The entry function schedules the periodic synchronization and transitions straight to `STATE_SYNC_DEMO`, so connecting always synchronizes once without waiting out a period. The exit function cancels the periodic synchronization. `STATE_SYNC_IDLE` is the declared initial substate, but the entry function overrides it.
+        - **STATE_SYNC_IDLE:** Waiting for the next periodic synchronization trigger. Its entry function reschedules the timer.
         - **STATE_SYNC_DEMO:** Sending the demo cloud payload.
         - **STATE_SYNC_LOCATION:** Scanning for Wi-Fi access points and resolving location. Only present with the location overlay.
         - **STATE_SYNC_SHADOW:** Polling the device shadow.
-        - **STATE_SYNC_FOTA:** Polling for a FOTA job. Only present when the FOTA module is enabled.
+        - **STATE_SYNC_FOTA:** Polling for a FOTA job. Its entry function cancels the periodic synchronization first, so a poll that turns into a download does not compete with device messages for the connection. Only present when the FOTA module is enabled.
         - **STATE_SYNC_MEMFAULT:** Posting pending Memfault data.
     - **STATE_FOTA:** A firmware download is in progress. Cloud synchronization is not scheduled in this state, so the download is not competing with device messages for the connection.
 - **STATE_REBOOTING:** Terminal state entered when the FOTA module asks for a reboot. Its entry function flushes the logs and calls `sys_reboot()`.
@@ -73,7 +52,7 @@ While the cloud connection is up, the module performs a synchronization every `C
 1. `FOTA_POLL_REQUEST`, when the FOTA module is enabled. Advances on `FOTA_ABORTED`, or moves to `STATE_FOTA` on `FOTA_STARTING`.
 1. `CLOUD_MEMFAULT_POST_REQUEST`, to post any pending Memfault data. Advances on `CLOUD_MEMFAULT_POSTED`.
 
-The periodic timer only publishes its trigger while the module is in `STATE_SYNC_IDLE`, so a synchronization already in progress is not restarted.
+Only `STATE_SYNC_IDLE` acts on the periodic trigger, so a synchronization already in progress is never restarted by the timer.
 
 ### FOTA coordination
 

@@ -1,0 +1,24 @@
+@startuml
+' SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+' Deliberately simplified view of the FOTA module state machine, used in
+' ../architecture.md to introduce SMF hierarchy and initial transitions.
+' The complete machine is in fota.puml.
+!include style.puml
+
+state STATE_RUNNING #FFFFFF {
+    state STATE_WAITING_FOR_POLL_REQUEST
+    state STATE_POLLING_FOR_UPDATE
+    state STATE_DOWNLOADING_UPDATE
+    state STATE_REBOOT_PENDING
+    state STATE_CANCELING
+
+    [*] --> STATE_WAITING_FOR_POLL_REQUEST
+
+    STATE_WAITING_FOR_POLL_REQUEST --> STATE_POLLING_FOR_UPDATE
+    STATE_POLLING_FOR_UPDATE --> STATE_DOWNLOADING_UPDATE
+    STATE_DOWNLOADING_UPDATE --> STATE_REBOOT_PENDING
+}
+
+[*] --> STATE_RUNNING
+
+@enduml

@@ -1,0 +1,49 @@
+@startuml
+' SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+' Main module state machine in src/main.c, top level.
+' The sync substates of STATE_CLOUD_CONNECTED are in main-sync.puml.
+' Notation: ../architecture.md#diagram-notation
+!include style.puml
+
+state STATE_RUNNING #FFFFFF {
+    state STATE_CLOUD_DISCONNECTED
+    STATE_CLOUD_DISCONNECTED : entry / cloud_history = STATE_CLOUD_DISCONNECTED
+
+    state STATE_CLOUD_CONNECTED
+    STATE_CLOUD_CONNECTED : entry / cloud_history = STATE_CLOUD_CONNECTED
+    STATE_CLOUD_CONNECTED : entry / cloud_sync_schedule()
+    STATE_CLOUD_CONNECTED : exit / cloud_sync_cancel()
+    STATE_CLOUD_CONNECTED : <i>sync substates: main-sync.svg</i>
+
+    state STATE_FOTA #FFFFFF;line:94A3B8;line.dashed
+    STATE_FOTA : <i>CONFIG_APP_FOTA</i>
+    STATE_FOTA : entry / cloud_sync_cancel()
+    STATE_FOTA : CLOUD_DISCONNECTED / cloud_history = STATE_CLOUD_DISCONNECTED
+
+    [*] -down-> STATE_CLOUD_DISCONNECTED
+
+    STATE_CLOUD_DISCONNECTED -down-> STATE_CLOUD_CONNECTED : CLOUD_CONNECTED
+    STATE_CLOUD_CONNECTED -up-> STATE_CLOUD_DISCONNECTED : CLOUD_DISCONNECTED
+
+    STATE_FOTA -[#94A3B8,dashed]-> STATE_CLOUD_DISCONNECTED : FOTA_ABORTED\n[cloud_history == STATE_CLOUD_DISCONNECTED]
+    STATE_FOTA -[#94A3B8,dashed]-> STATE_CLOUD_CONNECTED : FOTA_ABORTED\n[cloud_history == STATE_CLOUD_CONNECTED]
+}
+STATE_RUNNING : NETWORK_CONNECTED / cloud_connect_request()
+STATE_RUNNING : NETWORK_DISCONNECTED / cloud_disconnect_request()
+STATE_RUNNING : LOCATION_CLOUD_REQUEST / location_request_forward()  <i>CONFIG_APP_LOCATION</i>
+
+state STATE_REBOOTING #FFFFFF;line:94A3B8;line.dashed
+STATE_REBOOTING : <i>CONFIG_APP_FOTA</i>
+STATE_REBOOTING : entry / LOG_PANIC(), sys_reboot(SYS_REBOOT_COLD)
+
+[*] -down-> STATE_RUNNING
+STATE_RUNNING -[#94A3B8,dashed]-> STATE_FOTA : FOTA_STARTING
+STATE_FOTA -[#94A3B8,dashed]-> STATE_REBOOTING : FOTA_REBOOT_REQUEST
+
+legend bottom
+  FOTA_STARTING is handled by STATE_RUNNING, so a download takes over from any substate
+  and stops the periodic cloud synchronization. cloud_history remembers where to return
+  when the download ends without a reboot.
+end legend
+
+@enduml
