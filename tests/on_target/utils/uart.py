@@ -15,6 +15,16 @@ logger = get_logger()
 
 DEFAULT_UART_TIMEOUT = 60 * 30
 
+# The modem driver retries its init chat script indefinitely, so a dead UART
+# link to the Serial Modem never reaches the boot markers tests wait on. Fail on
+# the first retry rather than letting every wait run out its own timeout and
+# report the marker it never saw.
+MODEM_LINK_DOWN_LOG = "init_chat_script: timed out"
+
+
+class ModemLinkError(RuntimeError):
+    """The host never reached the Serial Modem over UART."""
+
 
 class Uart:
     def __init__(
@@ -134,6 +144,18 @@ class Uart:
             if tail:
                 self._append_lines([tail])
 
+    def raise_if_modem_link_down(self, captured: str | None = None) -> None:
+        """Raise if the host log shows the modem AT link never came up."""
+        if captured is None:
+            captured = self.snapshot_log()
+        if MODEM_LINK_DOWN_LOG not in captured:
+            return
+        raise ModemLinkError(
+            f"Host never reached the Serial Modem: {MODEM_LINK_DOWN_LOG!r} in the "
+            "host log. Check the four UART wires and the nRF9151 DK VCOM0 and "
+            "VCOM0 HWFC switches - see applications/91m1_ppp/doc/hardware-setup.md"
+        )
+
     def wait_for_substring(
         self,
         needle: str,
@@ -145,6 +167,7 @@ class Uart:
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             captured = self.snapshot_log()
+            self.raise_if_modem_link_down(captured)
             if needle in captured:
                 for line in captured.splitlines():
                     if needle in line:
@@ -167,6 +190,7 @@ class Uart:
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             captured = self.snapshot_log()
+            self.raise_if_modem_link_down(captured)
             marker_index = captured.find(after)
             if marker_index >= 0:
                 tail = captured[marker_index + len(after):]

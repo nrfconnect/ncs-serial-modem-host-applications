@@ -20,14 +20,15 @@ On both DKs:
 
 On the **nRF9151 / nRF9151 SMA DK** (Serial Modem):
 
-- Disable **VCOM0** so uart0 (P0.26–P0.27, P0.14–P0.15) is free for the external host link. Serial Modem uses the [nRF91M1 pinout](https://nrfconnectdocs.nordicsemi.com/addons/addon-serial_modem/latest/main/uart_configuration.html#nrf91m1-pre-programmed-sm-application) on uart0.
-- Leave **VCOM1** enabled for modem logs (uart1, P0.28/P0.29). CI captures this port at 1000000 baud.
+- Disconnect **VCOM0** so the uart0 data pins (P0.26/P0.27) are free for the external host link. Serial Modem uses the [nRF91M1 pinout](https://nrfconnectdocs.nordicsemi.com/addons/addon-serial_modem/latest/main/uart_configuration.html#nrf91m1-pre-programmed-sm-application) on uart0.
+- Disconnect **VCOM0 HWFC** too. This is a separate switch from VCOM0 and, like it, defaults to Connected. Leaving it connected keeps the interface MCU on P0.14/P0.15 through 150 Ω series resistors, holding the modem's CTS deasserted so it never answers the host's init chat script.
+- Leave **VCOM1** and **VCOM1 HWFC** connected for modem logs (uart1, P0.28/P0.29). CI captures this port at 1000000 baud.
 
 Host-specific settings are listed in each section below.
 
 ### Serial Modem release and UART pinout
 
-The Serial Modem bundle is `*_nrf9151dk_nrf91m1.zip`. The host UART is the nRF91M1 pinout on **uart0** (P0.27 TX, P0.26 RX, P0.15 RTS, P0.14 CTS). DTR is on P0.31 and RI on P0.30.
+The Serial Modem bundle is `*_nrf9151dk_nrf91m1.zip`. The host UART is the nRF91M1 pinout on **uart0** (P0.27 TX, P0.26 RX, P0.14 RTS, P0.15 CTS). DTR is on P0.31 and RI on P0.30.
 
 Until the nRF9151 DK Board Configurator can route DTR automatically, the modem DK also expects **P0.31 (DTR) jumpered to GND** when a PC host is used; an external MCU host should drive DTR from its GPIO instead (as this application does via P1.11).
 
@@ -57,6 +58,8 @@ On the nRF54L15 DK:
 - **P0 connector:** UART signals on the host; on the modem, the uart0 pins are on the DK edge.
 - **P1 connector:** DTR, RI, and modem reset on the host.
 - Add a **1 kΩ** series resistor on the reset wire if IO levels differ.
+
+> **Note:** Both signal pairs cross. Host TX drives the modem's RX, and host RTS drives the modem's **CTS on P0.15** — not P0.14, which is the modem's RTS. Wiring either pair straight through leaves the modem's CTS on its internal pull-up, and the only symptom is `init_chat_script: timed out` on the host while the modem boots and takes reset pulses normally.
 
 ### Build
 

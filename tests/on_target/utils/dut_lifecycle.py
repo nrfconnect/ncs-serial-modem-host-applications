@@ -65,6 +65,7 @@ class CloudDutSession:
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             captured = self.dut.uart.snapshot_log()
+            self.dut.uart.raise_if_modem_link_down(captured)
             for marker in CLOUD_CREDENTIALS_READY_MARKERS:
                 if marker in captured:
                     return False
@@ -84,6 +85,7 @@ class CloudDutSession:
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             captured = self.dut.uart.snapshot_log()
+            self.dut.uart.raise_if_modem_link_down(captured)
             if CLOUD_CONNECTED_LOG in captured:
                 return True
             if CLOUD_AUTH_FAILURE_LOG in captured:
