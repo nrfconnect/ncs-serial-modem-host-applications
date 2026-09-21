@@ -19,27 +19,35 @@ copyright:
   Copyright &copy; 2026
 
 markdown_extensions:
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.highlight:
+      linenums_style: pymdownx-inline
+      pygments_lang_class: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
   - abbr
   - admonition
   - attr_list
   - md_in_html
   - meta
   - pymdownx.details
-  - pymdownx.highlight:
-      pygments_lang_class: true
   - pymdownx.keys
-  - pymdownx.superfences
   - pymdownx.tabbed
   - toc:
       permalink: true
       toc_depth: 4
 
 plugins:
+  - macros
   - search
+  - gh-admonitions
 
 ft_metadata:
   ft:title: "Serial Modem Host Applications"
-  ft:clusterId: "serial-modem-host-applications-latest"
+  ft:clusterId: "serial-modem-host-applications"
   ft:locale: "en-US"
   tags:
     - "Serial Modem Host Applications"
@@ -50,20 +58,19 @@ ft_options:
 
 nav:
   - Overview: index.md
-  - Applications:
-    - 91m1_ppp:
-      - Overview: applications/91m1_ppp/README.md
-      - Hardware setup: applications/91m1_ppp/hardware-setup.md
-      - Application behavior: applications/91m1_ppp/application-behavior.md
-      - Architecture: applications/91m1_ppp/architecture.md
-      - Modules:
-        - Main: applications/91m1_ppp/modules/main.md
-        - Network: applications/91m1_ppp/modules/network.md
-        - Cloud: applications/91m1_ppp/modules/cloud.md
-        - FOTA: applications/91m1_ppp/modules/fota.md
-        - Location: applications/91m1_ppp/modules/location.md
-      - Memfault: applications/91m1_ppp/memfault.md
-    - 93m1_ppp: applications/93m1_ppp/README.md
-    - 93m1_at: applications/93m1_at/README.md
+  - Getting started: getting-started.md
+  - nRF91M1 Host Application:
+    - Overview: applications/91m1_ppp/README.md
+    - Hardware setup: applications/91m1_ppp/hardware-setup.md
+    - Application behavior: applications/91m1_ppp/application-behavior.md
+    - Modules:
+      - Main: applications/91m1_ppp/modules/main.md
+      - Network: applications/91m1_ppp/modules/network.md
+      - Cloud: applications/91m1_ppp/modules/cloud.md
+      - FOTA: applications/91m1_ppp/modules/fota.md
+      - Location: applications/91m1_ppp/modules/location.md
+    - Memfault: applications/91m1_ppp/memfault.md
+  - nRF93M1 Host Application: applications/93m1_ppp/README.md
+  - nEF93M1 Serial Modem Host (AT): applications/93m1_at/README.md
   - CI and contribution: ci-and-contribution.md
   - Release artifacts: release-artifacts.md

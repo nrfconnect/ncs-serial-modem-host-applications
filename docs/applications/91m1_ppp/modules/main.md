@@ -13,7 +13,7 @@ The module subscribes to the channels of all enabled modules, plus its own priva
 | `network_chan` | Connect or disconnect the cloud session as connectivity comes and goes |
 | `cloud_chan` | Track the cloud connection state |
 | `fota_chan` | Coordinate firmware updates and the reboot that applies them |
-| `location_chan` | Forward Wi-Fi scan results to the Cloud module |
+| `location_chan` | Forward Wi-Fi® scan results to the Cloud module |
 | `main_priv_chan` | Receive the periodic cloud synchronization trigger |
 
 The periodic synchronization runs on a dedicated workqueue rather than in the state machine. The delayed work only publishes `MAIN_PRIV_CLOUD_SYNCHRONIZATION` on the [private channel](../architecture.md#private-channels) `main_priv_chan` and reschedules itself, so that the work never touches the state machine directly, and the synchronization itself is performed in the `main()` thread like every other event.
@@ -30,16 +30,22 @@ The Main module implements a hierarchical state machine. The top level tracks th
 
 ### States
 
+The following states are used by the module:
+
 - **STATE_RUNNING:** Parent state entered on initialization. It handles the messages that are relevant in every state: network connectivity, which it answers with `CLOUD_CONNECT` or `CLOUD_DISCONNECT`, location results, which it forwards to the Cloud module, and `FOTA_STARTING`.
+
     - **STATE_CLOUD_DISCONNECTED:** Default substate, in which the cloud connection is down and synchronization triggers are ignored.
     - **STATE_CLOUD_CONNECTED:** The cloud connection is up. The entry function schedules the periodic synchronization and transitions straight to `STATE_SYNC_DEMO`, so connecting always synchronizes once without waiting out a period. The exit function cancels the periodic synchronization. `STATE_SYNC_IDLE` is the declared initial substate, but the entry function overrides it.
+
         - **STATE_SYNC_IDLE:** Waiting for the next periodic synchronization trigger. Its entry function reschedules the timer.
         - **STATE_SYNC_DEMO:** Sending the demo cloud payload.
         - **STATE_SYNC_LOCATION:** Scanning for Wi-Fi access points and resolving location. Only present with the location overlay.
         - **STATE_SYNC_SHADOW:** Polling the device shadow.
         - **STATE_SYNC_FOTA:** Polling for a FOTA job. Its entry function cancels the periodic synchronization first, so a poll that turns into a download does not compete with device messages for the connection. Only present when the FOTA module is enabled.
         - **STATE_SYNC_MEMFAULT:** Posting pending Memfault data.
+
     - **STATE_FOTA:** A firmware download is in progress. Cloud synchronization is not scheduled in this state, so the download is not competing with device messages for the connection.
+
 - **STATE_REBOOTING:** Terminal state entered when the FOTA module asks for a reboot. Its entry function flushes the logs and calls `sys_reboot()`.
 
 ### Cloud synchronization

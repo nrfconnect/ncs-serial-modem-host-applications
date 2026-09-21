@@ -1,53 +1,60 @@
 # Memfault remote debugging
 
-[Memfault](https://memfault.com/) is a device observability platform that complements on-device debugging. It collects crash coredumps, reboot events, stack/heap metrics, and logs from deployed devices so you can diagnose issues without physical access — especially useful for sporadic faults or problems that only appear on real networks.
+[Memfault](https://memfault.com/) is a device observability platform that complements on-device debugging. It collects crash coredumps, reboot events, stack/heap metrics, and logs from deployed devices so you can diagnose issues without physical access, especially useful for sporadic faults or problems that only appear on real networks.
 
-The 91m1_ppp application forwards Memfault data through the existing **nRF Cloud CoAP** connection (same DTLS session and JWT as cloud messaging). No separate Memfault credentials or HTTP upload path is required.
+The nRF91M1 Host Application forwards Memfault data through the existing **nRF Cloud CoAP** connection (same DTLS session and JWT as cloud messaging). No separate Memfault credentials or HTTP upload path is required.
 
 ## Prerequisites
 
-Complete [Getting started](README.md) first — the device must be onboarded to your nRF Cloud account and successfully connect (`Cloud connected` in the log). Memfault data is routed to the Memfault project linked to that nRF Cloud account.
+Complete the [Getting started](README.md) section before proceeding.
+The device must be onboarded to your nRF Cloud account and successfully connect (`Cloud connected` in the log). Memfault data is routed to the Memfault project linked to that nRF Cloud account.
 
 ## Setup
 
-1. **Open Memfault from nRF Cloud** — Log in to [nRF Cloud](https://nrfcloud.nordicsemi.com/) and click **Memfault** in the left sidebar. This opens the Memfault project linked to your account.
+1. **Open Memfault from nRF Cloud:**
 
-2. **Upload the firmware symbol file** — Memfault needs the build's `zephyr.elf` to decode crash addresses into function names and line numbers. Upload it **once per firmware build**, before or as soon as devices start reporting data:
+    1. Log in to [nRF Cloud](https://nrfcloud.nordicsemi.com/).
+    1. click **Memfault** in the left sidebar.
+    1. This opens the Memfault project linked to your account.
 
-   - In the Memfault UI: **Software → Symbol Files → Upload Symbol File**
-   - Select `build/zephyr/zephyr.elf` from your west build directory (the default output when building from `applications/91m1_ppp`).
+1. **Upload the firmware symbol file** - Memfault needs the build's `zephyr.elf` to decode crash addresses into function names and line numbers. Upload it once per firmware build, before or as soon as devices start reporting data:
 
-   Alternatively, upload from the command line with the [Memfault CLI](https://docs.memfault.com/docs/ci/install-memfault-cli):
+    1. In the Memfault UI, navigate to **Software**.
+    1. Select **Symbol Files**.
+    1. Click on **Upload Symbol File**.
+    1. Select `build/zephyr/zephyr.elf` from your west build directory (the default output when building from `applications/91m1_ppp`).
 
-   ```shell
-   memfault \
-     --org-token <token> \
-     --org <org> \
-     --project <project> \
-     upload-mcu-symbols build/zephyr/zephyr.elf
-   ```
+    Alternatively, upload from the command line with the [Memfault CLI](https://docs.memfault.com/docs/ci/install-memfault-cli):
 
-3. **Verify data is flowing** — After the device connects to nRF Cloud, periodic Memfault uploads run in the background (`CONFIG_MEMFAULT_PERIODIC_UPLOAD`). Look for:
+    ```shell
+    memfault \
+      --org-token <token> \
+      --org <org> \
+      --project <project> \
+      upload-mcu-symbols build/zephyr/zephyr.elf
+    ```
 
-   ```text
-   <inf> mflt: Periodic background upload scheduled - initial delay=... period=...
-   ```
+1. **Verify data is flowing** - After the device connects to nRF Cloud, periodic Memfault uploads run in the background (`CONFIG_MEMFAULT_PERIODIC_UPLOAD`). Look for:
 
-   To trigger a manual upload from the shell:
+    ```text
+    <inf> mflt: Periodic background upload scheduled - initial delay=... period=...
+    ```
 
-   ```shell
-   uart:~$ mflt test heartbeat
-   uart:~$ mflt post_chunks
-   ```
+    To trigger a manual upload from the shell:
+
+    ```shell
+    uart:~$ mflt test heartbeat
+    uart:~$ mflt post_chunks
+    ```
 
 ## Viewing device data
 
 In the Memfault UI:
 
 1. Click **Devices** in the left toolbar to see devices that have reported in.
-2. Select a device to inspect its coredumps, metrics, and event history.
+1. Select a device to inspect its coredumps, metrics, and event history.
 
-Coredumps are captured automatically on crashes (RAM-backed, 3 KB) and are truncated if a crash needs more space than that. Without an uploaded symbol file, traces appear with a **Symbols Missing** label and cannot be decoded. Memfault matches a coredump to its symbol file by the GNU build ID that the application logs at boot (`<inf> mflt: GNU Build ID: ...`), so the symbol file has to come from the exact build running on the device; rebuilding the same version produces a different build ID.
+Coredumps are captured automatically on crashes (RAM-backed, 3 KB) and are truncated if a crash needs more space than that. Without an uploaded symbol file, traces appear with a **Symbols Missing** label and cannot be decoded. Memfault matches a coredump to its symbol file by the GNU build ID that the application logs at boot (`<inf> mflt: GNU Build ID: ...`), so the symbol file has to come from the exact build running on the device, rebuilding the same version produces a different build ID.
 
 Because TF-M owns the fault handlers for HardFaults, only BusFaults and SecureFaults originating in non-secure code reach Memfault's handler (`CONFIG_TFM_ALLOW_NON_SECURE_FAULT_HANDLING=y`). A `mflt test hardfault` is trapped by TF-M, which halts the core without collecting a coredump; use `mflt test busfault` instead.
 
@@ -86,5 +93,5 @@ Use the `0x...` id printed next to the `main` thread. After the watchdog timeout
 
 ## References
 
-- [Asset Tracker Template — Memfault](https://docs.nordicsemi.com/bundle/asset-tracker-template-latest/page/common/tooling_troubleshooting.html#memfault-remote-debugging)
+- [Asset Tracker Template - Memfault](https://docs.nordicsemi.com/bundle/asset-tracker-template-latest/page/common/tooling_troubleshooting.html#memfault-remote-debugging)
 - [Memfault in nRF Connect SDK](https://docs.nordicsemi.com/bundle/ncs-latest/page/nrf/external_comp/memfault.html)

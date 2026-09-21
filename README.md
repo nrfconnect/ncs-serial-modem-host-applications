@@ -7,8 +7,8 @@ Host-side firmware for Nordic Smart Modem modules. This repository is built on [
 Supported product targets:
 
 * **91m1_ppp**: PPP host application for the [nRF91M1](https://www.nordicsemi.com/Products/nRF91M1) Smart Modem
-* **93m1_ppp**: PPP host application for the [nRF93M1](https://www.nordicsemi.com/Products/nRF93-Series) Smart Modem
-* **93m1_at**: AT host application for the [nRF93M1](https://www.nordicsemi.com/Products/nRF93-Series) Smart Modem
+* **93m1_ppp**: PPP host application for the [nRF93M1](https://www.nordicsemi.com/Products/nRF93M1) Smart Modem
+* **93m1_at**: AT host application for the [nRF93M1](https://www.nordicsemi.com/Products/nRF93M1) Smart Modem
 
 ---
 
@@ -16,7 +16,7 @@ Supported product targets:
 
 | Path | Purpose |
 |------|---------|
-| [`west.yml`](west.yml) | West manifest, pins the NCS and Memfault SDK revisions |
+| [`west.yml`](west.yml) | West manifest, pins the nRF Connect SDK and Memfault SDK revisions |
 | [`zephyr/module.yml`](zephyr/module.yml) | Registers this repo as a Zephyr module |
 | [`lib/include/`](lib/include/) | Shared headers (`app_common.h`) |
 | [`cmake/`](cmake/) | Shared CMake helpers (`merged_hex.cmake`) |
@@ -69,11 +69,11 @@ Alternatively, download pre-built firmware from the [latest release](https://git
 
 Follow the application documentation for hardware setup, build, flash, and (where applicable) cloud provisioning:
 
-| Application | Documentation | Cloud connectivity |
-|-------------|---------------|---------------------|
-| **91m1_ppp** | [docs/applications/91m1_ppp/](docs/applications/91m1_ppp/README.md) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP just carries IP to the nRF91M1 modem |
-| **93m1_ppp** | [docs/applications/93m1_ppp/](docs/applications/93m1_ppp/README.md) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP just carries IP to the nRF93M1 modem |
-| **93m1_at** | [docs/applications/93m1_at/](docs/applications/93m1_at/README.md) | Modem terminates the connection itself with its built-in AT client. Host just sends AT commands |
+| Application | Cloud connectivity |
+|-------------|--------------------|
+| [nRF91M1 Host Application](docs/applications/91m1_ppp/README.md) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP just carries IP to the nRF91M1 modem |
+| [nRF93M1 Host Application](docs/applications/93m1_ppp/README.md) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP just carries IP to the nRF93M1 modem |
+| [nEF93M1 Serial Modem Host (AT)](docs/applications/93m1_at/README.md) | Modem terminates the connection itself with its built-in AT client. Host just sends AT commands |
 
 ---
 

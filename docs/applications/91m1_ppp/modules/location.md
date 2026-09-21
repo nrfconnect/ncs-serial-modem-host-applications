@@ -1,6 +1,6 @@
 # Location module
 
-The Location module finds the device position from nearby Wi-Fi access points. On request it runs a Wi-Fi scan through the [Location](https://docs.nordicsemi.com/bundle/ncs-latest/page/nrf/libraries/modem/location.html) library and publishes the scan result for the application to resolve into a position.
+The Location module finds the device position from nearby Wi-Fi® access points. On request it runs a Wi-Fi scan through the [Location](https://docs.nordicsemi.com/bundle/ncs-latest/page/nrf/libraries/modem/location.html) library and publishes the scan result for the application to resolve into a position.
 
 The module is only built with the location overlay, which requires an nRF7002-EB2 shield for Wi-Fi scanning. See [Hardware setup](../hardware-setup.md#nrf54lm20b-dk-with-nrf7002-eb2-for-wi-fi-location) for wiring and build commands.
 
@@ -23,7 +23,10 @@ The Location module implements a hierarchical state machine with the following s
 
 ### States
 
+The following states are used by the module:
+
 - **STATE_RUNNING:** Parent state entered on initialization. Its entry function initializes the Location library and publishes `LOCATION_MODULE_READY`.
+
     - **STATE_LOCATION_SEARCH_INACTIVE:** Default substate, in which no search is running. A `LOCATION_SEARCH_TRIGGER` starts a search with `location_request()`, and the module only moves to the active state if that call succeeds. A failed request is reported as a completed search with `LOCATION_SEARCH_DONE`, so the application is not left waiting.
     - **STATE_LOCATION_SEARCH_ACTIVE:** A Wi-Fi scan is running. Further triggers are ignored. A `LOCATION_SEARCH_CANCEL` cancels the request and completes the search by publishing `LOCATION_SEARCH_DONE`.
 
@@ -35,10 +38,14 @@ The Location module communicates on the `location_chan` channel. The messages ar
 
 ### Input messages
 
+The following describes the input messages supported by the module:
+
 - **LOCATION_SEARCH_TRIGGER**: Request to start a location search, which starts a Wi-Fi scan and publishes the result as `LOCATION_CLOUD_REQUEST`.
 - **LOCATION_SEARCH_CANCEL**: Request to cancel an ongoing location search. Wi-Fi scans cannot be truly canceled at the driver level, so a canceled scan may keep running and cause `-EBUSY` on the next request. Use this only when necessary.
 
 ### Output messages
+
+The following describes the out messages supported by the module:
 
 - **LOCATION_MODULE_READY**: The Location module is initialized and ready to use.
 - **LOCATION_SEARCH_STARTED**: A location search has been initiated and is now active.
@@ -46,6 +53,8 @@ The Location module communicates on the `location_chan` channel. The messages ar
 - **LOCATION_CLOUD_REQUEST**: Wi-Fi scan data is available for resolution by a cloud positioning service. The access points are in the `.cloud_request` field of the message.
 
 ### Message structure
+
+The following describes the message structure of the module:
 
 ```c
 /** Wi-Fi access point information. */
@@ -72,6 +81,8 @@ struct location_msg {
 ```
 
 ## Configurations
+
+Check and configure the following Kconfig options:
 
 - **CONFIG_APP_LOCATION**: Enables the Location module. Enabled by default when the Location library is enabled, which the location overlay does.
 
