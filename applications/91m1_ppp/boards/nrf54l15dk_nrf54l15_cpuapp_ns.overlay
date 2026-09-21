@@ -7,7 +7,7 @@
  * Disable VCOM0 in Board Configurator to release uart30 (P0 connector).
  *
  * Two-DK wiring (in addition to UART/DTR/RI from sm_ppp_shell):
- *   nRF54L15 P1.10 (modem reset out) -> nRF9151 DK P20 pin 7 (RESET)
+ *   nRF54L15 P1.10 (modem reset out) -> nRF9151 DK P5 pin 5 (RESET)
  *   Add a 1 kOhm series resistor in the reset wire if VDD levels differ.
  *   Set matching VDD on both DKs in Board Configurator (typically 1.8 V).
  *

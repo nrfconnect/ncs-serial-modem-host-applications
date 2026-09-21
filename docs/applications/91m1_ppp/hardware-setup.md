@@ -52,11 +52,12 @@ On the nRF54L15 DK:
 | P0.03 | P0.14 | UART CTS ← RTS |
 | P1.11 | P0.31 | DTR |
 | P1.12 | P0.30 | RI |
-| **P1.10** | **P20 pin 7** | **nRESET** |
+| **P1.10** | **P5 pin 5** | **nRESET** |
 | GND | GND | Ground |
 
 - **P0 connector:** UART signals on the host; on the modem, the uart0 pins are on the DK edge.
-- **P1 connector:** DTR, RI, and modem reset on the host.
+- **P1 connector (host):** DTR, RI, and modem reset.
+- **Modem side:** DTR and RI on **P3**; nRESET on **P5 pin 5**
 - Add a **1 kΩ** series resistor on the reset wire if IO levels differ.
 
 > **Note:** Both signal pairs cross. Host TX drives the modem's RX, and host RTS drives the modem's **CTS on P0.15** — not P0.14, which is the modem's RTS. Wiring either pair straight through leaves the modem's CTS on its internal pull-up, and the only symptom is `init_chat_script: timed out` on the host while the modem boots and takes reset pulses normally.
@@ -96,11 +97,11 @@ The Serial Modem link uses **uart21** on the P1 connector (P1.8/P1.9 for TX/RX, 
 | P1.24 | P0.14 | UART CTS ← RTS |
 | P1.11 | P0.31 (P3) | DTR |
 | P1.12 | P0.30 (P3) | RI |
-| **P1.10** | **P20 pin 7** | **nRESET** |
+| **P1.10** | **P5 pin 5** | **nRESET** |
 | GND | GND | Ground |
 
 - **Host P1/P2 connector:** UART (uart21 on P1.8/P1.9 and P1.23/P1.24), DTR (P1.11), RI (P1.12), modem reset (P1.10).
-- **Modem side:** uart0 data pins on the DK edge; DTR and RI on **P3**; nRESET on **P20 pin 7**.
+- **Modem side:** uart0 data pins on the DK edge; DTR and RI on **P3**; nRESET on **P5 pin 5**.
 - Add a **1 kΩ** series resistor on the reset wire if IO levels differ.
 
 > **Note:** DTR/RI use P1.11/P1.12, which conflict with the DK default uart21 HWFC pins. The overlay maps RTS/CTS to P1.23/P1.24 instead. All four UART wires plus DTR/RI must be connected for reliable operation.
