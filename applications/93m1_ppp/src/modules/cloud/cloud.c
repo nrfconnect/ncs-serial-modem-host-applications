@@ -6,13 +6,13 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
-#include <zephyr/net/tls_credentials.h>
 #include <zephyr/settings/settings.h>
 #include <zephyr/task_wdt/task_wdt.h>
 #include <zephyr/zbus/zbus.h>
 #include <zephyr/smf.h>
 #include <string.h>
 #include <memfault/ports/zephyr/http.h>
+#include <net/nrf_cloud.h>
 #include <net/nrf_cloud_coap.h>
 #include <date_time.h>
 
@@ -247,13 +247,30 @@ static int ground_fix(const struct location_msg *msg)
 }
 #endif /* CONFIG_APP_LOCATION */
 
-static bool cloud_sec_tag_provisioned(void)
+static bool credentials_ready(void)
 {
-	size_t len = 0;
-	int err = tls_credential_get(CONFIG_NRF_CLOUD_SEC_TAG, TLS_CREDENTIAL_PRIVATE_KEY,
-				     NULL, &len);
+	int err;
+	struct nrf_cloud_credentials_status cs;
 
-	return err != -ENOENT;
+	err = nrf_cloud_credentials_check(&cs);
+	if (err) {
+		LOG_ERR("nrf_cloud_credentials_check, error: %d", err);
+		return false;
+	}
+
+	if (cs.ca && cs.prv_key) {
+		return true;
+	}
+
+	LOG_WRN("Missing nRF Cloud credentials (see docs/applications/93m1_ppp/README.md)");
+	if (!cs.ca) {
+		LOG_WRN("  - CA cert (run device_credentials_installer --coap)");
+	}
+	if (!cs.prv_key) {
+		LOG_WRN("  - Private key (JWT signing key)");
+	}
+
+	return false;
 }
 
 /* State handlers */
@@ -315,9 +332,7 @@ static void state_connecting_entry(void *obj)
 
 	LOG_DBG("%s", __func__);
 
-	if (!cloud_sec_tag_provisioned()) {
-		LOG_ERR("Sec tag %d has no TLS credentials, skipping connect attempt",
-			CONFIG_NRF_CLOUD_SEC_TAG);
+	if (!credentials_ready()) {
 		publish_priv_cloud(CLOUD_PRIV_SESSION_FAILED);
 
 		return;
@@ -418,6 +433,7 @@ static void state_connected_entry(void *obj)
 	enum pending_request pending = state_object->pending;
 
 	LOG_DBG("%s", __func__);
+	LOG_INF("Cloud connected");
 
 	state_object->pending = PENDING_NONE;
 
