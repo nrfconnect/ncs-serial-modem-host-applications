@@ -18,13 +18,18 @@ config APP_MAIN_MSG_PROCESSING_TIMEOUT_SECONDS
 	int "Maximum message processing time"
 	default 5
 
-config APP_MAIN_CLOUD_SYNCHRONIZATION_PERIOD_SECONDS
-	int "Cloud-connected synchronization interval (seconds)"
-	default 30
-	range 5 3600
+config APP_MAIN_SYNC_INTERVAL_SECONDS
+	int "Cloud syncronization interval (seconds)"
+	default 600
 	help
-	  While cloud is connected, periodically perform cloud synchronization:
-	  send the demo cloud payload and request a FOTA poll.
+	  Time between cloud synchronizations while connected to nRF Cloud.
+	  A synchronization also runs immediately on connect. Each one:
+
+	  - Sends the demo payload.
+	  - Requests a location fix (location overlay only).
+	  - Polls the device shadow.
+	  - Polls for a FOTA job (CONFIG_APP_FOTA only).
+	  - Posts pending Memfault data.
 
 config APP_MAIN_CLOUD_SYNC_WORKQ_STACK_SIZE
 	int "Cloud synchronization workqueue stack size"

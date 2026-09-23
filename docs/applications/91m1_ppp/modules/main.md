@@ -44,7 +44,7 @@ The Main module implements a hierarchical state machine. The top level tracks th
 
 ### Cloud synchronization
 
-While the cloud connection is up, the module performs a synchronization every `CONFIG_APP_MAIN_CLOUD_SYNCHRONIZATION_PERIOD_SECONDS`, and once immediately on connect. Each synchronization advances through the sync substates in order, waiting for the current step to complete before starting the next:
+While the cloud connection is up, the module performs a synchronization every `CONFIG_APP_MAIN_SYNC_INTERVAL_SECONDS`, and once immediately on connect. Each synchronization advances through the sync substates in order, waiting for the current step to complete before starting the next:
 
 1. `CLOUD_MESSAGE_SEND` with a demo JSON payload: `{"appId":"SMHA","messageType":"DATA","data":"hello"}`. Advances on `CLOUD_MESSAGE_SENT`.
 1. `LOCATION_SEARCH_TRIGGER`, when the application is built with the location overlay. Advances on `LOCATION_SEARCH_DONE`.
@@ -69,7 +69,7 @@ The Main module defines the private channel `main_priv_chan` and publishes reque
 
 ## Configurations
 
-- **CONFIG_APP_MAIN_CLOUD_SYNCHRONIZATION_PERIOD_SECONDS**: Sets the interval between cloud synchronizations while the cloud connection is up. The valid range is 5 to 3600 seconds.
+- **CONFIG_APP_MAIN_SYNC_INTERVAL_SECONDS**: Sets the interval between cloud synchronizations while the cloud connection is up.
 
 - **CONFIG_APP_MAIN_CLOUD_SYNC_WORKQ_STACK_SIZE**: Sets the stack size for the cloud synchronization workqueue.
 

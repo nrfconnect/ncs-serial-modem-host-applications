@@ -22,11 +22,19 @@ config APP_MAIN_SYNC_BOOT_DELAY_SECONDS
 	  FOTA poll.
 
 config APP_MAIN_SYNC_INTERVAL_SECONDS
-	int "Sync interval (seconds)"
+	int "Cloud synchronization interval (seconds)"
 	default 600
 	help
-	  Period between syncs. Each sync requests a location fix, uploads
-	  diagnostics, and polls for a FOTA job.
+	  Time between cloud synchronizations while the network is connected.
+	  The first one runs APP_MAIN_SYNC_BOOT_DELAY_SECONDS after connect.
+	  Each one:
+
+	  - Posts pending Memfault data (CONFIG_APP_CLOUD only).
+	  - Requests a location fix (CONFIG_APP_LOCATION only).
+	  - Polls for a FOTA job (CONFIG_APP_FOTA only).
+
+	  If no cloud session can be established, the location and FOTA
+	  steps are skipped until the next synchronization.
 
 module = APP_MAIN
 module-str = Main

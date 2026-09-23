@@ -19,7 +19,7 @@ Cooperating modules run as dedicated threads, each owning an SMF state machine a
 
 ## Cloud synchronization
 
-While nRF Cloud is connected, main keeps a periodic timer on a dedicated workqueue (`CONFIG_APP_MAIN_CLOUD_SYNCHRONIZATION_PERIOD_SECONDS`, default **30 s**). Each synchronization runs through a sequence of substates, waiting for the current step to finish before starting the next:
+While nRF Cloud is connected, main keeps a periodic timer on a dedicated workqueue (`CONFIG_APP_MAIN_SYNC_INTERVAL_SECONDS`, default **600 s**). Each synchronization runs through a sequence of substates, waiting for the current step to finish before starting the next:
 
 1. Sends a demo JSON device message on `cloud_chan` (payload: `{"appId":"SMHA","messageType":"DATA","data":"hello"}`), then waits for `CLOUD_MESSAGE_SENT`.
 2. Publishes `LOCATION_SEARCH_TRIGGER` on `location_chan` when the application is built with the location overlay (`CONFIG_APP_LOCATION`), then waits for `LOCATION_SEARCH_DONE`.
@@ -42,7 +42,7 @@ Memfault is configured for firmware type `smha-91m1` and uploads through nRF Clo
 | Option | Default | Effect |
 |--------|---------|--------|
 | `CONFIG_APP_CLOUD_CREDENTIAL_RETRY_SECONDS` | 10 | Retry interval when credentials or time are missing |
-| `CONFIG_APP_MAIN_CLOUD_SYNCHRONIZATION_PERIOD_SECONDS` | 30 | Cloud sync interval while connected |
+| `CONFIG_APP_MAIN_SYNC_INTERVAL_SECONDS` | 600 | Cloud sync interval while connected |
 | `CONFIG_NRF_CLOUD_SEC_TAG` | 16842753 | TLS credential tag for nRF Cloud |
 
 Per-module options are documented in the module guides linked from [Architecture](architecture.md).

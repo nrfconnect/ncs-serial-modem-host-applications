@@ -395,10 +395,8 @@ static void cloud_sync_schedule(struct main_state *state)
 {
 	int err;
 
-	err = k_work_schedule_for_queue(
-		&cloud_sync_workq,
-		&state->cloud_sync_dwork,
-		K_SECONDS(CONFIG_APP_MAIN_CLOUD_SYNCHRONIZATION_PERIOD_SECONDS));
+	err = k_work_schedule_for_queue(&cloud_sync_workq, &state->cloud_sync_dwork,
+					K_SECONDS(CONFIG_APP_MAIN_SYNC_INTERVAL_SECONDS));
 	if (err < 0) {
 		LOG_ERR("k_work_schedule_for_queue, error: %d", err);
 		FATAL_ERROR();

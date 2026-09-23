@@ -48,6 +48,6 @@ Cloud -> Cloud9 : pending Memfault data
 Cloud -> Main : CLOUD_MEMFAULT_POSTED
 
 == STATE_SYNC_IDLE ==
-Main -> Main : reschedule after\nCONFIG_APP_MAIN_CLOUD_SYNCHRONIZATION_PERIOD_SECONDS
+Main -> Main : reschedule after\nCONFIG_APP_MAIN_SYNC_INTERVAL_SECONDS
 
 @enduml

@@ -15,8 +15,8 @@ CLOUD_CONNECTED_LOG = "Cloud connected"
 CLOUD_CONNECT_TIMEOUT = 120.0
 
 # A location search runs on every cloud synchronization
-# (CONFIG_APP_MAIN_CLOUD_SYNCHRONIZATION_PERIOD_SECONDS), so allow a few periods
-# for the Wi-Fi scan and the ground-fix round trip.
+# (CONFIG_APP_MAIN_SYNC_INTERVAL_SECONDS), including one immediately on connect,
+# so allow for the Wi-Fi scan and the ground-fix round trip.
 LOCATION_TIMEOUT = 180.0
 
 
