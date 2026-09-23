@@ -14,6 +14,12 @@ menuconfig APP_BUTTONS
 
 if APP_BUTTONS
 
+config APP_BUTTONS_SHELL
+	bool "button shell command"
+	default y if SHELL
+	help
+	  Adds shell support for button presses.
+
 module = APP_BUTTONS
 module-str = Buttons
 source "subsys/logging/Kconfig.template.log_config"
