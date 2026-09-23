@@ -14,6 +14,7 @@ import yaml
 PROVISION_TEST_ID = "91m1_ppp-provision-nrf54l15-nrf91"
 PROVISION_NRF54LM20B_TEST_ID = "91m1_ppp-provision-nrf54lm20b-nrf91"
 PROVISION_LOCATION_TEST_ID = "91m1_ppp-provision-location-nrf54lm20b-nrf91"
+PROVISION_NRF93M1_TEST_ID = "93m1_ppp-provision-nrf93m1"
 COREDUMP_TEST_ID = "91m1_ppp-memfault-coredump-nrf54l15-nrf91"
 FOTA_TEST_ID = "91m1_ppp-application-fota-nrf54l15-nrf91"
 FOTA_NRF54LM20B_TEST_ID = "91m1_ppp-application-fota-nrf54lm20b-nrf91"
@@ -60,6 +61,7 @@ def cmd_matrix(root: Path, test_filter: str) -> None:
         ("run_provision", PROVISION_TEST_ID),
         ("run_provision_nrf54lm20b", PROVISION_NRF54LM20B_TEST_ID),
         ("run_provision_location", PROVISION_LOCATION_TEST_ID),
+        ("run_provision_nrf93m1", PROVISION_NRF93M1_TEST_ID),
         ("run_coredump", COREDUMP_TEST_ID),
         ("run_fota", FOTA_TEST_ID),
         ("run_fota_nrf54lm20b", FOTA_NRF54LM20B_TEST_ID),
@@ -88,7 +90,7 @@ def main(argv: list[str] | None = None) -> None:
 
     matrix_parser = subparsers.add_parser(
         "matrix",
-        help="Emit CI run flags for provision, nRF54LM20B provision, location, coredump, and FOTA tests (L15 and LM20B)",
+        help="Emit CI run flags for provision (nRF54L15, nRF54LM20B, nRF93M1), location, coredump, and FOTA tests (L15 and LM20B)",
         allow_abbrev=False,
     )
     matrix_parser.add_argument(

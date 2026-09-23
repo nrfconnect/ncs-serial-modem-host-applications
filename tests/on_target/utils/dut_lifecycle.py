@@ -98,7 +98,9 @@ class CloudDutSession:
         self._wait_for_device_id(device_id_timeout=device_id_timeout)
 
         logger.info("Confirm device boots without nRF Cloud credentials")
-        self.dut.uart.wait_for_substring(MISSING_CREDENTIALS_LOG, timeout=60.0)
+        self.dut.uart.wait_for_substring(
+            MISSING_CREDENTIALS_LOG, timeout=CREDENTIAL_STATE_TIMEOUT
+        )
         return self.device_id
 
     def wait_for_provisioned_boot(self, *, device_id_timeout: float = 60.0) -> str:

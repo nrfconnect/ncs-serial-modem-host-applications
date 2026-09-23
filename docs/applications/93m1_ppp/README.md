@@ -71,7 +71,15 @@ Wait for the cellular link, then for the connection and first upload:
 ```text
 <inf> main: Network connected
 <inf> nrf_cloud_coap_transport: Authorized
+<inf> cloud: Cloud connected
 <inf> cloud: Diagnostics uploaded
+```
+
+If the CA certificate or private key is missing, each cloud synchronization logs the missing items instead and skips the connection attempt until the credentials are installed:
+
+```text
+<wrn> cloud: Missing nRF Cloud credentials (see docs/applications/93m1_ppp/README.md)
+<wrn> cloud:   - CA cert (run device_credentials_installer --coap)
 ```
 
 Heartbeats and metrics appear in the linked nRF Cloud project. Location and FOTA use the same CoAP session.

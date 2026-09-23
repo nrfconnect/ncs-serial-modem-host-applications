@@ -99,6 +99,36 @@ tests:
     provisioning:
       cleanup: false
 
+  - id: 93m1_ppp-provision-nrf93m1
+    enabled: true
+    type: provision
+    pytest_dir: tests/on_target/tests/test_provision/
+    app: 93m1_ppp
+    board: nrf93m1dk/nrf54l15/cpuapp/ns
+    board_type: nrf93m1
+    # The nRF93M1 modem is on the DK and runs its own firmware as-is, so there is
+    # no serial_modem section: nothing to flash and no modem console to capture.
+    hardware:
+      segger_sn_var: CI_NRF93M1_PROVISION_SEGGER_SN
+      serial_port_var: CI_NRF93M1_PROVISION_SERIAL_PORT
+      # uart20 is VCOM0 on the nRF93M1 DK; VCOM1 carries the modem UART.
+      console_vcom: 0
+      device_id_var: CI_NRF93M1_PROVISION_DEVICE_ID
+    nrf_cloud:
+      api_key_var: NRF_CLOUD_API_KEY
+      ca_cert_var: NRF_CLOUD_CA_CERT
+      ca_key_var: NRF_CLOUD_CA_KEY
+    memfault:
+      org_token_var: MEMFAULT_ORG_TOKEN
+      org_var: MEMFAULT_ORG
+      project_var: MEMFAULT_PROJECT
+      fleet_sampling_configuration_var: MEMFAULT_FLEET_SAMPLING_CONFIGURATION
+      cohort: ci-93m1-provision-nrf93m1
+      cohort_name: CI 93m1 Provision nRF93M1
+      baseline_version: "1.0.0"  # local-dev fallback when FIRMWARE_VERSION is unset
+    provisioning:
+      cleanup: false
+
   - id: 91m1_ppp-memfault-coredump-nrf54l15-nrf91
     enabled: true
     type: memfault
