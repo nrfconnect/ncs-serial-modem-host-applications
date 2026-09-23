@@ -31,7 +31,7 @@ Firmware built for a release embeds that version via each application's [`VERSIO
 
 FOTA hardware tests on `main` use the same release semver as the baseline: CI passes `FIRMWARE_VERSION` to the Test workflow, flashes the Build artifact's `merged.hex` without rebuilding, then builds and deploys a patch-bumped update image (e.g. `1.2.3` → `1.2.4`) for OTA verification. Local runs fall back to `baseline_version` in [`.github/test/tests.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/.github/test/tests.yml) and flash with `west flash --recover`.
 
-Hardware tests use four rigs on two self-hosted runners (see [`.github/test/tests.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/.github/test/tests.yml)):
+Hardware tests use five rigs on two self-hosted runners (see [`.github/test/tests.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/.github/test/tests.yml)):
 
 | CI job | Runner | DUT | Every CI run |
 |--------|--------|-----|--------------|
@@ -42,8 +42,11 @@ Hardware tests use four rigs on two self-hosted runners (see [`.github/test/test
 | `91m1_ppp-memfault-coredump-nrf54l15-nrf91` | `self-hosted-test` | Test (`CI_NRF54L15_*`) | Coredump (no re-provision) |
 | `91m1_ppp-application-fota-nrf54l15-nrf91` | `self-hosted-test` | Test (`CI_NRF54L15_*`) | FOTA (queued with coredump on same runner) |
 | `91m1_ppp-application-fota-nrf54lm20b-nrf91` | `self-hosted-provisioning` | Location (`CI_NRF54LM20B_PROVISION_*`) | FOTA (queued with provision jobs on same runner) |
+| `93m1_ppp-application-fota-nrf93m1` | `self-hosted-test` | nRF93M1 test DK (`CI_NRF93M1_*`) | FOTA (queued with coredump and FOTA on same runner) |
 
-Provisioning runs in parallel with the first queued test job on the separate runners. Jobs sharing a runner run one at a time; GitHub queues whichever job does not get the runner first (coredump and FOTA on the test runner; the four provisioning jobs plus LM20B FOTA on the provisioning runner).
+Provisioning runs in parallel with the first queued test job on the separate runners. Jobs sharing a runner run one at a time; GitHub queues whichever job does not get the runner first (coredump and both FOTA jobs on the test runner; the four provisioning jobs plus LM20B FOTA on the provisioning runner).
+
+Once the release is deployed, FOTA tests run `fota poll` on the DUT shell instead of waiting up to a full sync interval for the application to poll on its own. A poll that reports no update is retried, since nRF Cloud can lag behind the Memfault deployment.
 
 DUT 3 is an nRF54LM20B DK with an [nRF7002-EB2](applications/91m1_ppp/hardware-setup.md) shield, wired to an nRF91 Serial Modem. Both lm20b tests use host console **VCOM0** (uart30): `91m1_ppp-provision-nrf54lm20b-nrf91` flashes the plain `nrf54lm20b` build and runs `test_cloud_provision`; `91m1_ppp-provision-location-nrf54lm20b-nrf91` flashes the Wi-Fi location build and verifies Wi-Fi scan plus nRF Cloud ground-fix. Local run for plain provisioning:
 
@@ -78,7 +81,7 @@ Register runners with dedicated labels only. GitHub adds the default `self-hoste
 | Runner | Labels | Purpose |
 |--------|--------|---------|
 | `*-build-A/B/C` | `self-hosted-build` | Firmware builds, compliance, SonarCloud |
-| `*-host` | `self-hosted-test` | Coredump and FOTA on DUT 2 |
+| `*-host` | `self-hosted-test` | Coredump and FOTA on DUT 2, FOTA on DUT 5 |
 | `*-prov` | `self-hosted-provisioning` | Provisioning on DUT 1, DUT 3 and DUT 4, FOTA on DUT 3 |
 
 Example registration for the provisioning rig:
@@ -107,7 +110,7 @@ Example for the test rig (DUT 2):
   --name smha-test --labels self-hosted-test,Linux,X64 --unattended
 ```
 
-Both runners need Docker and USB access to their DKs (`--privileged -v /dev:/dev` in the test workflow containers). Set the GitHub repository variables for each rig on the same repo (`CI_NRF54L15_PROVISION_*` and `CI_NRF54L15_PROVISION_SERIAL_MODEM_*` for DUT 1, `CI_NRF54L15_*` and `CI_NRF54L15_SERIAL_MODEM_*` for DUT 2, `CI_NRF54LM20B_PROVISION_*` and `CI_NRF54LM20B_PROVISION_SERIAL_MODEM_*` for DUT 3, `CI_NRF93M1_PROVISION_*` for DUT 4). The provisioning runner needs access to DUT 1, DUT 3 and DUT 4; tests select their board by SEGGER serial number, so the DKs can share one runner host.
+Both runners need Docker and USB access to their DKs (`--privileged -v /dev:/dev` in the test workflow containers). Set the GitHub repository variables for each rig on the same repo (`CI_NRF54L15_PROVISION_*` and `CI_NRF54L15_PROVISION_SERIAL_MODEM_*` for DUT 1, `CI_NRF54L15_*` and `CI_NRF54L15_SERIAL_MODEM_*` for DUT 2, `CI_NRF54LM20B_PROVISION_*` and `CI_NRF54LM20B_PROVISION_SERIAL_MODEM_*` for DUT 3, `CI_NRF93M1_PROVISION_*` for DUT 4, `CI_NRF93M1_*` for DUT 5). The provisioning runner needs access to DUT 1, DUT 3 and DUT 4, and the test runner to DUT 2 and DUT 5; tests select their board by SEGGER serial number, so the DKs can share one runner host.
 
 91m1 on-target tests flash the newest upstream Serial Modem release that ships the external-MCU zip on the nRF9151 DK before programming the host.
 
@@ -145,7 +148,15 @@ export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load 91m1_p
 PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_fota/ -c tests/on_target/tests/pytest.ini -v
 ```
 
-Set `NRF_CLOUD_*`, `MEMFAULT_*`, and the host plus Serial Modem `CI_NRF54L15_*` / `CI_NRF54L15_PROVISION_*` / `CI_NRF54LM20B_PROVISION_*` / `CI_NRF93M1_PROVISION_*` variables/secrets documented in [`.github/workflows/test.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/.github/workflows/test.yml).
+The nRF93M1 FOTA test runs on its own nRF93M1 DK (DUT 5, `CI_NRF93M1_*`, host console on VCOM0) in Memfault cohort `ci-93m1-test-nrf93m1`. Like the nRF54LM20B FOTA test, it provisions the board through `ensure_provisioned()` on the first run. Local run:
+
+```shell
+export REPO_ROOT=$PWD
+export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load 93m1_ppp-application-fota-nrf93m1)"
+PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_fota/ -c tests/on_target/tests/pytest.ini -v
+```
+
+Set `NRF_CLOUD_*`, `MEMFAULT_*`, and the host plus Serial Modem `CI_NRF54L15_*` / `CI_NRF54L15_PROVISION_*` / `CI_NRF54LM20B_PROVISION_*` / `CI_NRF93M1_PROVISION_*` / `CI_NRF93M1_*` variables/secrets documented in [`.github/workflows/test.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/.github/workflows/test.yml).
 
 ### Serial logs
 

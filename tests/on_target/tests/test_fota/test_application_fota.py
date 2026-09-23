@@ -35,10 +35,16 @@ logger = get_logger()
 CLOUD_CONNECTED_LOG = "Cloud connected"
 FOTA_DOWNLOAD_STARTING_LOG = "FOTA download starting"
 FOTA_REBOOT_LOG = "FOTA successful, rebooting to apply the update"
+FOTA_NO_UPDATE_LOG = "No FOTA update available"
+FOTA_POLL_COMMAND = "fota poll"
 
 # Serial-log waits (seconds). Cloud connect and first FOTA poll are usually well under a minute.
 CLOUD_CONNECT_TIMEOUT = 120.0
 FOTA_START_TIMEOUT = 60.0
+# nRF Cloud can still report no update right after the propagation delay, so a
+# poll that comes back empty is retried after a pause.
+FOTA_POLL_ATTEMPTS = 3
+FOTA_POLL_RETRY_DELAY = 15.0
 # ~540 KiB OTA over cellular PPP typically needs 4-5 minutes on CI hardware.
 FOTA_DOWNLOAD_TIMEOUT = 360.0
 POST_REBOOT_CONNECT_TIMEOUT = 120.0
@@ -49,7 +55,7 @@ MEMFAULT_RELEASE_DEPLOY_TIMEOUT = 60.0
 NRF_CLOUD_OTA_PROPAGATION_DELAY = 30.0
 
 FOTA_DIAGNOSTIC_MARKERS = (
-    "No FOTA update available",
+    FOTA_NO_UPDATE_LOG,
     "nrf_cloud_fota_poll_process",
     "Memfault data posted",
 )
@@ -98,6 +104,41 @@ def _wait_for_fota_log_after_cloud_connect(
     except TimeoutError:
         _log_fota_timeout_diagnostics(uart, needle)
         raise
+
+
+def _poll_until_fota_download_starts(uart: Uart) -> None:
+    """Ask the DUT to poll for FOTA over the shell until the download starts.
+
+    The applications only poll on their own once per sync interval, which is far
+    longer than the test should wait.
+    """
+    for attempt in range(1, FOTA_POLL_ATTEMPTS + 1):
+        offset = len(uart.snapshot_log())
+        logger.info(
+            "Request FOTA poll with %r (%d/%d)", FOTA_POLL_COMMAND, attempt, FOTA_POLL_ATTEMPTS
+        )
+        uart.write_line(FOTA_POLL_COMMAND)
+
+        deadline = time.monotonic() + FOTA_START_TIMEOUT
+        while time.monotonic() < deadline:
+            captured = uart.snapshot_log()
+            uart.raise_if_modem_link_down(captured)
+            tail = captured[offset:]
+            if FOTA_DOWNLOAD_STARTING_LOG in tail:
+                return
+            if FOTA_NO_UPDATE_LOG in tail:
+                break
+            time.sleep(1.0)
+
+        if attempt < FOTA_POLL_ATTEMPTS:
+            logger.info("No FOTA download yet, polling again in %.0fs", FOTA_POLL_RETRY_DELAY)
+            time.sleep(FOTA_POLL_RETRY_DELAY)
+
+    _log_fota_timeout_diagnostics(uart, FOTA_DOWNLOAD_STARTING_LOG)
+    raise TimeoutError(
+        f"No {FOTA_DOWNLOAD_STARTING_LOG!r} after {FOTA_POLL_ATTEMPTS} "
+        f"{FOTA_POLL_COMMAND!r} requests"
+    )
 
 
 @pytest.mark.slow
@@ -161,14 +202,10 @@ def test_application_fota_via_cloud_sync(
         )
         time.sleep(NRF_CLOUD_OTA_PROPAGATION_DELAY)
 
-        logger.info("Wait for cloud connect and automatic FOTA via cloud sync")
+        logger.info("Wait for cloud connect, then trigger FOTA over the shell")
         dut.uart.wait_for_substring(CLOUD_CONNECTED_LOG, timeout=CLOUD_CONNECT_TIMEOUT)
         enable_modem_application_logs(dut)
-        _wait_for_fota_log_after_cloud_connect(
-            dut.uart,
-            FOTA_DOWNLOAD_STARTING_LOG,
-            timeout=FOTA_START_TIMEOUT,
-        )
+        _poll_until_fota_download_starts(dut.uart)
         _wait_for_fota_log_after_cloud_connect(
             dut.uart,
             FOTA_REBOOT_LOG,

@@ -29,6 +29,7 @@ MISSING_CREDENTIALS_LOG = "Missing nRF Cloud credentials"
 CLOUD_CONNECTED_LOG = "Cloud connected"
 CLOUD_AUTH_FAILURE_LOG = "Device not authenticated"
 CLOUD_CREDENTIALS_READY_MARKERS = (
+    CLOUD_CONNECTED_LOG,
     "Connected to nRF Cloud",
     "nRF Cloud client ID:",
 )
