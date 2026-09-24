@@ -14,6 +14,8 @@ from utils.logger import get_logger
 logger = get_logger()
 
 SHELL_PROMPT = "uart:~$"
+# An idle shell only reprints its prompt on input or async log output.
+PROMPT_NUDGE_INTERVAL = 5.0
 
 
 def _wait_for_prompt_in_buffer(
@@ -24,8 +26,14 @@ def _wait_for_prompt_in_buffer(
 ) -> str:
     deadline = time.monotonic() + timeout
     buffer = initial_buffer
+    next_nudge = time.monotonic()
 
     while time.monotonic() < deadline:
+        if time.monotonic() >= next_nudge:
+            ser.write(b"\r\n")
+            ser.flush()
+            next_nudge = time.monotonic() + PROMPT_NUDGE_INTERVAL
+
         waiting = ser.in_waiting
         data = ser.read(waiting if waiting else 1)
         if not data:
