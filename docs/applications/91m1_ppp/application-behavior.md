@@ -1,35 +1,35 @@
 # Application behavior
 
-General runtime behavior of the [91m1_ppp](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/) host application. For the module design, zbus channels, and state machines, see [Architecture](architecture.md). For hardware wiring, build, and cloud provisioning, see the [main guide](README.md).
+This guide describes the general runtime behavior of the [nRF91M1 Host Application](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/) host application. For the module design, zbus channels, and state machines, see [Architecture](architecture.md). For hardware wiring, build, and cloud provisioning, see the [main guide](README.md).
 
 ## Overview
 
-The application runs on the **nRF54L15** host MCU and treats the **nRF91M1 Serial Modem** as a cellular data interface over PPP. Cloud connectivity uses **host-native CoAP/DTLS** to nRF Cloud. Credentials are stored in **TF-M Protected Storage** and used to sign JWTs for CoAP authentication.
+The application runs on the nRF54L15 host MCU and treats the nRF91M1 Serial Modem as a cellular data interface over PPP. Cloud connectivity uses host-native CoAP/DTLS to nRF Cloud. Credentials are stored in TF-M Protected Storage and used to sign JWTs for CoAP authentication.
 
-Cooperating modules run as dedicated threads, each owning an SMF state machine and communicating over zbus channels. See [Architecture](architecture.md) for what each module does and how they interact.
+Cooperating modules run as dedicated threads, each with its own SMF state machine, and communicate through zbus channels. See [Architecture](architecture.md) for details about the modules and their interactions.
 
 ## Startup sequence
 
 1. **Boot** — MCUboot loads the application. On boards with a modem reset GPIO, `modem_reset.c` pulses the nRF91 reset line before the modules start. The nRF Cloud library logs the device ID (from the host HW ID), protocol, and security tag.
-2. **Network** — The network module connects on startup. When L4 connectivity is established it publishes `NETWORK_CONNECTED`.
-3. **Cloud** — On network up, the cloud module waits for valid time (NTP over PPP) and installed credentials, then calls `nrf_cloud_coap_connect()`. Missing credentials or time cause a retry every 10 seconds (`CONFIG_APP_CLOUD_CREDENTIAL_RETRY_SECONDS`).
-4. **Main** — When the cloud module publishes `CLOUD_CONNECTED`, main transitions to the cloud-connected state and runs the first cloud synchronization.
+1. **Network** - The network module connects on startup. When L4 connectivity is established it publishes `NETWORK_CONNECTED`.
+1. **Cloud** - On network up, the cloud module waits for valid time (NTP over PPP) and installed credentials, then calls `nrf_cloud_coap_connect()`. Missing credentials or time cause a retry every 10 seconds (`CONFIG_APP_CLOUD_CREDENTIAL_RETRY_SECONDS`).
+1. **Main** - When the cloud module publishes `CLOUD_CONNECTED`, main transitions to the cloud-connected state and runs the first cloud synchronization.
 
 ![Startup sequence from boot to the first cloud synchronization](diagrams/startup.svg)
 
 ## Cloud synchronization
 
-While nRF Cloud is connected, main keeps a periodic timer on a dedicated workqueue (`CONFIG_APP_MAIN_SYNC_INTERVAL_SECONDS`, default **600 s**). Each synchronization runs through a sequence of substates, waiting for the current step to finish before starting the next:
+While nRF Cloud is connected, main keeps a periodic timer on a dedicated workqueue (`CONFIG_APP_MAIN_SYNC_INTERVAL_SECONDS`, default 600 seconds). Each synchronization runs through a sequence of substates, waiting for the current step to finish before starting the next:
 
 1. Sends a demo JSON device message on `cloud_chan` (payload: `{"appId":"SMHA","messageType":"DATA","data":"hello"}`), then waits for `CLOUD_MESSAGE_SENT`.
-2. Publishes `LOCATION_SEARCH_TRIGGER` on `location_chan` when the application is built with the location overlay (`CONFIG_APP_LOCATION`), then waits for `LOCATION_SEARCH_DONE`.
-3. Publishes `CLOUD_SHADOW_POLL_REQUEST` on `cloud_chan` to pick up any desired configuration from the device shadow, then waits for `CLOUD_SHADOW_POLLED`.
-4. Publishes `FOTA_POLL_REQUEST` on `fota_chan` to check for firmware updates, then waits for `FOTA_ABORTED` or enters the FOTA download state on `FOTA_STARTING`.
-5. Publishes `CLOUD_MEMFAULT_POST_REQUEST` on `cloud_chan` to post any pending Memfault data, then waits for `CLOUD_MEMFAULT_POSTED`.
+1. Publishes `LOCATION_SEARCH_TRIGGER` on `location_chan` when the application is built with the location overlay (`CONFIG_APP_LOCATION`), then waits for `LOCATION_SEARCH_DONE`.
+1. Publishes `CLOUD_SHADOW_POLL_REQUEST` on `cloud_chan` to pick up any desired configuration from the device shadow, then waits for `CLOUD_SHADOW_POLLED`.
+1. Publishes `FOTA_POLL_REQUEST` on `fota_chan` to check for firmware updates, then waits for `FOTA_ABORTED` or enters the FOTA download state on `FOTA_STARTING`.
+1. Publishes `CLOUD_MEMFAULT_POST_REQUEST` on `cloud_chan` to post any pending Memfault data, then waits for `CLOUD_MEMFAULT_POSTED`.
 
 ![One cloud synchronization cycle](diagrams/cloud-sync.svg)
 
-An initial synchronization runs immediately on cloud connect. The timer is cancelled when cloud disconnects. A new periodic trigger is only acted on while main is idle between synchronizations.
+An initial synchronization runs immediately on cloud connect. The timer is cancelled when the cloud disconnects. A new periodic trigger is only acted on while main is idle between synchronizations.
 
 During the location step, the location module scans for Wi-Fi access points and publishes the result as `LOCATION_CLOUD_REQUEST`, which main forwards to the cloud module. The cloud module resolves it into a position with an nRF Cloud CoAP ground-fix request and logs the position together with a Google Maps URL. Main does not advance past the location step until `LOCATION_SEARCH_DONE` is published.
 
@@ -39,10 +39,13 @@ Memfault is configured for firmware type `smha-91m1` and uploads through nRF Clo
 
 ## Configuration
 
-| Option | Default | Effect |
-|--------|---------|--------|
-| `CONFIG_APP_CLOUD_CREDENTIAL_RETRY_SECONDS` | 10 | Retry interval when credentials or time are missing |
-| `CONFIG_APP_MAIN_SYNC_INTERVAL_SECONDS` | 600 | Cloud sync interval while connected |
-| `CONFIG_NRF_CLOUD_SEC_TAG` | 16842753 | TLS credential tag for nRF Cloud |
+Check and configure the following Kconfig options for the application:
+
+- **CONFIG_APP_CLOUD_CREDENTIAL_RETRY_SECONDS:**
+  Retry interval when credentials or time are missing. The defalut value is `10`.
+- **CONFIG_APP_MAIN_SYNC_INTERVAL_SECONDS:**
+  Cloud sync interval while connected. The defalut value is `600`.
+- **CONFIG_NRF_CLOUD_SEC_TAG:**
+  TLS credential tag for nRF Cloud. The defalut value is `16842753`.
 
 Per-module options are documented in the module guides linked from [Architecture](architecture.md).

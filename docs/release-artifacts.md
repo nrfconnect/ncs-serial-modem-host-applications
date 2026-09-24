@@ -4,9 +4,7 @@ This document describes the pre-built firmware published on each GitHub release.
 
 ## Downloading releases
 
-Pre-built firmware and release notes are published here:
-
-[https://github.com/nrfconnect/ncs-serial-modem-host-applications/releases](https://github.com/nrfconnect/ncs-serial-modem-host-applications/releases)
+Pre-built firmware and release notes are published [here](https://github.com/nrfconnect/ncs-serial-modem-host-applications/releases).
 
 Download the zip that matches your application and hardware setup, extract it, and flash `merged.hex` with a J-Link debugger or `nrfutil device program`. See [Flashing a release](#flashing-a-release) below.
 
@@ -26,7 +24,7 @@ Each release contains one zip per CI build flavor:
 
 Replace `{VERSION}` with the release tag without the `v` prefix (for example `1.2.3` for tag `v1.2.3`).
 
-91m1 host setups also require Serial Modem firmware on the nRF9151 / SMA DK — see [Serial Modem firmware (nRF9151 DK)](#serial-modem-firmware-nrf9151-dk) below.
+91m1 host setups also require Serial Modem firmware on the nRF9151 or nRF9151 SMA DK. See [Serial Modem firmware (nRF9151 DK)](#serial-modem-firmware-nrf9151-dk) below.
 
 ## Inside each zip
 
@@ -57,45 +55,45 @@ Everything sits at the top level, with no nested directories:
 | `.config` | Kconfig snapshot from the release build | Inspecting which options were enabled without rebuilding |
 | `serial_modem_*_nrf9151dk_nrf91m1.zip` | Serial Modem release tested by CI that night, exactly as published upstream | Programming the companion DK (`91m1_ppp` bundles only) |
 
-### `merged.hex`
+### Full sysbuild image
 
-Use this for first-time programming or when you need to replace the full flash contents, including bootloader and secure partitions. Host applications (`91m1_ppp`, `93m1_ppp`) are built with sysbuild, TF-M, and MCUboot; the merged image reflects that layout.
+Use `merged.hex` for first-time programming or when you need to replace the full flash contents, including the bootloader and secure partitions. Host applications (`91m1_ppp`, `93m1_ppp`) are built with sysbuild, TF-M, and MCUboot, the merged image reflects that layout.
 
 After flashing, follow the application guide for hardware setup and cloud onboarding:
 
-- [91m1_ppp documentation](applications/91m1_ppp/README.md)
-- [93m1_ppp documentation](applications/93m1_ppp/README.md)
-- [93m1_at documentation](applications/93m1_at/README.md)
+- [nRF91M1 Host Application](applications/91m1_ppp/README.md)
+- [nRF93M1 Host Application](applications/93m1_ppp/README.md)
+- [nEF93M1 Serial Modem Host (AT)](applications/93m1_at/README.md)
 
-### `zephyr.elf`
+### ELF file with debug symbols
 
-Upload this to Memfault **once per release build** so coredumps decode correctly. The GNU build ID logged at boot must match the symbol file. See [Memfault remote debugging](applications/91m1_ppp/memfault.md) for the 91m1_ppp flow.
+Upload `zephyr.elf` to Memfault once per release build so coredumps decode correctly. The GNU build ID logged at boot must match the symbol file. See [Memfault remote debugging](applications/91m1_ppp/memfault.md) for the 91m1_ppp flow.
 
-### `.config`
+### Kconfig snapshot
 
-Useful when comparing behavior between releases or confirming that a feature (location, Memfault, FOTA, and so on) was enabled in the build you downloaded.
+The `.config` file is useful when comparing behavior between releases or confirming that a feature (location, Memfault, FOTA, and so on) was enabled in the build you downloaded.
 
-### `zephyr.signed.bin`
+### MCUboot-signed application image
 
-Signed application-only payload for over-the-air updates. CI FOTA tests build a patch-bumped copy locally; production OTA is typically managed through Memfault releases linked to your nRF Cloud project. Not produced for `93m1_at`, which does not ship a signed update image in CI.
+The `zephyr.signed.bin` file is for signed application-only payload for over-the-air updates. CI FOTA tests build a patch-bumped copy locally; production OTA is typically managed through Memfault releases linked to your nRF Cloud project. Not produced for `93m1_at`, which does not ship a signed update image in CI.
 
-### `dfu_application.zip`
+### DFU package wrapping
 
-The same signed image packaged with the manifest an nRF Cloud FOTA job expects, so a release can be deployed without rebuilding. Not produced for `93m1_at`.
+The `dfu_application.zip` file is for the same signed image packaged with the manifest an nRF Cloud FOTA job expects, so a release can be deployed without rebuilding. Not produced for `93m1_at`.
 
 ### Everything else from the build
 
-Only the files above ship. Per-domain MCUboot and TF-M output, `.map` and `.dts` files, and the partition metadata are not included — build the same tag locally when you need them, as described in [Building locally instead](#building-locally-instead).
+Only the files above ship. Per-domain MCUboot and TF-M output, `.map` and `.dts` files, and the partition metadata are not included, build the same tag locally when you need them, as described in [Building locally instead](#building-locally-instead).
 
 ## Serial Modem firmware (nRF9151 DK)
 
-91m1 host applications (`91m1_ppp` on nRF54L15 or nRF54LM20B) need a separate Serial Modem image on the wired nRF9151 / SMA DK, configured for PPP + CMUX on uart0 for an external host MCU. Every `91m1_ppp` bundle carries the upstream archive CI tested that night, so there is no separate asset to download — and on-target tests flash that same archive, so what ships beside the host build is what CI verified against it.
+nRF91M1 Host Application (`91m1_ppp` on nRF54L15 or nRF54LM20B) need a separate Serial Modem image on the wired nRF9151 or nRf9151 SMA DK, configured for PPP + CMUX on UART0 for an external host MCU. Every `91m1_ppp` bundle carries the upstream archive CI tested that night, so there is no separate asset to download, and on-target tests flash that same archive, so what ships besides the host build is what CI verified against it.
 
-The exact tag varies by SMHA release. Each bundle's `README.md` names the Serial Modem version and links to the upstream release page. Browse [ncs-serial-modem releases](https://github.com/nrfconnect/ncs-serial-modem/releases) for the source, or use the zip already in your download.
+The exact tag varies by SMHA release. Each bundle's `README.md` names the Serial Modem version and links to the upstream release page. Browse [Serial Modem releases](https://github.com/nrfconnect/ncs-serial-modem/releases) for the source, or use the zip already in your download.
 
 Besides the full-flash `.hex`, the archive holds the ELF with debug symbols, a Kconfig snapshot, the signed application and MCUboot slot images, DFU packages for programming without a debugger, and a devicetree snapshot.
 
-Extract it, flash the `.hex` on the **Serial Modem DK** first, then flash the host bundle's `merged.hex` on the **host DK**:
+Extract it, flash the `.hex` on the  Serial Modem DK first, then flash the host bundle's `merged.hex` on the host DK:
 
 ```shell
 unzip serial_modem_v<tag>_nrf9151dk_nrf91m1.zip
@@ -105,13 +103,13 @@ nrfutil device program \
 
 Replace `<tag>` with the version named in the bundle `README.md` (for example `2.0.0-preview3`).
 
-See [91m1_ppp hardware setup](applications/91m1_ppp/hardware-setup.md#serial-modem-firmware) for wiring and Board Configurator settings.
+See [nRF91M1 Host Application's hardware setup](applications/91m1_ppp/hardware-setup.md#serial-modem-firmware) for wiring and Board Configurator settings.
 
 ## Flashing a release
 
 Extract the zip, then flash `merged.hex` from the extracted directory.
 
-**West** (from an initialized NCS workspace with the SEGGER J-Link connected):
+**West** (from an initialized nRF Connect SDK workspace with the SEGGER J-Link connected):
 
 ```shell
 west flash --hex-file merged.hex --recover
@@ -123,7 +121,7 @@ west flash --hex-file merged.hex --recover
 nrfutil device program --firmware merged.hex --recover
 ```
 
-Use `--recover` on first flash or when TF-M / credential storage must be reset. For routine re-flash during development, omit `--recover` if you want to keep TF-M Protected Storage credentials.
+Use `--recover` on the first flash or when TF-M or credential storage must be reset. For routine re-flash during development, omit `--recover` if you want to keep TF-M Protected Storage credentials.
 
 For 91m1 two-board setups, extract the bundled Serial Modem archive and flash its `.hex` on the nRF9151 DK before programming the host `merged.hex`.
 
@@ -152,5 +150,5 @@ Board identifiers match CI; see [CI and contribution](ci-and-contribution.md) an
 
 ## Related documentation
 
-- [CI and contribution](ci-and-contribution.md) — how releases are versioned and published
-- [91m1_ppp Memfault](applications/91m1_ppp/memfault.md) — symbol upload and coredump workflow
+- [CI and contribution](ci-and-contribution.md) - How releases are versioned and published.
+- [nRF91M1 Host Application's Memfault](applications/91m1_ppp/memfault.md) - Symbol upload and coredump workflow.

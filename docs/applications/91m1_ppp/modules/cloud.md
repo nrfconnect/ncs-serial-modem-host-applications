@@ -1,12 +1,17 @@
 # Cloud module
 
-The Cloud module owns the nRF Cloud connection. It runs the CoAP/DTLS session from the host MCU using the [nRF Cloud CoAP](https://docs.nordicsemi.com/bundle/ncs-latest/page/nrf/libraries/networking/nrf_cloud_coap.html) library, sends device messages, polls the device shadow, and resolves Wi-Fi based location requests. Cellular data passes through the Serial Modem over PPP, but the security session terminates on the host.
+The Cloud module owns the nRF Cloud connection. It runs the CoAP/DTLS session from the host MCU using the [nRF Cloud CoAP](https://docs.nordicsemi.com/bundle/ncs-latest/page/nrf/libraries/networking/nrf_cloud_coap.html) library, sends device messages, polls the device shadow, and resolves Wi-Fi® based location requests. Cellular data passes through the Serial Modem over PPP, but the security session terminates on the host.
 
 The module never decides on its own when to connect. It connects when the application requests it.
 
 ## Architecture
 
-Connecting requires two things that are not available at boot: valid time, which is needed to sign the JWT used for CoAP authentication, and installed nRF Cloud credentials. The module therefore retries. Entering `STATE_CONNECTING` publishes `CLOUD_PRIV_CONNECT_ATTEMPT` on the [private channel](../architecture.md#private-channels) `priv_cloud_chan`, and an attempt that finds no credentials with `nrf_cloud_credentials_check()`, finds no valid time, or fails in `nrf_cloud_coap_connect()`, schedules the next attempt `CONFIG_APP_CLOUD_CREDENTIAL_RETRY_SECONDS` later. Time is requested over NTP, and the date/time handler publishes an attempt of its own as soon as time arrives instead of waiting out the interval. See the [main guide](../README.md) for how to install credentials and onboard the device.
+Connecting requires the following two things that are not available at boot:
+
+- Valid time, which is needed to sign the JWT used for CoAP authentication
+- Installed nRF Cloud credentials.
+
+The module therefore retries. Entering `STATE_CONNECTING` publishes `CLOUD_PRIV_CONNECT_ATTEMPT` on the [private channel](../architecture.md#private-channels) `priv_cloud_chan`, and an attempt that finds no credentials with `nrf_cloud_credentials_check()`, finds no valid time, or fails in `nrf_cloud_coap_connect()`, schedules the next attempt `CONFIG_APP_CLOUD_CREDENTIAL_RETRY_SECONDS` later. Time is requested over NTP, and the date/time handler publishes an attempt of its own as soon as time arrives instead of waiting out the interval. See the [main guide](../README.md) for how to install credentials and onboard the device.
 
 Because an attempt is a single message, the module is back to waiting for messages between attempts, where it feeds its watchdog and answers `CLOUD_DISCONNECT` like any other request. What makes a single attempt long is the DTLS handshake in `nrf_cloud_coap_connect()`, which is why the module has a dedicated thread and a generous message processing budget.
 
@@ -19,6 +24,8 @@ The Cloud module implements a flat state machine with the following states and t
 ![Cloud module state machine](../diagrams/cloud.svg)
 
 ### States
+
+The following states are used by the module:
 
 - **STATE_DISCONNECTED:** The initial state, in which there is no cloud connection. A `CLOUD_CONNECT` message starts connecting.
 - **STATE_CONNECTING:** The module is attempting to connect, one attempt per `CLOUD_PRIV_CONNECT_ATTEMPT` message, until credentials and valid time are available. It publishes `CLOUD_CONNECTED` to itself on success, which is what moves the state machine on. Leaving the state cancels a scheduled retry.
@@ -34,6 +41,8 @@ The Cloud module communicates on the `cloud_chan` channel, and uses `priv_cloud_
 
 ### Input messages
 
+The following describes the input messages supported by the module:
+
 - **CLOUD_CONNECT**: Request to establish the cloud connection.
 - **CLOUD_DISCONNECT**: Request to tear down the cloud connection.
 - **CLOUD_MESSAGE_SEND**: Request to send the device message in the `.payload` field as JSON.
@@ -43,6 +52,8 @@ The Cloud module communicates on the `cloud_chan` channel, and uses `priv_cloud_
 
 ### Output messages
 
+The following describes the out messages supported by the module:
+
 - **CLOUD_CONNECTED**: The cloud connection is established.
 - **CLOUD_DISCONNECTED**: The cloud connection is down.
 - **CLOUD_SHADOW_POLLED**: The device shadow has been polled.
@@ -50,6 +61,8 @@ The Cloud module communicates on the `cloud_chan` channel, and uses `priv_cloud_
 - **CLOUD_MEMFAULT_POSTED**: Pending Memfault data has been posted, or the post attempt finished.
 
 ### Message structure
+
+The following describes the message structure of the module:
 
 ```c
 struct cloud_msg {
@@ -64,6 +77,8 @@ struct cloud_msg {
 ```
 
 ## Configurations
+
+Check and configure the following Kconfig options:
 
 - **CONFIG_APP_CLOUD**: Enables the Cloud module. Enabled by default.
 

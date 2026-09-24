@@ -1,6 +1,6 @@
 # Network module
 
-The Network module owns the data connection to the nRF91M1 Serial Modem. It brings the PPP link up and down through Zephyr's [connection manager](https://docs.nordicsemi.com/bundle/ncs-latest/page/zephyr/connectivity/networking/conn_mgr/main.html) and reports connectivity to the rest of the application, so that no other module needs to know how the link is established.
+The Network module owns the data connection to the nRF91M1 Serial Modem. It brings the PPP link up and down through Zephyr's [connection manager](https://docs.nordicsemi.com/bundle/ncs-latest/page/zephyr/connectivity/networking/conn_mgr/main.html) and reports connectivity to the rest of the application so that no other module needs to know how the link is established.
 
 By default the module connects on startup and keeps the connection for the lifetime of the application. The connection can also be controlled from the application or from the shell, see [Configurations](#configurations) and [Shell commands](#shell-commands).
 
@@ -16,6 +16,8 @@ The Network module implements a flat state machine with the following states and
 
 ### States
 
+The following states are used by the module:
+
 - **STATE_DISCONNECTED:** The initial state, in which the device has no IP connectivity. A `NETWORK_CONNECT` message brings all network interfaces up and starts connecting (`conn_mgr_all_if_up()` and `conn_mgr_all_if_connect()`).
 - **STATE_CONNECTED:** The PPP link carries IP traffic. A `NETWORK_DISCONNECT` message takes the interfaces down (`conn_mgr_all_if_down()`).
 
@@ -25,15 +27,21 @@ The Network module communicates on the `network_chan` channel. The messages are 
 
 ### Input messages
 
+The following describes the input messages supported by the module:
+
 - **NETWORK_CONNECT**: Request to connect to the network.
 - **NETWORK_DISCONNECT**: Request to disconnect from the network.
 
 ### Output messages
 
+The following describes the out messages supported by the module:
+
 - **NETWORK_CONNECTED**: The device is connected to the network and has IP connectivity.
 - **NETWORK_DISCONNECTED**: The device is disconnected from the network.
 
 ### Message structure
+
+The following describes the message structure of the module:
 
 ```c
 struct network_msg {
@@ -51,6 +59,8 @@ uart:~$ network disconnect
 ```
 
 ## Configurations
+
+Check and configure the following Kconfig options:
 
 - **CONFIG_APP_NETWORK**: Enables the Network module. Enabled by default.
 

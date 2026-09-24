@@ -1,10 +1,10 @@
 # Architecture
 
-The [91m1_ppp](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/) application is built on a modular, event-driven architecture. The modules interact through messages that are processed as events by the modules' state machines.
+The [nRF91M1 Host Application](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/) application is built on a modular, event-driven architecture. The modules interact through messages that are processed as events by the modules' state machines.
 
 The architecture is implemented using [Zephyr bus (zbus)](https://docs.nordicsemi.com/bundle/ncs-latest/page/zephyr/services/zbus/index.html) for inter-module communication and the [State Machine Framework](https://docs.nordicsemi.com/bundle/ncs-latest/page/zephyr/services/smf/index.html) (SMF) for managing module behavior.
 
-This document provides an overview of the architecture, with a focus on the zbus message passing and the modules' state machines. For the runtime behavior of the application as a whole, see [Application behavior](application-behavior.md).
+This document provides an overview of the architecture, with a focus on the zbus message passing and the modules' state machines. For an overview of the application's runtime behavior, see [Application behavior](application-behavior.md).
 
 ## Diagram notation
 
@@ -28,8 +28,8 @@ The application runs on the host MCU (nRF54L15 or nRF54LM20B) and uses the nRF91
 - **[Network module](modules/network.md)**: Brings the PPP link to the Serial Modem up and down, and tracks connectivity status.
 - **[Cloud module](modules/cloud.md)**: Handles communication with nRF Cloud using CoAP.
 - **[FOTA module](modules/fota.md)**: Manages firmware over-the-air updates of the host application.
-- **[Location module](modules/location.md)**: Provides Wi-Fi based positioning. Only built with the location overlay.
-- **Modem AT module**: Serializes access to the modem AT pipe behind `modem_at_run()`. It is the one module that has no zbus channel and no state machine, and is called directly from the host shell. See [Reaching Serial Modem AT commands](README.md#reaching-serial-modem-at-commands).
+- **[Location module](modules/location.md)**: Provides Wi-Fi® based positioning. Only built with the location overlay.
+- **Modem AT module**: Serializes access to the modem AT pipe behind `modem_at_run()`. It is the one module that has no zbus channel and no state machine and is called directly from the host shell. See [Reaching Serial Modem AT commands](README.md#reaching-serial-modem-at-commands).
 
 The following diagram shows how the modules interact. Each module owns one channel, and both the requests sent to a module and the notifications it publishes go on that channel. All communication passes through the Main module, which is the only module that knows about the others.
 
@@ -54,11 +54,14 @@ Each module follows a similar design:
 - **Watchdog**: Each module thread is monitored by a task watchdog. Each thread periodically calls `task_wdt_feed()`. If a thread fails to feed its watchdog within its configured timeout, the system resets.
 - **Initialization**: Modules are initialized in their dedicated thread, which is started with `K_THREAD_DEFINE()`.
 
-The modules are designed as loosely coupled units with well-defined message-based interfaces. They communicate exclusively through their zbus channels, without reference to other modules' internals. This means each module can be developed, tested, and maintained independently, and every module except the Main module can be reused in other applications.
+The modules are designed as loosely coupled units with well-defined message-based interfaces. They communicate exclusively through their zbus channels, without reference to other modules' internals. This means you can develop, test, and maintain each module independently, and every module except the Main module can be reused in other applications.
 
 Modules often handle state transitions based on messages they themselves publish. For example, when the Network module publishes a `NETWORK_CONNECTED` message, it also receives this message in its own state machine, allowing it to transition to the connected state with consistent handling.
 
-The Main module deviates from the pattern in two ways: it runs in the `main()` thread instead of a thread of its own, and it is the only module that calls `task_wdt_init()` to set up the hardware watchdog (`DT_ALIAS(watchdog0)`) that all the other modules add their tasks to.
+The Main module deviates from the pattern in the following two ways:
+
+- It runs in the `main()` thread instead of a thread of its own,
+- It is the only module that calls `task_wdt_init()` to set up the hardware watchdog (`DT_ALIAS(watchdog0)`) that all the other modules add their tasks to.
 
 ### Module threads
 
@@ -126,9 +129,9 @@ Each module configures its own watchdog timeout and message processing budget, s
 | FOTA | 300 s | 290 s |
 | Location | 30 s | 5 s |
 
-The Cloud and FOTA modules have the longest timeouts because their handlers make blocking CoAP calls. In the Cloud module a connect attempt performs a DTLS handshake, and the shadow, message, location, and Memfault requests are blocking CoAP exchanges. In the FOTA module the poll makes reliable CoAP calls to check for and report a job; the image download itself does not block, because the module uses the nRF Cloud FOTA poll library in non-blocking mode and drives the download from its callbacks.
+The Cloud and FOTA modules have the longest timeouts because their handlers make blocking CoAP calls. In the Cloud module a connect attempt performs a DTLS handshake, and the shadow, message, location, and Memfault requests are blocking CoAP exchanges. In the FOTA module the poll makes reliable CoAP calls to check for and report a job, the image download itself does not block, because the module uses the nRF Cloud FOTA poll library in non-blocking mode and drives the download from its callbacks.
 
-The Main, Network, and Location modules never block in their handlers: they only publish messages, drive the connection manager, or start an asynchronous Wi-Fi scan, all of which return immediately while results arrive later as messages or callbacks. Their timeouts are therefore short, sized only to catch a genuinely stuck thread rather than to cover a long operation.
+The Main, Network, and Location modules never block in their handlers. They only publish messages, drive the connection manager, or start an asynchronous Wi-Fi scan, all of which return immediately while results arrive later as messages or callbacks. Their timeouts are therefore short, sized only to catch a genuinely stuck thread rather than to cover a long operation.
 
 ## Message passing with zbus
 
@@ -272,7 +275,7 @@ CHANNEL_LIST(ADD_OBSERVERS)
 
 ### Private channels
 
-When a module needs internal state handling that should not be exposed to other modules, it uses a **private channel**. Private channels are reserved exclusively for the respective module and are not intended for external use. Otherwise, they are defined, published to, and subscribed to just like public channels. Three modules use one:
+When a module needs internal state handling that should not be exposed to other modules, it uses a private channel. Private channels are reserved exclusively for the respective module and are not intended for external use. Otherwise, they are defined, published to, and subscribed to just like public channels. Three modules use one:
 
 - The Cloud module uses `priv_cloud_chan` to turn every attempt at connecting into a message, so that it can retry without blocking its state machine.
 - The FOTA module uses `priv_fota_chan` to move the nRF Cloud FOTA library callbacks, which run in the library's own context, into the module's state machine.

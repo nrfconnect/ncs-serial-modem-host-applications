@@ -1,13 +1,15 @@
 # nRF93M1 Host Application
 
-Getting started with the 93m1 ppp application: build, flash, provision credentials, and connect to nRF Cloud over CoAP/DTLS.
+This guide walks you through to get started with the nRF93M1 Host Application, including building and flashing the firmware, provisioning device credentials, and connecting securely to nRF Cloud over CoAP/DTLS.
 
-The application runs on the nRF54L15 host of the nRF93M1 DK, with cellular over the on-board nRF93M1 Serial Modem via PPP. The host terminates DTLS and CoAP itself. PPP just carries IP traffic between the host's network stack and the modem's cellular radio. The modem's own onboard AT-based cloud client is not used here. It targets the non-secure (TF-M) build and stores the host's TLS credentials in Protected Storage. Telemetry, location, and FOTA go to nRF Cloud over CoAP. Location fixes still pull raw cell and Wi-Fi scan data out of the modem with AT commands, but the actual cloud request is host-side CoAP. Diagnostics go to your nRF Cloud project.
+The application runs on the nRF54L15 host of the nRF93M1 DK, with cellular over the on-board nRF93M1 Serial Modem through PPP. The host terminates DTLS and CoAP itself. PPP just carries IP traffic between the host's network stack and the modem's cellular radio. The modem's own onboard AT-based cloud client is not used here. It targets the non-secure (TF-M) build and stores the host's TLS credentials in Protected Storage. Telemetry, location, and FOTA go to nRF Cloud over CoAP. Location fixes still pull raw cell and Wi-Fi® scan data out of the modem with AT commands, but the actual cloud request is host-side CoAP. Diagnostics go to your nRF Cloud project.
 
 ## Prerequisites
 
-- nRF93M1 DK running Serial Modem firmware with PPP and CMUX enabled on the nRF93M1.
-- An nRF Cloud account and API key.
+To follow this guide, you must meet the following requirements:
+
+- [nRF93M1 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF93M1-DK) running Serial Modem firmware with PPP and CMUX enabled on the nRF93M1.
+- An [nRF Cloud account](https://nrfcloud.com/) and API key.
 - nRF Cloud Utils: `pip3 install nrfcloud-utils`.
 
 ## 1. Build and flash
@@ -18,17 +20,20 @@ Run `west` from inside the nRF Connect SDK toolchain environment (see [Initializ
 nrfutil sdk-manager toolchain launch --ncs-version v3.4.0 --shell
 ```
 
+Use the following command to build on the DK:
+
 ```shell
 cd applications/93m1_ppp
 west build -p -b nrf93m1dk/nrf54l15/cpuapp/ns
 west flash --erase
 ```
 
-> **Note:** `--recover` and `--erase` wipe Protected Storage, so the device credentials are lost and must be re-provisioned (steps 3–4). After the first flash, use a plain `west flash` to keep the credentials in place.
+> [!NOTE]
+> `--recover` and `--erase` wipe Protected Storage, so the device credentials are lost and must be re-provisioned (steps 3–4). After the first flash, use a plain `west flash` to keep the credentials in place.
 
 ## 2. Get the device ID
 
-Open a serial terminal on the host console (uart20). Note the device ID from the boot log:
+Open a serial terminal on the host console (UART20). Note the device ID from the boot log:
 
 ```text
 <inf> nrf_cloud_info: Device ID: <16-hex-device-id>
@@ -38,7 +43,7 @@ It comes from the nRF54L15 SoC HW ID, not the modem UUID.
 
 ## 3. Create a CA certificate
 
-Once per CA, in the directory where you keep the CA files:
+Run the following command once for each CA from the directory where the CA files are stored:
 
 ```shell
 create_ca_cert -c US -f self_
@@ -46,7 +51,7 @@ create_ca_cert -c US -f self_
 
 ## 4. Install credentials
 
-From the same directory as the CA files:
+Run the following commands from the directory containing the CA certificate files:
 
 ```shell
 device_credentials_installer \
@@ -56,9 +61,11 @@ device_credentials_installer \
   --port /dev/cu.usbmodem*
 ```
 
-The sec tag is 16842753. On success it writes `onboard.csv`.
+The sec tag is `16842753`. On success it writes `onboard.csv`.
 
 ## 5. Onboard
+
+Use the following command to onboard the devices listed in the `.csv` file to nRF Cloud:
 
 ```shell
 nrf_cloud_onboard --api-key <your_api_key> --csv onboard.csv
@@ -84,4 +91,4 @@ If the CA certificate or private key is missing, each cloud synchronization logs
 
 Heartbeats and metrics appear in the linked nRF Cloud project. Location and FOTA use the same CoAP session.
 
-See the [91m1_ppp README](../91m1_ppp/README.md) for credential and troubleshooting detail, which applies here too.
+See the [nRF91M1 Host Application](../91m1_ppp/README.md) documentation for credential and troubleshooting detail, which applies here too.

@@ -1,20 +1,22 @@
-# Serial Modem Host 93m1 (AT)
+# nEF93M1 Serial Modem Host (AT)
 
 Minimal tracker application for the **nRF93M1 Serial Modem**. The host runs Zephyr's cellular
 modem driver, which dials the modem and brings up a PPP link over a CMUX channel. The application
-uses this only for connectivity management: `conn_mgr` powers the link up and down, and the PPP
-interface's L4 connected/disconnected events tell the application when the network is available.
+uses this only for connectivity management, `conn_mgr`, powers the link up and down, and the PPP
+interface's L4 connected or disconnected events tell the application when the network is available.
 The application sends no IP traffic of its own over PPP. All cloud communication (telemetry,
-location, TLS) instead goes through the modem's own nRF Cloud client via raw AT commands over a
+location, TLS) instead goes through the modem's own nRF Cloud client through raw AT commands over a
 separate CMUX user pipe. The host
-samples battery state locally and periodically syncs it and location fixes to nRF Cloud over
+samples the battery state locally and periodically syncs it and location fixes to nRF Cloud over
 that AT interface.
 
 ## Prerequisites
 
-- nRF93M1 DK.
-- nRF Connect for Desktop Serial Terminal.
-- An nRF Cloud account.
+To follow this guide, you must meet the following requirements:
+
+- [nRF93M1 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF93M1-DK).
+- nRF Connect for Desktop [Serial Terminal app](https://docs.nordicsemi.com/bundle/swtools_docs/page/app/pc-nrfconnect-serial-terminal/index.html).
+- An [nRF Cloud account](https://nrfcloud.com/).
 
 ## Building and flashing
 
@@ -23,6 +25,8 @@ Run `west` from inside the nRF Connect SDK toolchain environment (see [Initializ
 ```shell
 nrfutil sdk-manager toolchain launch --ncs-version v3.4.0 --shell
 ```
+
+Use the following command to build on the DK:
 
 ```shell
 cd applications/93m1_at
@@ -37,31 +41,32 @@ The modem is its own nRF Cloud client. It needs to be registered to your account
 ### Claim the device on nRF Cloud
 
 1. In nRF Cloud, go to **Fleet → Devices**.
-2. Click **+ Add New Devices** and select nRF93M1.
-3. Paste the two supplied AT commands to generate the device UUID and JWT with the `at` shell:
+1. Click **+ Add New Devices**.
+1. Select **nRF93M1** and click the **Continue** button.
+1. Paste the two supplied AT commands to generate the device UUID and JWT with the `at` shell:
 
-   ```text
-   uart:~$ at AT%DEVICEUUID
-   %DEVICEUUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-   OK
-   ```
+    ```text
+    uart:~$ at AT%DEVICEUUID
+    %DEVICEUUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+    OK
+    ```
 
-   ```text
-   uart:~$ at AT%REGJWT=<team-id>
-   %REGJWT: <jwt>
-   OK
-   ```
+    ```text
+    uart:~$ at AT%REGJWT=<team-id>
+    %REGJWT: <jwt>
+    OK
+    ```
 
-4. Paste the resulting UUID and JWT back into nRF Cloud to finish claiming the device.
-5. Review and confirm.
+1. Paste the resulting UUID and JWT back into nRF Cloud to finish claiming the device.
+1. Review and confirm.
 
-The device should appear in the device list within a few seconds. The new nRF Cloud UI does not show a connection status. Instead, the device's **Last seen** time updates once the modem first talks to nRF Cloud.
+The device should appear in the device list within a few seconds. The new nRF Cloud UI does not show a connection status. Instead, the device's last seen time updates once the modem first talks to nRF Cloud.
 
 ## After onboarding
 
 Once the modem has attached to the network it performs a cloud sync every 10 minutes (`CONFIG_APP_SYNC_BOOT_DELAY_SECONDS` and `CONFIG_APP_SYNC_INTERVAL`). Each sync does two things through the modem's nRF Cloud client:
 
-- **Location:** sends `AT%NRFCLOUDLOCATION=7,1`. The modem collects single-cell, multicell and Wi-Fi measurements, nRF Cloud resolves them to a position, and the result is returned to the host. Change the method with `CONFIG_APP_LOCATION_METHOD` (1 single-cell, 2 multicell, 4 Wi-Fi, or a sum of them).
+- **Location:** sends `AT%NRFCLOUDLOCATION=7,1`. The modem collects single-cell, multicell and Wi-Fi® measurements, nRF Cloud resolves them to a position, and the result is returned to the host. Change the method with `CONFIG_APP_LOCATION_METHOD` (1 single-cell, 2 multicell, 4 Wi-Fi, or a sum of them).
 - **Battery:** sends the fuel gauge state of charge as a device message: `{"appId":"BATTERY","messageType":"DATA","data":"<percent>"}`. The fuel gauge is sampled every 60 seconds whether or not the device is connected (`CONFIG_APP_BATTERY_SAMPLE_INTERVAL`).
 
 The console also offers these shell commands:
@@ -75,6 +80,8 @@ The console also offers these shell commands:
 Pressing **Button 1** (or running `button 1`) starts a sync right away instead of waiting for the next interval. **Button 2** has no action yet.
 
 ## Verify that data reaches nRF Cloud
+
+The following section explains how the device data is successfully transmitted to nRF Cloud and is available for viewing.
 
 ### On the device
 
@@ -101,14 +108,26 @@ OK
 
 ### In nRF Cloud
 
-In the UI, go to **Fleet → Devices** and find your device. Its **Last seen** time updates after each sync: every 10 minutes, or right away when you press Button 1.
+In the UI, go to **Fleet** and then select **Devices** and find your device. Its last seen time updates after each sync, every 10 minutes, or right away when you press **Button 1**.
 
 > [!NOTE]
 > nRF Cloud is transitioning to a Memfault-integrated experience. For now, the device data is only visible in the **legacy nRF Cloud portal**. After logging in at [nrfcloud.com](https://nrfcloud.com), open the legacy app using the link in the **bottom left corner** of the new UI.
 
-1. In the legacy app, open **Device Management → Devices** and click the device ID. The device ID is the modem UUID from `AT%DEVICEUUID`.
-2. The map on the device page shows the location fixes from each sync.
-3. The **Terminal** card shows the `BATTERY` device messages, one per sync. To load older messages, click the clock icon, select a time range and click **Get Data**.
+1. In the legacy app:
+
+    1. Open **Device Management**
+    1. Select **Devices**.
+    1. Click the device ID.
+
+       The device ID is the modem UUID from `AT%DEVICEUUID`.
+
+1. The map on the device page shows the location fixes from each sync.
+1. The **Terminal** card shows the `BATTERY` device messages, one per sync.
+1. To load older messages:
+
+    1. Click the clock icon
+    1. Select a time range
+    1. Click **Get Data**.
 
 The same data is also available from the [nRF Cloud REST API](https://api.nrfcloud.com/):
 
@@ -119,7 +138,13 @@ curl -H "Authorization: Bearer <api_key>" \
   "https://api.nrfcloud.com/v1/location/history?deviceId=<device_uuid>&pageLimit=10"
 ```
 
-Get `<api_key>` from the legacy app: select your team, then **burger menu → User Account → Team Details**. See [Managing tokens and keys](https://docs.memfault.com/docs/legacy-nrfcloud/tokens-and-keys).
+Get `<api_key>` from the legacy app by completing the following steps:
+
+1. Select your team.
+1. Select **burger menu**
+1. Select **User Account** and then **Team Details**.
+
+See [Managing tokens and keys](https://docs.memfault.com/docs/legacy-nrfcloud/tokens-and-keys) for more details.
 
 ### Troubleshooting
 
