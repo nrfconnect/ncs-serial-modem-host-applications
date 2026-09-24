@@ -458,6 +458,16 @@ def _device_from_payload(payload: dict) -> dict:
     return payload
 
 
+def _device_hardware_version(device: dict) -> str | None:
+    hardware_version = device.get("hardware_version")
+    if isinstance(hardware_version, dict):
+        name = hardware_version.get("name")
+        return name if isinstance(name, str) else None
+    if isinstance(hardware_version, str):
+        return hardware_version
+    return None
+
+
 def _device_cohort_slug(device: dict) -> str | None:
     cohort = device.get("cohort")
     if isinstance(cohort, dict):
@@ -696,7 +706,12 @@ def _get_memfault_device_payload(
     *,
     hardware_version: str,
 ) -> dict:
-    """Return the Memfault device payload, creating the device when absent."""
+    """Return the Memfault device payload, creating the device when absent.
+
+    An existing device is moved to *hardware_version* when it reports another one.
+    Memfault only tracks the software version of a hardware version's primary
+    software type, so a stale binding hides the version the DUT reports.
+    """
     status, payload = _memfault_json_request(
         env,
         "GET",
@@ -708,6 +723,25 @@ def _get_memfault_device_payload(
         _, payload = _memfault_json_request(env, "GET", _device_url(env, device_id))
     if payload is None:
         raise RuntimeError(f"Memfault device lookup for {device_id} returned no payload")
+
+    current_hardware_version = _device_hardware_version(_device_from_payload(payload))
+    if current_hardware_version != hardware_version:
+        logger.info(
+            "Moving Memfault device %s from hardware version %r to %r",
+            device_id,
+            current_hardware_version,
+            hardware_version,
+        )
+        _, payload = _memfault_json_request(
+            env,
+            "PATCH",
+            _device_url(env, device_id),
+            body={"hardware_version": hardware_version},
+        )
+        if payload is None:
+            raise RuntimeError(
+                f"Memfault device update for {device_id} returned no payload"
+            )
     return payload
 
 
