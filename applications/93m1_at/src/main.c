@@ -19,6 +19,9 @@
 #include "modules/battery/battery.h"
 #include "modules/cloud/cloud.h"
 #endif
+#if defined(CONFIG_APP_BUTTONS)
+#include "modules/buttons/buttons.h"
+#endif
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_MAIN_LOG_LEVEL);
 
@@ -39,7 +42,8 @@ ZBUS_MSG_SUBSCRIBER_DEFINE(main_subscriber);
 
 #define CHANNEL_LIST(X) \
 	X(main_chan, struct main_msg) \
-	X(network_chan, struct network_msg)
+	X(network_chan, struct network_msg) \
+	IF_ENABLED(CONFIG_APP_BUTTONS, (X(button_chan, struct button_msg)))
 
 #define MAX_MSG_SIZE MAX_MSG_SIZE_FROM_LIST(CHANNEL_LIST)
 
@@ -146,9 +150,43 @@ static void report_telemetry(void)
 	(void)err;
 }
 
+#if defined(CONFIG_APP_BUTTONS)
+static void handle_button(const struct button_msg *msg, bool connected)
+{
+	int err;
+
+	switch (msg->type) {
+	case BUTTON_1:
+		if (!connected) {
+			LOG_INF("Button 1: network is down, sync skipped");
+			break;
+		}
+
+		LOG_INF("Button 1: sync requested");
+
+		err = k_work_reschedule(&telemetry_timer, K_NO_WAIT);
+		if (err < 0) {
+			LOG_ERR("k_work_reschedule telemetry_timer, error: %d", err);
+		}
+		break;
+	default:
+		LOG_WRN("Button %u: no action defined", msg->type);
+		break;
+	}
+}
+#endif
+
 static enum smf_state_result disconnected_run(void *obj)
 {
 	struct app_object *state = obj;
+
+#if defined(CONFIG_APP_BUTTONS)
+	if (state->chan == &button_chan) {
+		handle_button((const struct button_msg *)state->msg_buf, false);
+
+		return SMF_EVENT_HANDLED;
+	}
+#endif
 
 	if (state->chan == &network_chan) {
 		const struct network_msg *msg = (const struct network_msg *)state->msg_buf;
@@ -199,6 +237,10 @@ static enum smf_state_result connected_run(void *obj)
 				FATAL_ERROR();
 			}
 		}
+#if defined(CONFIG_APP_BUTTONS)
+	} else if (state->chan == &button_chan) {
+		handle_button((const struct button_msg *)state->msg_buf, true);
+#endif
 	} else {
 		LOG_WRN("Unhandled message in connected state.");
 	}
