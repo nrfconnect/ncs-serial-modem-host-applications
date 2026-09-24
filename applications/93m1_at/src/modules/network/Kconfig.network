@@ -12,7 +12,8 @@ menuconfig APP_NETWORK
 	help
 	  Drives connectivity through conn_mgr / net_mgmt. The cellular modem driver
 	  brings the PPP link up automatically; this module only reflects L4 state and
-	  exposes connect/disconnect requests over zbus. No host IP traffic is sent.
+	  exposes connect/disconnect requests over zbus. The application sends no IP
+	  traffic of its own over the link.
 
 if APP_NETWORK
 
