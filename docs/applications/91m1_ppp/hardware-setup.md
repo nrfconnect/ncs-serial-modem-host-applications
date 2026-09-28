@@ -28,25 +28,12 @@ Host-specific settings are listed in each of the following sections.
 
 ### Serial Modem release and UART pinout
 
-Upstream renamed the published bundle in v2.0.0-preview3 (`*_nrf9151dk_nrf91m1.zip`) and moved the host UART from UART2 (**P0.02**–**P0.07**) to UART0 (**P0.26**/**P0.27**, **P0.14**/**P0.15**). DTR (**P0.31**) and RI (**P0.30**) are unchanged.
-
-| Release | Bundle suffix | Host UART on modem | Data pins (modem) |
-|---|---|---|---|
-| v2.0.0-preview2 and earlier | `_nrf9151dk_extmcu.zip` | UART2 | **P0.02 TX**, **P0.03 RX**, **P0.06 RTS**, **P0.07 CTS** |
-| v2.0.0-preview3 and later | `_nrf9151dk_nrf91m1.zip` | UART0 | **P0.27 TX**. **P0.26 RX**, **P0.14 RTS**, **P0.15 CTS** |
-
-Nordic is standardising on the nRF91M1 layout for all setups. Until the nRF9151 DK Board Configurator can route DTR automatically, preview3 also expects **P0.31 (DTR) jumpered to GND** on the modem DK when a PC host is used, an external MCU host should drive DTR from its GPIO instead (as this application does through **P1.11**).
-
-CI currently pins `v2.0.0-preview2` until the bench is rewired for the nRF91M1 pinout. Remove `pinned_release` from [`tests/on_target/ci/serial_modem_firmware.yml`](../../../tests/on_target/ci/serial_modem_firmware.yml) once the wiring matches preview3.
-
-### Serial Modem release and UART pinout
-
 The Serial Modem bundle is `*_nrf9151dk_nrf91m1.zip`. The host UART is the nRF91M1 pinout on UART0 (**P0.27** TX, **P0.26** RX, **P0.14** RTS, **P0.15** CTS). DTR is on **P0.31** and RI on **P0.30**.
 
 Until the nRF9151 DK Board Configurator can route DTR automatically, the modem DK also expects **P0.31 (DTR) jumpered to GND** when you use a PC host.
 An external MCU host should drive DTR from its GPIO instead (as this application does through **P1.11**).
 
-CI tracks the newest upstream release that ships the nRF91M1 bundle. Static settings such as `console_baudrate` live in [`tests/on_target/ci/serial_modem_firmware.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/tests/on_target/ci/serial_modem_firmware.yml), set `SERIAL_MODEM_RELEASE` to pin a specific tag locally.
+CI tracks the newest upstream release that ships the nRF91M1 bundle. Static settings such as `console_baudrate` live in [`tests/on_target/ci/serial_modem_firmware.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/tests/on_target/ci/serial_modem_firmware.yml). Set `SERIAL_MODEM_RELEASE` to pin a specific tag locally.
 
 ## nRF54L15 DK with nRF9151 DK
 
