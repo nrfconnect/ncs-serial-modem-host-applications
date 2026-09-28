@@ -63,7 +63,7 @@ After flashing, follow the application guide for hardware setup and cloud onboar
 
 - [nRF91M1 Host Application](applications/91m1_ppp/README.md)
 - [nRF93M1 Host Application](applications/93m1_ppp/README.md)
-- [nEF93M1 Serial Modem Host (AT)](applications/93m1_at/README.md)
+- [nRF93M1 Serial Modem Host (AT)](applications/93m1_at/README.md)
 
 ### ELF file with debug symbols
 

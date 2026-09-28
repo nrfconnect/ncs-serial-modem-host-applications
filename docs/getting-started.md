@@ -23,7 +23,7 @@ Both options use the same board targets. Pick the row that matches your hardware
 | [nRF91M1 Host Application](applications/91m1_ppp/README.md) | nRF54L15 DK + nRF9151 Serial Modem | `nrf54l15dk/nrf54l15/cpuapp/ns` |
 | [nRF91M1 Host Application](applications/91m1_ppp/README.md) | nRF54LM20B DK + nRF9151 Serial Modem | `nrf54lm20dk/nrf54lm20b/cpuapp/ns` |
 | [nRF93M1 Host Application](applications/93m1_ppp/README.md) | nRF93M1 DK | `nrf93m1dk/nrf54l15/cpuapp/ns` |
-| [nEF93M1 Serial Modem Host (AT)](applications/93m1_at/README.md) | nRF93M1 DK | `nrf93m1dk/nrf54l15/cpuapp/ns` |
+| [nRF93M1 Serial Modem Host (AT)](applications/93m1_at/README.md) | nRF93M1 DK | `nrf93m1dk/nrf54l15/cpuapp/ns` |
 
 
 ## Option 1: nRF Connect for VS Code (recommended)

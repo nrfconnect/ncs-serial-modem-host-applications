@@ -71,6 +71,6 @@ nav:
       - Location: applications/91m1_ppp/modules/location.md
     - Memfault: applications/91m1_ppp/memfault.md
   - nRF93M1 Host Application: applications/93m1_ppp/README.md
-  - nEF93M1 Serial Modem Host (AT): applications/93m1_at/README.md
+  - nRF93M1 Serial Modem Host (AT): applications/93m1_at/README.md
   - CI and contribution: ci-and-contribution.md
   - Release artifacts: release-artifacts.md

@@ -73,7 +73,7 @@ Follow the application documentation for hardware setup, build, flash, and (wher
 |-------------|--------------------|
 | [nRF91M1 Host Application](docs/applications/91m1_ppp/README.md) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP just carries IP to the nRF91M1 modem |
 | [nRF93M1 Host Application](docs/applications/93m1_ppp/README.md) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP just carries IP to the nRF93M1 modem |
-| [nEF93M1 Serial Modem Host (AT)](docs/applications/93m1_at/README.md) | Modem terminates the connection itself with its built-in AT client. Host just sends AT commands |
+| [nRF93M1 Serial Modem Host (AT)](docs/applications/93m1_at/README.md) | Modem terminates the connection itself with its built-in AT client. Host just sends AT commands |
 
 ---
 

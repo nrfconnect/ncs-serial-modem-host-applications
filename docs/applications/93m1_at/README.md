@@ -1,4 +1,4 @@
-# nEF93M1 Serial Modem Host (AT)
+# nRF93M1 Serial Modem Host (AT)
 
 Minimal tracker application for the **nRF93M1 Serial Modem**. The host runs Zephyr's cellular
 modem driver, which dials the modem and brings up a PPP link over a CMUX channel. The application
