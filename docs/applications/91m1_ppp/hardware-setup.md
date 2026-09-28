@@ -8,9 +8,9 @@ The application supports the following host boards:
 
 | Host DK | Serial Modem wiring |
 |---|---|
-| [nRF54L15 DK](#nrf54l15-dk--nrf9151-dk) | **P0** connector (uart30) |
-| [nRF54LM20B DK](#nrf54lm20b-dk--nrf9151-dk) | **P1**/**P2** connector (uart21) |
-| [nRF54LM20B DK + nRF7002-EB II (Wi-Fi® location)](#nrf54lm20b-dk--nrf7002-eb2-wi-fi-location) | **P1**/**P2** connector (uart21) |
+| [nRF54L15 DK](#nrf54l15-dk-with-nrf9151-dk) | **P0** connector (uart30) |
+| [nRF54LM20B DK](#nrf54lm20b-dk-with-nrf9151-or-nrf9151-sma-dk) | **P1**/**P2** connector (uart21) |
+| [nRF54LM20B DK + nRF7002-EB II (Wi-Fi® location)](#nrf54lm20b-dk-with-nrf7002-eb-ii-wi-fi-location) | **P1**/**P2** connector (uart21) |
 
 ## Board Configurator
 
@@ -83,7 +83,7 @@ Open a serial terminal on VCOM1 (UART20 - the secondary USB serial port on the n
 
 Development setup: nRF54LM20B DK (host) wired to nRF9151 DK or nRF9151 SMA DK (Serial Modem).
 
-On the nRF54LM20B DK, no Board Configurator changes are required for the plain build, both VCOM ports may stay enabled. When the nRF7002-EB II shield is attached, disable VCOM1 (see [Wi-Fi location setup](#nrf54lm20b-dk--nrf7002-eb2-wi-fi-location)).
+On the nRF54LM20B DK, no Board Configurator changes are required for the plain build, both VCOM ports may stay enabled. When the nRF7002-EB II shield is attached, disable VCOM1 (see [Wi-Fi location setup](#nrf54lm20b-dk-with-nrf7002-eb-ii-wi-fi-location)).
 
 ### Wiring
 
@@ -144,7 +144,7 @@ On the nRF54LM20B DK:
 
 ### Wiring
 
-The shield shares the same host console as the plain build (UART30 / VCOM0). Serial Modem wiring is the same as the [plain nRF54LM20B setup](#wiring-1) above (UART21 on **P1**).
+The shield shares the same host console as the plain build (UART30 / VCOM0). Serial Modem wiring is the same as the [plain nRF54LM20B setup](#nrf54lm20b-dk-with-nrf9151-or-nrf9151-sma-dk) above (UART21 on **P1**).
 
 ### Build
 

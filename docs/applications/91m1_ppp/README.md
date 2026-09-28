@@ -38,7 +38,7 @@ The application connects to nRF Cloud over **CoAP/DTLS** from the host MCU (nRF5
     west flash --recover
     ```
 
-    For Wi-Fi® location with the nRF7002-EB II shield, see [Hardware setup - Wi-Fi location](hardware-setup.md#nrf54lm20b-dk--nrf7002-eb2-wi-fi-location).
+    For Wi-Fi® location with the nRF7002-EB II shield, see [Hardware setup - Wi-Fi location](hardware-setup.md#nrf54lm20b-dk-with-nrf7002-eb-ii-wi-fi-location).
 
 1. **Verify the host application boots:**
 
