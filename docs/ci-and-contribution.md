@@ -1,6 +1,21 @@
 # CI and contribution
 
-This document describes how the repository is built, tested, and released: the nightly and pull request pipelines, how release versions are derived, the self-hosted runners and hardware rigs that run the on-target tests, and the commit message rules contributions must follow.
+This document describes how the repository is organized and how it is built, tested, and released: the nightly and pull request pipelines, how release versions are derived, the self-hosted runners and hardware rigs that run the on-target tests, and the commit message rules contributions must follow.
+
+## Repository structure
+
+| Path | Purpose |
+|------|---------|
+| [`west.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/west.yml) | West manifest, pins the nRF Connect SDK and Memfault SDK revisions |
+| [`zephyr/module.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/zephyr/module.yml) | Registers this repo as a Zephyr module |
+| [`lib/include/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/lib/include) | Shared headers (`app_common.h`) |
+| [`cmake/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/cmake) | Shared CMake helpers (`merged_hex.cmake`) |
+| [`applications/91m1_ppp/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/applications/91m1_ppp) | nRF91M1 PPP host application |
+| [`applications/93m1_ppp/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/applications/93m1_ppp) | nRF93M1 PPP host application |
+| [`applications/93m1_at/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/applications/93m1_at) | nRF93M1 AT host application |
+| [`docs/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/docs) | Documentation site source (application guides, CI and contribution, release artifacts) |
+| [`scripts/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/scripts) | CI and gitlint helper scripts |
+| [`tests/on_target/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/tests/on_target) | On-target (hardware-in-the-loop) test suite |
 
 ## Continuous integration
 

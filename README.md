@@ -4,29 +4,6 @@
 
 Host-side firmware for Nordic Smart Modem modules. This repository is built on [nRF Connect SDK](https://www.nordicsemi.com/Products/Development-software/nRF-Connect-SDK) (NCS) and follows the modular **zbus + SMF** architecture used by the [Asset Tracker Template](https://github.com/nrfconnect/Asset-Tracker-Template).
 
-Supported product targets:
-
-* **91m1_ppp**: PPP host application for the [nRF91M1](https://www.nordicsemi.com/Products/nRF91M1) Smart Modem
-* **93m1_ppp**: PPP host application for the [nRF93M1](https://www.nordicsemi.com/Products/nRF93M1) Smart Modem
-* **93m1_at**: AT host application for the [nRF93M1](https://www.nordicsemi.com/Products/nRF93M1) Smart Modem
-
----
-
-## Repository structure
-
-| Path | Purpose |
-|------|---------|
-| [`west.yml`](west.yml) | West manifest, pins the nRF Connect SDK and Memfault SDK revisions |
-| [`zephyr/module.yml`](zephyr/module.yml) | Registers this repo as a Zephyr module |
-| [`lib/include/`](lib/include/) | Shared headers (`app_common.h`) |
-| [`cmake/`](cmake/) | Shared CMake helpers (`merged_hex.cmake`) |
-| [`applications/91m1_ppp/`](applications/91m1_ppp/) | nRF91M1 PPP host application |
-| [`applications/93m1_ppp/`](applications/93m1_ppp/) | nRF93M1 PPP host application |
-| [`applications/93m1_at/`](applications/93m1_at/) | nRF93M1 AT host application |
-| [`docs/`](docs/) | Documentation site source (application guides, CI and contribution, release artifacts) |
-| [`scripts/`](scripts/) | CI and gitlint helper scripts |
-| [`tests/on_target/`](tests/on_target/) | On-target (hardware-in-the-loop) test suite |
-
 ## Applications
 
 | Application | Cloud connectivity |
@@ -45,7 +22,7 @@ For pre-built firmware, download the [latest release](https://github.com/nrfconn
 
 ## Contributing
 
-See [CI and contribution](docs/ci-and-contribution.md) for continuous integration, releases, and commit message guidelines. Pre-built firmware bundles are described in [Release artifacts](docs/release-artifacts.md).
+See [CI and contribution](docs/ci-and-contribution.md) for the repository structure, continuous integration, releases, and commit message guidelines. Pre-built firmware bundles are described in [Release artifacts](docs/release-artifacts.md).
 
 ## License
 
