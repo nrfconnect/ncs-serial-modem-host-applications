@@ -176,7 +176,7 @@ On host boot, [`src/modem_reset.c`](https://github.com/nrfconnect/ncs-serial-mod
 
 ## Serial Modem firmware
 
-The nRF91M1 Host Application is tested against the newest [ncs-serial-modem](https://github.com/nrfconnect/ncs-serial-modem/releases) release that ships the nRF91M1 zip for the nRF9151 or nRF9151 SMA DK. Download `serial_modem_<tag>_nrf9151dk_nrf91m1.zip` from the upstream release page, or use the copy at the top level of your [SMHA release bundle](../../release-artifacts.md#serial-modem-firmware-nrf9151-dk).
+The nRF91M1 PPP Host Application is tested against the newest [ncs-serial-modem](https://github.com/nrfconnect/ncs-serial-modem/releases) release that ships the nRF91M1 zip for the nRF9151 or nRF9151 SMA DK. Download `serial_modem_<tag>_nrf9151dk_nrf91m1.zip` from the upstream release page, or use the copy at the top level of your [SMHA release bundle](../../release-artifacts.md#serial-modem-firmware-nrf9151-dk).
 
 This build enables PPP and CMUX on UART0 routed to the host (**P0.27**/**P0.26** TX/RX, **P0.15**/**P0.14** RTS/CTS, DTR/RI on **P0.31/P0.30**). Without the nRF91M1 variant, the modem listens on the USB VCOM UART instead, and the host sees `init_chat_script: timed out`.
 

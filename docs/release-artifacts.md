@@ -61,9 +61,9 @@ Use `merged.hex` for first-time programming or when you need to replace the full
 
 After flashing, follow the application guide for hardware setup and cloud onboarding:
 
-- [nRF91M1 Host Application](applications/91m1_ppp/README.md)
-- [nRF93M1 Host Application](applications/93m1_ppp/README.md)
-- [nRF93M1 Serial Modem Host (AT)](applications/93m1_at/README.md)
+- [nRF91M1 PPP Host Application](applications/91m1_ppp/README.md)
+- [nRF93M1 PPP Host Application](applications/93m1_ppp/README.md)
+- [nRF93M1 AT Host Application](applications/93m1_at/README.md)
 
 ### ELF file with debug symbols
 
@@ -87,7 +87,7 @@ Only the files above ship. Per-domain MCUboot and TF-M output, `.map` and `.dts`
 
 ## Serial Modem firmware (nRF9151 DK)
 
-The nRF91M1 Host Application (`91m1_ppp` on nRF54L15 or nRF54LM20B) needs a separate Serial Modem image on the wired nRF9151 or nRF9151 SMA DK, configured for PPP + CMUX on UART0 for an external host MCU. Every `91m1_ppp` bundle carries the upstream archive CI tested that night, so there is no separate asset to download, and on-target tests flash that same archive, so what ships beside the host build is what CI verified against it.
+The nRF91M1 PPP Host Application (`91m1_ppp` on nRF54L15 or nRF54LM20B) needs a separate Serial Modem image on the wired nRF9151 or nRF9151 SMA DK, configured for PPP + CMUX on UART0 for an external host MCU. Every `91m1_ppp` bundle carries the upstream archive CI tested that night, so there is no separate asset to download, and on-target tests flash that same archive, so what ships beside the host build is what CI verified against it.
 
 The exact tag varies by SMHA release. Each bundle's `README.md` names the Serial Modem version and links to the upstream release page. Browse [Serial Modem releases](https://github.com/nrfconnect/ncs-serial-modem/releases) for the source, or use the zip already in your download.
 
@@ -103,7 +103,7 @@ nrfutil device program \
 
 Replace `<tag>` with the version named in the bundle `README.md` (for example `2.0.0-preview3`).
 
-See [nRF91M1 Host Application's hardware setup](applications/91m1_ppp/hardware-setup.md#serial-modem-firmware) for wiring and Board Configurator settings.
+See [nRF91M1 PPP Host Application's hardware setup](applications/91m1_ppp/hardware-setup.md#serial-modem-firmware) for wiring and Board Configurator settings.
 
 ## Flashing a release
 
@@ -151,4 +151,4 @@ Board identifiers match CI; see [CI and contribution](ci-and-contribution.md) an
 ## Related documentation
 
 - [CI and contribution](ci-and-contribution.md) - How releases are versioned and published.
-- [nRF91M1 Host Application's Memfault](applications/91m1_ppp/memfault.md) - Symbol upload and coredump workflow.
+- [nRF91M1 PPP Host Application's Memfault](applications/91m1_ppp/memfault.md) - Symbol upload and coredump workflow.

@@ -1,6 +1,6 @@
-# nRF93M1 Host Application
+# nRF93M1 PPP Host Application
 
-This guide walks you through to get started with the nRF93M1 Host Application, including building and flashing the firmware, provisioning device credentials, and connecting securely to nRF Cloud over CoAP/DTLS.
+This guide walks you through to get started with the nRF93M1 PPP Host Application, including building and flashing the firmware, provisioning device credentials, and connecting securely to nRF Cloud over CoAP/DTLS.
 
 The application runs on the nRF54L15 host of the nRF93M1 DK, with cellular over the on-board nRF93M1 Serial Modem through PPP. The host terminates DTLS and CoAP itself. PPP just carries IP traffic between the host's network stack and the modem's cellular radio. The modem's own onboard AT-based cloud client is not used here. It targets the non-secure (TF-M) build and stores the host's TLS credentials in Protected Storage. Telemetry, location, and FOTA go to nRF Cloud over CoAP. Location fixes still pull raw cell and Wi-Fi® scan data out of the modem with AT commands, but the actual cloud request is host-side CoAP. Diagnostics go to your nRF Cloud project.
 
@@ -91,4 +91,4 @@ If the CA certificate or private key is missing, each cloud synchronization logs
 
 Heartbeats and metrics appear in the linked nRF Cloud project. Location and FOTA use the same CoAP session.
 
-See the [nRF91M1 Host Application](../91m1_ppp/README.md) documentation for credential and troubleshooting detail, which applies here too.
+See the [nRF91M1 PPP Host Application](../91m1_ppp/README.md) documentation for credential and troubleshooting detail, which applies here too.

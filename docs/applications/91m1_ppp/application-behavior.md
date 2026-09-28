@@ -1,6 +1,6 @@
 # Application behavior
 
-This guide describes the general runtime behavior of the [nRF91M1 Host Application](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/) host application. For the module design, zbus channels, and state machines, see [Architecture](architecture.md). For hardware wiring, build, and cloud provisioning, see the [main guide](README.md).
+This guide describes the general runtime behavior of the [nRF91M1 PPP Host Application](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/) host application. For the module design, zbus channels, and state machines, see [Architecture](architecture.md). For hardware wiring, build, and cloud provisioning, see the [main guide](README.md).
 
 ## Overview
 

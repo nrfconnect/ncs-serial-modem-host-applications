@@ -63,7 +63,7 @@ ft_options:
 nav:
   - Overview: index.md
   - Getting started: getting-started.md
-  - nRF91M1 Host Application:
+  - nRF91M1 PPP Host Application:
     - Overview: applications/91m1_ppp/README.md
     - Hardware setup: applications/91m1_ppp/hardware-setup.md
     - Application behavior: applications/91m1_ppp/application-behavior.md
@@ -75,7 +75,7 @@ nav:
       - FOTA: applications/91m1_ppp/modules/fota.md
       - Location: applications/91m1_ppp/modules/location.md
     - Memfault: applications/91m1_ppp/memfault.md
-  - nRF93M1 Host Application: applications/93m1_ppp/README.md
-  - nRF93M1 Serial Modem Host (AT): applications/93m1_at/README.md
+  - nRF93M1 PPP Host Application: applications/93m1_ppp/README.md
+  - nRF93M1 AT Host Application: applications/93m1_at/README.md
   - CI and contribution: ci-and-contribution.md
   - Release artifacts: release-artifacts.md

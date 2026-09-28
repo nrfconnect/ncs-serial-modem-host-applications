@@ -2,7 +2,7 @@
 
 [Memfault](https://memfault.com/) is a device observability platform that complements on-device debugging. It collects crash coredumps, reboot events, stack/heap metrics, and logs from deployed devices so you can diagnose issues without physical access, especially useful for sporadic faults or problems that only appear on real networks.
 
-The nRF91M1 Host Application forwards Memfault data through the existing **nRF Cloud CoAP** connection (same DTLS session and JWT as cloud messaging). No separate Memfault credentials or HTTP upload path is required.
+The nRF91M1 PPP Host Application forwards Memfault data through the existing **nRF Cloud CoAP** connection (same DTLS session and JWT as cloud messaging). No separate Memfault credentials or HTTP upload path is required.
 
 ## Prerequisites
 

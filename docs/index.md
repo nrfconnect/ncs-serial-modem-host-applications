@@ -4,11 +4,11 @@ Host-side firmware for Nordic Smart Modem modules, built on the [nRF Connect SDK
 
 ## Applications
 
-| Application                                                       | Cloud connectivity                                                                              |
-|-------------------------------------------------------------------|-------------------------------------------------------------------------------------------------|
-| [nRF91M1 Host Application](applications/91m1_ppp/README.md)       | Host terminates CoAP/DTLS to nRF Cloud itself. PPP carries IP to the nRF91M1 modem              |
-| [nRF93M1 Host Application](applications/93m1_ppp/README.md)       | Host terminates CoAP/DTLS to nRF Cloud itself. PPP carries IP to the nRF93M1 modem              |
-| [nRF93M1 Serial Modem Host (AT)](applications/93m1_at/README.md)  | Modem terminates the connection itself with its built-in AT client. Host just sends AT commands |
+| Application                                                     | Cloud connectivity                                                                              |
+|-----------------------------------------------------------------|-------------------------------------------------------------------------------------------------|
+| [nRF91M1 PPP Host Application](applications/91m1_ppp/README.md) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP carries IP to the nRF91M1 modem              |
+| [nRF93M1 PPP Host Application](applications/93m1_ppp/README.md) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP carries IP to the nRF93M1 modem              |
+| [nRF93M1 AT Host Application](applications/93m1_at/README.md)   | Modem terminates the connection itself with its built-in AT client. Host just sends AT commands |
 
 ## Reference
 

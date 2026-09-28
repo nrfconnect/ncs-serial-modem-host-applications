@@ -1,6 +1,6 @@
-# nRF91M1 Host Application
+# nRF91M1 PPP Host Application
 
-The [nRF91M1 Host Application](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/) runs on nRF54L15 or nRF54LM20B of the nRF91M1 DK. Complete the steps in this guide to set up the hardware, build and flash the firmware, and connect the device to nRF Cloud using CoAP.
+The [nRF91M1 PPP Host Application](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/) runs on nRF54L15 or nRF54LM20B of the nRF91M1 DK. Complete the steps in this guide to set up the hardware, build and flash the firmware, and connect the device to nRF Cloud using CoAP.
 
 The application connects to nRF Cloud over **CoAP/DTLS** from the host MCU (nRF54L15 or nRF54LM20B). Cellular data goes through the nRF91M1 Serial Modem through PPP and credentials are stored on the host using the TLS credentials shell and TF-M Protected Storage. Until onboarding is complete, `nrf_cloud_coap_connect()` fails even if credentials are installed locally.
 
@@ -14,7 +14,7 @@ The application connects to nRF Cloud over **CoAP/DTLS** from the host MCU (nRF5
 
     See [Hardware setup](hardware-setup.md) for wiring, pin assignments, and how to flash the Serial Modem image.
 
-1. **Build and flash nRF91M1 Host Application on the host DK:**
+1. **Build and flash nRF91M1 PPP Host Application on the host DK:**
 
     All `west` commands must run inside the nRF Connect SDK toolchain environment. Launch it first (see [Initialize the workspace](../../getting-started.md#initialize-the-workspace)):
 
