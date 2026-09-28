@@ -63,6 +63,7 @@ nav:
     - Overview: applications/91m1_ppp/README.md
     - Hardware setup: applications/91m1_ppp/hardware-setup.md
     - Application behavior: applications/91m1_ppp/application-behavior.md
+    - Architecture: applications/91m1_ppp/architecture.md
     - Modules:
       - Main: applications/91m1_ppp/modules/main.md
       - Network: applications/91m1_ppp/modules/network.md
