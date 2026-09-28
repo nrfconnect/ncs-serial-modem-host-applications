@@ -27,53 +27,19 @@ Supported product targets:
 | [`scripts/`](scripts/) | CI and gitlint helper scripts |
 | [`tests/on_target/`](tests/on_target/) | On-target (hardware-in-the-loop) test suite |
 
-## Getting started
-
-### Install prerequisites
-
-1. Install nRF Util by following the instructions in the [nRF Util documentation](https://docs.nordicsemi.com/bundle/nrfutil/page/guides/installing.html).
-
-2. Install the SDK manager command:
-
-   ```shell
-   nrfutil install sdk-manager
-   ```
-
-3. Install the nRF Connect SDK toolchain (v3.4.0, matching [`west.yml`](west.yml)):
-
-   ```shell
-   nrfutil sdk-manager install v3.4.0
-   ```
-
-### Initialize the workspace
-
-Before initializing, start the toolchain environment:
-
-```shell
-nrfutil sdk-manager toolchain launch --ncs-version v3.4.0 --shell
-```
-
-To initialize the workspace folder (`smha-workspace`) where the firmware project and all nRF Connect SDK modules will be cloned, run:
-
-```shell
-west init -m https://github.com/nrfconnect/ncs-serial-modem-host-applications --mr main smha-workspace
-cd smha-workspace/project
-west update
-```
-
-The repository is now cloned into the `smha-workspace/project` folder, the west modules are downloaded, and you are ready to build an application.
-
-Alternatively, download pre-built firmware from the [latest release](https://github.com/nrfconnect/ncs-serial-modem-host-applications/releases) and flash it directly. See [Release artifacts](docs/release-artifacts.md) for bundle names, file descriptions, and flash commands.
-
-### Build and flash
-
-Follow the application documentation for hardware setup, build, flash, and (where applicable) cloud provisioning:
+## Applications
 
 | Application | Cloud connectivity |
 |-------------|--------------------|
 | [nRF91M1 PPP Host Application](docs/applications/91m1_ppp/README.md) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP just carries IP to the nRF91M1 modem |
 | [nRF93M1 PPP Host Application](docs/applications/93m1_ppp/README.md) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP just carries IP to the nRF93M1 modem |
 | [nRF93M1 AT Host Application](docs/applications/93m1_at/README.md) | Modem terminates the connection itself with its built-in AT client. Host just sends AT commands |
+
+## Getting started
+
+See [Getting started](docs/getting-started.md) for toolchain installation, workspace setup, and building and flashing an application with either nRF Connect for VS Code or the command line.
+
+For pre-built firmware, download the [latest release](https://github.com/nrfconnect/ncs-serial-modem-host-applications/releases) and see [Release artifacts](docs/release-artifacts.md).
 
 ---
 
