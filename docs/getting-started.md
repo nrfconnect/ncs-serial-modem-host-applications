@@ -25,7 +25,6 @@ Both options use the same board targets. Pick the row that matches your hardware
 | [nRF93M1 Host Application](applications/93m1_ppp/README.md) | nRF93M1 DK | `nrf93m1dk/nrf54l15/cpuapp/ns` |
 | [nRF93M1 Serial Modem Host (AT)](applications/93m1_at/README.md) | nRF93M1 DK | `nrf93m1dk/nrf54l15/cpuapp/ns` |
 
-
 ## Option 1: nRF Connect for VS Code (recommended)
 
 1. Open the **nRF Connect** extension panel from the VS Code activity bar.
@@ -39,8 +38,7 @@ Both options use the same board targets. Pick the row that matches your hardware
 
     In the **Actions** panel, use **Erase and flash to board** for the first flash of a device. A plain **Flash** can fail on a device that has never been programmed with this application, or that is read-back protected. If it does, run `west flash --recover` once from the nRF Connect terminal, then continue using the extension.
 
-
-        > **Note:** **Erase and flash to board** (and `--recover`) wipes TF-M Protected Storage, so any installed nRF Cloud device credentials are lost and must be provisioned again. For routine re-flashing during development, use the plain **Flash** action to keep the credentials in place.
+    > **Note:** **Erase and flash to board** (and `--recover`) wipes TF-M Protected Storage, so any installed nRF Cloud device credentials are lost and must be provisioned again. For routine re-flashing during development, use the plain **Flash** action to keep the credentials in place.
 
     For nRF91M1 setups, two development kits are connected at the same time. When prompted for which device to flash, select the debugger ID of the **host** DK (nRF54L15 or nRF54LM20B), not the nRF9151 Serial Modem DK.
 
