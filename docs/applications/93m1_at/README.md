@@ -20,7 +20,7 @@ To follow this guide, you must meet the following requirements:
 
 ## Building and flashing
 
-Run `west` from inside the nRF Connect SDK toolchain environment (see [Initialize the workspace](../../../README.md#initialize-the-workspace)):
+Run `west` from inside the nRF Connect SDK toolchain environment (see [Initialize the workspace](../../getting-started.md#initialize-the-workspace)):
 
 ```shell
 nrfutil sdk-manager toolchain launch --ncs-version v3.4.0 --shell

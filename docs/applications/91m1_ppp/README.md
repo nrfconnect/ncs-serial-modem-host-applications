@@ -16,7 +16,7 @@ The application connects to nRF Cloud over **CoAP/DTLS** from the host MCU (nRF5
 
 1. **Build and flash nRF91M1 Host Application on the host DK:**
 
-    All `west` commands must run inside the nRF Connect SDK toolchain environment. Launch it first (see [Initialize the workspace](../../../README.md#initialize-the-workspace)):
+    All `west` commands must run inside the nRF Connect SDK toolchain environment. Launch it first (see [Initialize the workspace](../../getting-started.md#initialize-the-workspace)):
 
     ```shell
     nrfutil sdk-manager toolchain launch --ncs-version v3.4.0 --shell
