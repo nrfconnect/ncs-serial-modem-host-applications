@@ -45,7 +45,7 @@ The following describes the input messages supported by the module:
 
 ### Output messages
 
-The following describes the out messages supported by the module:
+The following describes the output messages supported by the module:
 
 - **LOCATION_MODULE_READY**: The Location module is initialized and ready to use.
 - **LOCATION_SEARCH_STARTED**: A location search has been initiated and is now active.

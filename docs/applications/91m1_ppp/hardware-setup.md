@@ -54,7 +54,7 @@ On the nRF54L15 DK, disable VCOM0 (releases UART30 on the **P0** connector for t
 | **P1.10** | **P5 pin 5** | **nRESET** |
 | GND | GND | Ground |
 
-- **P0 connector:** UART signals on the host, on the modem, the UART0 pins are on the DK edge.
+- **P0 connector:** UART signals on the host; on the modem, the UART0 pins are on the DK edge.
 - **P1 connector (host):** DTR, RI, and modem reset.
 - **Modem side:** DTR and RI on **P3**; nRESET on **P5 pin 5**
 - Add a **1 kΩ** series resistor on the reset wire if IO levels differ.
@@ -83,7 +83,7 @@ Open a serial terminal on VCOM1 (UART20 - the secondary USB serial port on the n
 
 Development setup: nRF54LM20B DK (host) wired to nRF9151 DK or nRF9151 SMA DK (Serial Modem).
 
-On the nRF54LM20B DK, no Board Configurator changes are required for the plain build, both VCOM ports may stay enabled. When the nRF7002-EB II shield is attached, disable VCOM1 (see [Wi-Fi location setup](#nrf54lm20b-dk-with-nrf7002-eb-ii-wi-fi-location)).
+On the nRF54LM20B DK, no Board Configurator changes are required for the plain build; both VCOM ports may stay enabled. When the nRF7002-EB II shield is attached, disable VCOM1 (see [Wi-Fi location setup](#nrf54lm20b-dk-with-nrf7002-eb-ii-wi-fi-location)).
 
 ### Wiring
 
@@ -108,7 +108,7 @@ The Serial Modem link uses UART21 on the **P1** connector (**P1.8**/**P1.9** for
 > DTR/RI use **P1.11**/**P1.12**, which conflict with the DK default UART21 HWFC pins. The overlay maps RTS/CTS to **P1.23**/**P1.24** instead. All four UART wires plus DTR/RI must be connected for reliable operation.
 
 > [!NOTE]
-> The `UART_TX`/`UART_RX` psels in the host overlay must match the orientation in the table. Tne host TX on **P1.8** drives the modem's RX (**P0.26**). Swapping the two leaves both sides transmitting into each other's transmitters, and the only symptom is that the modem never answers the init chat script.
+> The `UART_TX`/`UART_RX` psels in the host overlay must match the orientation in the table. The host TX on **P1.8** drives the modem's RX (**P0.26**). Swapping the two leaves both sides transmitting into each other's transmitters, and the only symptom is that the modem never answers the init chat script.
 
 ### Build
 
@@ -166,7 +166,7 @@ The Zephyr `nrf7002eb2` shield overlay provides the Wi-Fi companion IC devicetre
 
 ### Console
 
-Open a serial terminal on VCOM0 (primary USB serial port- UART30 on **P0.06**/**P0.07**). Do not use VCOM1 while the EB2 is attached.
+Open a serial terminal on VCOM0 (primary USB serial port, UART30 on **P0.06**/**P0.07**). Do not use VCOM1 while the EB2 is attached.
 
 Serial Modem logs appear on VCOM1 of the nRF9151 or nRF9151 SMA DK (UART1, **P0.28**/**P0.29**). Keep that terminal open alongside the host console when bringing up the link.
 
@@ -178,7 +178,7 @@ On host boot, [`src/modem_reset.c`](https://github.com/nrfconnect/ncs-serial-mod
 
 The nRF91M1 Host Application is tested against the newest [ncs-serial-modem](https://github.com/nrfconnect/ncs-serial-modem/releases) release that ships the nRF91M1 zip for the nRF9151 or nRF9151 SMA DK. Download `serial_modem_<tag>_nrf9151dk_nrf91m1.zip` from the upstream release page, or use the copy at the top level of your [SMHA release bundle](../../release-artifacts.md#serial-modem-firmware-nrf9151-dk).
 
-This build enables PPP and CMUX on UART0 routed to the host (**P0.27**/**P0.26** TX/RX, **P0.15**/**P0.14** RTS/CTS, DTR/RI on **P0.31/P0.30**). Without the nRF91M1 variant, the modem listens on the USB VCOM UART instead, the host will see `init_chat_script: timed out`.
+This build enables PPP and CMUX on UART0 routed to the host (**P0.27**/**P0.26** TX/RX, **P0.15**/**P0.14** RTS/CTS, DTR/RI on **P0.31/P0.30**). Without the nRF91M1 variant, the modem listens on the USB VCOM UART instead, and the host sees `init_chat_script: timed out`.
 
 Extract the zip and flash the `.hex` on the nRF9151 or nRF9151 SMA DK:
 

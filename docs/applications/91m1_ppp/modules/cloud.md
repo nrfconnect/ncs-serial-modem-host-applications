@@ -52,7 +52,7 @@ The following describes the input messages supported by the module:
 
 ### Output messages
 
-The following describes the out messages supported by the module:
+The following describes the output messages supported by the module:
 
 - **CLOUD_CONNECTED**: The cloud connection is established.
 - **CLOUD_DISCONNECTED**: The cloud connection is down.

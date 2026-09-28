@@ -60,7 +60,7 @@ Modules often handle state transitions based on messages they themselves publish
 
 The Main module deviates from the pattern in the following two ways:
 
-- It runs in the `main()` thread instead of a thread of its own,
+- It runs in the `main()` thread instead of a thread of its own.
 - It is the only module that calls `task_wdt_init()` to set up the hardware watchdog (`DT_ALIAS(watchdog0)`) that all the other modules add their tasks to.
 
 ### Module threads
@@ -129,7 +129,7 @@ Each module configures its own watchdog timeout and message processing budget, s
 | FOTA | 300 s | 290 s |
 | Location | 30 s | 5 s |
 
-The Cloud and FOTA modules have the longest timeouts because their handlers make blocking CoAP calls. In the Cloud module a connect attempt performs a DTLS handshake, and the shadow, message, location, and Memfault requests are blocking CoAP exchanges. In the FOTA module the poll makes reliable CoAP calls to check for and report a job, the image download itself does not block, because the module uses the nRF Cloud FOTA poll library in non-blocking mode and drives the download from its callbacks.
+The Cloud and FOTA modules have the longest timeouts because their handlers make blocking CoAP calls. In the Cloud module a connect attempt performs a DTLS handshake, and the shadow, message, location, and Memfault requests are blocking CoAP exchanges. In the FOTA module the poll makes reliable CoAP calls to check for and report a job; the image download itself does not block, because the module uses the nRF Cloud FOTA poll library in non-blocking mode and drives the download from its callbacks.
 
 The Main, Network, and Location modules never block in their handlers. They only publish messages, drive the connection manager, or start an asynchronous Wi-Fi scan, all of which return immediately while results arrive later as messages or callbacks. Their timeouts are therefore short, sized only to catch a genuinely stuck thread rather than to cover a long operation.
 

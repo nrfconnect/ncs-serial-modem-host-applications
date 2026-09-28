@@ -42,10 +42,10 @@ Memfault is configured for firmware type `smha-91m1` and uploads through nRF Clo
 Check and configure the following Kconfig options for the application:
 
 - **CONFIG_APP_CLOUD_CREDENTIAL_RETRY_SECONDS:**
-  Retry interval when credentials or time are missing. The defalut value is `10`.
+  Retry interval when credentials or time are missing. The default value is `10`.
 - **CONFIG_APP_MAIN_SYNC_INTERVAL_SECONDS:**
-  Cloud sync interval while connected. The defalut value is `600`.
+  Cloud sync interval while connected. The default value is `600`.
 - **CONFIG_NRF_CLOUD_SEC_TAG:**
-  TLS credential tag for nRF Cloud. The defalut value is `16842753`.
+  TLS credential tag for nRF Cloud. The default value is `16842753`.
 
 Per-module options are documented in the module guides linked from [Architecture](architecture.md).

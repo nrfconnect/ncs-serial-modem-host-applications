@@ -2,7 +2,7 @@
 
 Minimal tracker application for the **nRF93M1 Serial Modem**. The host runs Zephyr's cellular
 modem driver, which dials the modem and brings up a PPP link over a CMUX channel. The application
-uses this only for connectivity management, `conn_mgr`, powers the link up and down, and the PPP
+uses this only for connectivity management: `conn_mgr` powers the link up and down, and the PPP
 interface's L4 connected or disconnected events tell the application when the network is available.
 The application sends no IP traffic of its own over PPP. All cloud communication (telemetry,
 location, TLS) instead goes through the modem's own nRF Cloud client through raw AT commands over a
@@ -141,7 +141,7 @@ curl -H "Authorization: Bearer <api_key>" \
 Get `<api_key>` from the legacy app by completing the following steps:
 
 1. Select your team.
-1. Select **burger menu**
+1. Select **burger menu**.
 1. Select **User Account** and then **Team Details**.
 
 See [Managing tokens and keys](https://docs.memfault.com/docs/legacy-nrfcloud/tokens-and-keys) for more details.

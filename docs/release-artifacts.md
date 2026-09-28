@@ -57,7 +57,7 @@ Everything sits at the top level, with no nested directories:
 
 ### Full sysbuild image
 
-Use `merged.hex` for first-time programming or when you need to replace the full flash contents, including the bootloader and secure partitions. Host applications (`91m1_ppp`, `93m1_ppp`) are built with sysbuild, TF-M, and MCUboot, the merged image reflects that layout.
+Use `merged.hex` for first-time programming or when you need to replace the full flash contents, including the bootloader and secure partitions. Host applications (`91m1_ppp`, `93m1_ppp`) are built with sysbuild, TF-M, and MCUboot; the merged image reflects that layout.
 
 After flashing, follow the application guide for hardware setup and cloud onboarding:
 
@@ -83,17 +83,17 @@ The `dfu_application.zip` file is for the same signed image packaged with the ma
 
 ### Everything else from the build
 
-Only the files above ship. Per-domain MCUboot and TF-M output, `.map` and `.dts` files, and the partition metadata are not included, build the same tag locally when you need them, as described in [Building locally instead](#building-locally-instead).
+Only the files above ship. Per-domain MCUboot and TF-M output, `.map` and `.dts` files, and the partition metadata are not included. Build the same tag locally when you need them, as described in [Building locally instead](#building-locally-instead).
 
 ## Serial Modem firmware (nRF9151 DK)
 
-nRF91M1 Host Application (`91m1_ppp` on nRF54L15 or nRF54LM20B) need a separate Serial Modem image on the wired nRF9151 or nRf9151 SMA DK, configured for PPP + CMUX on UART0 for an external host MCU. Every `91m1_ppp` bundle carries the upstream archive CI tested that night, so there is no separate asset to download, and on-target tests flash that same archive, so what ships besides the host build is what CI verified against it.
+The nRF91M1 Host Application (`91m1_ppp` on nRF54L15 or nRF54LM20B) needs a separate Serial Modem image on the wired nRF9151 or nRF9151 SMA DK, configured for PPP + CMUX on UART0 for an external host MCU. Every `91m1_ppp` bundle carries the upstream archive CI tested that night, so there is no separate asset to download, and on-target tests flash that same archive, so what ships beside the host build is what CI verified against it.
 
 The exact tag varies by SMHA release. Each bundle's `README.md` names the Serial Modem version and links to the upstream release page. Browse [Serial Modem releases](https://github.com/nrfconnect/ncs-serial-modem/releases) for the source, or use the zip already in your download.
 
 Besides the full-flash `.hex`, the archive holds the ELF with debug symbols, a Kconfig snapshot, the signed application and MCUboot slot images, DFU packages for programming without a debugger, and a devicetree snapshot.
 
-Extract it, flash the `.hex` on the  Serial Modem DK first, then flash the host bundle's `merged.hex` on the host DK:
+Extract it, flash the `.hex` on the Serial Modem DK first, then flash the host bundle's `merged.hex` on the host DK:
 
 ```shell
 unzip serial_modem_v<tag>_nrf9151dk_nrf91m1.zip

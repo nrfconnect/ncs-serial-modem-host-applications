@@ -134,7 +134,7 @@ The application connects to nRF Cloud over **CoAP/DTLS** from the host MCU (nRF5
 
 ## Application behavior
 
-The host application runs on nRF54L15 and uses the nRF91M1 Serial Modem for cellular data over PPP. Modules communicate over **zbus** and coordinate with **SMF** state machines. After the network and cloud are up, the main module periodically sends a demo device message and requests an FOTA poll.
+The host application runs on nRF54L15 and uses the nRF91M1 Serial Modem for cellular data over PPP. Modules communicate over **zbus** and coordinate with **SMF** state machines. After the network and cloud are up, the main module periodically sends a demo device message and requests a FOTA poll.
 
 See [Application behavior](application-behavior.md) for the full startup sequence, cloud synchronization, and Memfault integration, and [Architecture](architecture.md) for the module design and state machines.
 
@@ -166,7 +166,7 @@ See [Memfault remote debugging](memfault.md) for how to open the Memfault dashbo
 
 ### Reaching Serial Modem AT commands
 
-`CONFIG_MODEM_AT_SHELL` exposes the modem's AT interface over the host shell using the CMUX user pipe  for Serial Modem commands that have no host-side equivalent:
+`CONFIG_MODEM_AT_SHELL` exposes the modem's AT interface over the host shell using the CMUX user pipe, for Serial Modem commands that have no host-side equivalent:
 
 ```shell
 uart:~$ modem at "AT#XLOG=1"

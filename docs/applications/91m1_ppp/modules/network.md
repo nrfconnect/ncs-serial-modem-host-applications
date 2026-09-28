@@ -34,7 +34,7 @@ The following describes the input messages supported by the module:
 
 ### Output messages
 
-The following describes the out messages supported by the module:
+The following describes the output messages supported by the module:
 
 - **NETWORK_CONNECTED**: The device is connected to the network and has IP connectivity.
 - **NETWORK_DISCONNECTED**: The device is disconnected from the network.
