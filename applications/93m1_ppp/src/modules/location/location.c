@@ -22,6 +22,12 @@ BUILD_ASSERT(CONFIG_APP_LOCATION_WATCHDOG_TIMEOUT_SECONDS >
 	     CONFIG_APP_LOCATION_MSG_PROCESSING_TIMEOUT_SECONDS,
 	     "Watchdog timeout must be greater than maximum message processing time");
 
+BUILD_ASSERT(CONFIG_APP_LOCATION_MSG_PROCESSING_TIMEOUT_SECONDS >
+	     2 * CONFIG_APP_LOCATION_BCINFO_TIMEOUT_SECONDS +
+	     CONFIG_APP_LOCATION_BCINFO_RETRY_DELAY_SECONDS +
+	     CONFIG_APP_LOCATION_WIFISCAN_TIMEOUT_SECONDS,
+	     "Message processing time must cover a retried %BCINFO and a %WIFISCAN");
+
 ZBUS_CHAN_DEFINE(location_chan,
 		 struct location_msg,
 		 NULL,
@@ -61,6 +67,18 @@ static void scan_cell(struct location_msg *msg)
 
 	err = modem_at_run("AT%BCINFO=1", at_resp, sizeof(at_resp),
 			   CONFIG_APP_LOCATION_BCINFO_TIMEOUT_SECONDS);
+	if (err) {
+		/* Most likely another command is still running on the modem. Let it
+		 * finish before retrying, and in any case before %WIFISCAN is sent.
+		 */
+		LOG_DBG("AT%%BCINFO failed, error: %d, retrying in %d s", err,
+			CONFIG_APP_LOCATION_BCINFO_RETRY_DELAY_SECONDS);
+		k_sleep(K_SECONDS(CONFIG_APP_LOCATION_BCINFO_RETRY_DELAY_SECONDS));
+
+		err = modem_at_run("AT%BCINFO=1", at_resp, sizeof(at_resp),
+				   CONFIG_APP_LOCATION_BCINFO_TIMEOUT_SECONDS);
+	}
+
 	if (err) {
 		LOG_WRN("AT%%BCINFO failed, error: %d", err);
 		return;
