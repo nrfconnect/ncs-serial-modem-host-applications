@@ -176,7 +176,9 @@ static void scan_wifi(struct location_msg *msg)
 		struct location_wifi_ap *ap = &msg->aps[msg->ap_count];
 
 		if (parse_wifi_ap(entry, ap)) {
-			LOG_DBG("AP: channel=%u rssi=%d", ap->channel, ap->rssi);
+			LOG_DBG("AP: %02x:%02x:%02x:%02x:%02x:%02x channel=%u rssi=%d",
+				ap->mac[0], ap->mac[1], ap->mac[2], ap->mac[3], ap->mac[4],
+				ap->mac[5], ap->channel, ap->rssi);
 			msg->ap_count++;
 		}
 

@@ -228,11 +228,17 @@ static int ground_fix(const struct location_msg *msg)
 	struct nrf_cloud_location_result result;
 	int err;
 
+	LOG_DBG("Ground-fix requested, cell: %s, Wi-Fi APs: %u",
+		msg->cell.valid ? "yes" : "no", msg->ap_count);
+
 	err = location_request_build(msg, &req);
 	if (err) {
-		LOG_WRN("No usable measurements for ground-fix");
+		LOG_WRN("No usable measurements for ground-fix, error: %d", err);
 		return 0;
 	}
+
+	LOG_DBG("Sending ground-fix request to nRF Cloud (cell: %s, Wi-Fi: %s)",
+		req.cell_info ? "yes" : "no", req.wifi_info ? "yes" : "no");
 
 	err = nrf_cloud_coap_location_get(&req, &result);
 	if (err) {
@@ -240,8 +246,10 @@ static int ground_fix(const struct location_msg *msg)
 		return err;
 	}
 
-	LOG_DBG("Location: %.7f,%.7f Uncertainty: %um Type: %s",
+	LOG_DBG("Location: %.06f, %.06f Uncertainty: %um Type: %s",
 		result.lat, result.lon, result.unc, fix_type_str(result.type));
+	LOG_DBG("Google maps URL: https://maps.google.com/?q=%.06f,%.06f",
+		result.lat, result.lon);
 
 	return 0;
 }
@@ -312,6 +320,7 @@ static enum smf_state_result state_disconnected_run(void *obj)
 			(const struct location_msg *)state_object->msg_buf;
 
 		if (msg->type == LOCATION_SYNC_DONE) {
+			LOG_DBG("Ground-fix request while disconnected, connecting first");
 			state_object->pending = PENDING_GROUND_FIX;
 			state_object->pending_location = *msg;
 			smf_set_state(SMF_CTX(state_object), &states[STATE_CONNECTING]);
@@ -414,6 +423,7 @@ static enum smf_state_result state_connecting_run(void *obj)
 			(const struct location_msg *)state_object->msg_buf;
 
 		if (msg->type == LOCATION_SYNC_DONE) {
+			LOG_DBG("Ground-fix request while connecting, deferred");
 			state_object->pending = PENDING_GROUND_FIX;
 			state_object->pending_location = *msg;
 
@@ -478,6 +488,7 @@ static enum smf_state_result state_connected_run(void *obj)
 			(const struct priv_cloud_msg *)state_object->msg_buf;
 
 		if (msg->type == CLOUD_PRIV_SESSION_FAILED) {
+			LOG_DBG("Session failed, going to disconnected");
 			smf_set_state(SMF_CTX(state_object), &states[STATE_DISCONNECTED]);
 
 			return SMF_EVENT_HANDLED;
@@ -489,6 +500,7 @@ static enum smf_state_result state_connected_run(void *obj)
 			(const struct location_msg *)state_object->msg_buf;
 
 		if (msg->type == LOCATION_SYNC_DONE) {
+			LOG_DBG("Ground-fix request while connected");
 			if (ground_fix(msg)) {
 				publish_priv_cloud(CLOUD_PRIV_SESSION_FAILED);
 			}
