@@ -48,11 +48,22 @@ config APP_LOCATION_WIFISCAN_TIMEOUT_SECONDS
 	int "%WIFISCAN command timeout (seconds)"
 	default 30
 
+config APP_LOCATION_BCINFO_RETRY_DELAY_SECONDS
+	int "%BCINFO retry delay (seconds)"
+	default 5
+	help
+	  Wait before retrying a failed %BCINFO. The modem answers ERROR while
+	  another command, such as the cellular driver's periodic %BCINFO on its
+	  own channel, is still running. A %WIFISCAN sent into that window returns
+	  no access points and leaves Wi-Fi scanning disabled until the modem is
+	  reset, so the delay must outlast the driver's 4 s measurement limit.
+
 config APP_LOCATION_WATCHDOG_TIMEOUT_SECONDS
 	int "Watchdog timeout"
 	default 120
 	help
-	  Must exceed CONFIG_APP_LOCATION_BCINFO_TIMEOUT_SECONDS +
+	  Must exceed 2 * CONFIG_APP_LOCATION_BCINFO_TIMEOUT_SECONDS +
+	  CONFIG_APP_LOCATION_BCINFO_RETRY_DELAY_SECONDS +
 	  CONFIG_APP_LOCATION_WIFISCAN_TIMEOUT_SECONDS.
 	  The value must be greater than CONFIG_APP_LOCATION_MSG_PROCESSING_TIMEOUT_SECONDS.
 
