@@ -114,12 +114,14 @@ static void battery_sample_handler(struct k_work *work);
 K_WORK_DELAYABLE_DEFINE(battery_sample_work, battery_sample_handler);
 #endif
 
+static void running_entry(void *obj);
 static enum smf_state_result running_run(void *obj);
 static void disconnected_entry(void *obj);
 static enum smf_state_result disconnected_run(void *obj);
 static void connected_entry(void *obj);
 static enum smf_state_result connected_run(void *obj);
 static void connected_exit(void *obj);
+static void sync_idle_entry(void *obj);
 static enum smf_state_result sync_idle_run(void *obj);
 static void sync_cloud_entry(void *obj);
 static enum smf_state_result sync_cloud_run(void *obj);
@@ -128,18 +130,19 @@ static enum smf_state_result sync_location_run(void *obj);
 static void sync_fota_entry(void *obj);
 static enum smf_state_result sync_fota_run(void *obj);
 #if defined(CONFIG_APP_FOTA)
+static void fota_entry(void *obj);
 static enum smf_state_result fota_run(void *obj);
 static void rebooting_entry(void *obj);
 #endif
 
 static const struct smf_state states[] = {
-	[STATE_RUNNING] = SMF_CREATE_STATE(NULL, running_run, NULL,
+	[STATE_RUNNING] = SMF_CREATE_STATE(running_entry, running_run, NULL,
 					   NULL, &states[STATE_DISCONNECTED]),
 	[STATE_DISCONNECTED] = SMF_CREATE_STATE(disconnected_entry, disconnected_run, NULL,
 						&states[STATE_RUNNING], NULL),
 	[STATE_CONNECTED] = SMF_CREATE_STATE(connected_entry, connected_run, connected_exit,
 					     &states[STATE_RUNNING], &states[STATE_SYNC_IDLE]),
-	[STATE_SYNC_IDLE] = SMF_CREATE_STATE(NULL, sync_idle_run, NULL,
+	[STATE_SYNC_IDLE] = SMF_CREATE_STATE(sync_idle_entry, sync_idle_run, NULL,
 					     &states[STATE_CONNECTED], NULL),
 	[STATE_SYNC_CLOUD] = SMF_CREATE_STATE(sync_cloud_entry, sync_cloud_run, NULL,
 					      &states[STATE_CONNECTED], NULL),
@@ -148,7 +151,7 @@ static const struct smf_state states[] = {
 	[STATE_SYNC_FOTA] = SMF_CREATE_STATE(sync_fota_entry, sync_fota_run, NULL,
 					     &states[STATE_CONNECTED], NULL),
 #if defined(CONFIG_APP_FOTA)
-	[STATE_FOTA] = SMF_CREATE_STATE(NULL, fota_run, NULL, NULL, NULL),
+	[STATE_FOTA] = SMF_CREATE_STATE(fota_entry, fota_run, NULL, NULL, NULL),
 	[STATE_REBOOTING] = SMF_CREATE_STATE(rebooting_entry, NULL, NULL, NULL, NULL),
 #endif
 };
@@ -192,6 +195,13 @@ static void battery_sample_handler(struct k_work *work)
 }
 #endif
 
+static void running_entry(void *obj)
+{
+	ARG_UNUSED(obj);
+
+	LOG_INF("%s", __func__);
+}
+
 static enum smf_state_result running_run(void *obj)
 {
 #if defined(CONFIG_APP_FOTA) || defined(CONFIG_APP_BUTTONS)
@@ -229,6 +239,11 @@ static enum smf_state_result running_run(void *obj)
 
 		switch (msg->type) {
 		case BUTTON_1:
+			if (state_object->running_history == STATE_DISCONNECTED) {
+				LOG_WRN("Button 1: no network connection, sync not possible");
+				break;
+			}
+
 			LOG_INF("Button 1: sync requested");
 
 			err = k_work_reschedule(&sync_work, K_NO_WAIT);
@@ -239,6 +254,11 @@ static enum smf_state_result running_run(void *obj)
 #if defined(CONFIG_APP_CLOUD)
 		case BUTTON_2: {
 			struct cloud_msg cloud_msg = { .type = CLOUD_SYNC_REQUEST };
+
+			if (state_object->running_history == STATE_DISCONNECTED) {
+				LOG_WRN("Button 2: no network connection, upload not possible");
+				break;
+			}
 
 			LOG_INF("Button 2: heartbeat and diagnostics upload requested");
 
@@ -268,6 +288,7 @@ static void disconnected_entry(void *obj)
 {
 	struct main_state *state_object = obj;
 
+	LOG_INF("%s", __func__);
 	LOG_INF("Network disconnected");
 
 	state_object->running_history = STATE_DISCONNECTED;
@@ -286,6 +307,11 @@ static enum smf_state_result disconnected_run(void *obj)
 
 			return SMF_EVENT_HANDLED;
 		}
+	} else if (state_object->chan == &main_chan) {
+		/* A sync tick raced with the network going down. */
+		LOG_WRN("Sync requested while the network is down, ignoring");
+
+		return SMF_EVENT_HANDLED;
 	}
 
 	return SMF_EVENT_PROPAGATE;
@@ -296,6 +322,7 @@ static void connected_entry(void *obj)
 	struct main_state *state_object = obj;
 	int err;
 
+	LOG_INF("%s", __func__);
 	LOG_INF("Network connected");
 
 	state_object->running_history = STATE_CONNECTED;
@@ -330,7 +357,16 @@ static void connected_exit(void *obj)
 {
 	ARG_UNUSED(obj);
 
+	LOG_INF("%s", __func__);
+
 	(void)k_work_cancel_delayable(&sync_work);
+}
+
+static void sync_idle_entry(void *obj)
+{
+	ARG_UNUSED(obj);
+
+	LOG_INF("%s", __func__);
 }
 
 static enum smf_state_result sync_idle_run(void *obj)
@@ -359,6 +395,8 @@ static enum smf_state_result sync_idle_run(void *obj)
 static void sync_cloud_entry(void *obj)
 {
 	ARG_UNUSED(obj);
+
+	LOG_INF("%s", __func__);
 
 #if defined(CONFIG_APP_CLOUD)
 	struct cloud_msg msg = { .type = CLOUD_SYNC_REQUEST };
@@ -408,6 +446,8 @@ static void sync_location_entry(void *obj)
 {
 	ARG_UNUSED(obj);
 
+	LOG_INF("%s", __func__);
+
 #if defined(CONFIG_APP_LOCATION)
 	struct location_msg msg = {
 		.type = LOCATION_FIX_REQUEST,
@@ -452,6 +492,8 @@ static void sync_fota_entry(void *obj)
 {
 	ARG_UNUSED(obj);
 
+	LOG_INF("%s", __func__);
+
 #if defined(CONFIG_APP_FOTA)
 	struct fota_msg msg = { .type = FOTA_POLL_REQUEST };
 	int err = zbus_chan_pub(&fota_chan, &msg, PUB_TIMEOUT);
@@ -485,6 +527,13 @@ static enum smf_state_result sync_fota_run(void *obj)
 }
 
 #if defined(CONFIG_APP_FOTA)
+static void fota_entry(void *obj)
+{
+	ARG_UNUSED(obj);
+
+	LOG_INF("%s", __func__);
+}
+
 static enum smf_state_result fota_run(void *obj)
 {
 	struct main_state *state_object = obj;
@@ -547,6 +596,7 @@ static void rebooting_entry(void *obj)
 {
 	ARG_UNUSED(obj);
 
+	LOG_INF("%s", __func__);
 	LOG_INF("FOTA successful, rebooting to apply the update");
 	LOG_PANIC();
 	sys_reboot(SYS_REBOOT_COLD);
