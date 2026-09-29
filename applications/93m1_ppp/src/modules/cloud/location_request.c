@@ -24,6 +24,20 @@ static struct lte_lc_cells_info cells;
 static struct wifi_scan_result coap_aps[CONFIG_APP_LOCATION_MAX_WIFI_APS];
 static struct wifi_scan_info wifi;
 
+/* Inverse of RSRQ_IDX_TO_DB(), which the codec applies. */
+static int16_t rsrq_db_to_idx(int rsrq)
+{
+	int idx = 2 * rsrq + 40;
+
+	if (idx < 0) {
+		idx--;
+	} else if (idx >= 35) {
+		idx++;
+	}
+
+	return (int16_t)idx;
+}
+
 int location_request_build(const struct location_msg *msg,
 			    struct nrf_cloud_coap_location_request *req)
 {
@@ -40,6 +54,8 @@ int location_request_build(const struct location_msg *msg,
 			.rsrp = msg->cell.valid
 					? (int16_t)CLAMP(msg->cell.rsrp + 141, 0, 97)
 					: LTE_LC_CELL_RSRP_INVALID,
+			.rsrq = msg->cell.valid ? rsrq_db_to_idx(msg->cell.rsrq)
+						: LTE_LC_CELL_RSRQ_INVALID,
 		},
 	};
 
