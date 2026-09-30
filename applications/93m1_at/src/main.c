@@ -157,23 +157,23 @@ static void handle_button(const struct button_msg *msg, bool connected)
 {
 	int err;
 
-	switch (msg->type) {
-	case BUTTON_1:
-		if (!connected) {
-			LOG_INF("Button 1: network is down, sync skipped");
-			break;
-		}
-
-		LOG_INF("Button 1: sync requested");
-
-		err = k_work_reschedule(&telemetry_timer, K_NO_WAIT);
-		if (err < 0) {
-			LOG_ERR("k_work_reschedule telemetry_timer, error: %d", err);
-		}
-		break;
-	default:
+	if (msg->type != BUTTON_1) {
 		LOG_WRN("Button %u: no action defined", msg->type);
-		break;
+
+		return;
+	}
+
+	if (!connected) {
+		LOG_INF("Button 1: network is down, sync skipped");
+
+		return;
+	}
+
+	LOG_INF("Button 1: sync requested");
+
+	err = k_work_reschedule(&telemetry_timer, K_NO_WAIT);
+	if (err < 0) {
+		LOG_ERR("k_work_reschedule telemetry_timer, error: %d", err);
 	}
 }
 #endif
@@ -206,6 +206,8 @@ static enum smf_state_result disconnected_run(void *obj)
 		}
 	} else if (state->chan == &main_chan) {
 		LOG_WRN("Sync requested while the network is down, ignoring");
+	} else {
+		LOG_WRN("Unhandled message in disconnected state.");
 	}
 
 	return SMF_EVENT_HANDLED;
