@@ -159,7 +159,7 @@ static void location_thread(void)
 				LOG_DBG("Location fix request received");
 				err = location_request();
 				if (err == -ENETUNREACH) {
-					LOG_WRN("Failed to request location, request failed or was rejected");
+					LOG_WRN("Failed to request location, request rejected");
 				} else if (err) {
 					LOG_ERR("location_request, error: %d", err);
 					FATAL_ERROR();
