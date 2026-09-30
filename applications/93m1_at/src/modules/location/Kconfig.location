@@ -20,10 +20,18 @@ config APP_LOCATION_THREAD_STACK_SIZE
 
 config APP_LOCATION_METHOD
 	int "Location data collection method (1-7)"
-	default 7
+	default 5
 	range 1 7
 	help
 	  The AT%NRFCLOUDLOCATION method parameter. See the AT command reference for details.
+	  The value is a bitmask of 1 = single-cell, 2 = multicell and 4 = Wi-Fi:
+	  1: Single-cell only
+	  2: Multicell only
+	  3: Single-cell and multicell
+	  4: Wi-Fi only
+	  5: Wi-Fi and single-cell
+	  6: Wi-Fi and multicell
+	  7: Wi-Fi, single-cell and multicell
 
 config APP_LOCATION_AT_TIMEOUT_SECONDS
 	int "AT%NRFCLOUDLOCATION timeout (seconds)"
