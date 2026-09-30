@@ -70,6 +70,7 @@ static K_WORK_DELAYABLE_DEFINE(sample_timer, sample_timer_fn);
 #endif
 
 static void report_telemetry(void);
+static void disconnected_entry(void *obj);
 static enum smf_state_result disconnected_run(void *obj);
 static void connected_entry(void *obj);
 static enum smf_state_result connected_run(void *obj);
@@ -77,7 +78,7 @@ static void connected_exit(void *obj);
 static void wdt_callback(int channel_id, void *user_data);
 
 static const struct smf_state states[] = {
-	[STATE_DISCONNECTED] = SMF_CREATE_STATE(NULL, disconnected_run, NULL, NULL, NULL),
+	[STATE_DISCONNECTED] = SMF_CREATE_STATE(disconnected_entry, disconnected_run, NULL, NULL, NULL),
 	[STATE_CONNECTED] = SMF_CREATE_STATE(connected_entry, connected_run, connected_exit,
 					     NULL, NULL),
 };
@@ -176,6 +177,14 @@ static void handle_button(const struct button_msg *msg, bool connected)
 }
 #endif
 
+static void disconnected_entry(void *obj)
+{
+	ARG_UNUSED(obj);
+
+	LOG_INF("%s", __func__);
+	LOG_INF("Network disconnected");
+}
+
 static enum smf_state_result disconnected_run(void *obj)
 {
 	struct app_object *state = obj;
@@ -194,6 +203,8 @@ static enum smf_state_result disconnected_run(void *obj)
 		if (msg->type == NETWORK_CONNECTED) {
 			smf_set_state(SMF_CTX(state), &states[STATE_CONNECTED]);
 		}
+	} else if (state->chan == &main_chan) {
+		LOG_WRN("Sync requested while the network is down, ignoring");
 	}
 
 	return SMF_EVENT_HANDLED;
@@ -204,7 +215,8 @@ static void connected_entry(void *obj)
 	ARG_UNUSED(obj);
 	int err;
 
-	LOG_INF("Connected");
+	LOG_INF("%s", __func__);
+	LOG_INF("Network connected, first sync in %d s", CONFIG_APP_SYNC_BOOT_DELAY_SECONDS);
 
 	err = k_work_reschedule(&telemetry_timer, K_SECONDS(CONFIG_APP_SYNC_BOOT_DELAY_SECONDS));
 	if (err < 0) {
@@ -229,6 +241,8 @@ static enum smf_state_result connected_run(void *obj)
 		if (msg->type == MAIN_SYNC) {
 			int err;
 
+			LOG_DBG("Sync tick, next in %d s", CONFIG_APP_SYNC_INTERVAL);
+
 			report_telemetry();
 			err = k_work_reschedule(&telemetry_timer,
 						K_SECONDS(CONFIG_APP_SYNC_INTERVAL));
@@ -251,6 +265,9 @@ static enum smf_state_result connected_run(void *obj)
 static void connected_exit(void *obj)
 {
 	ARG_UNUSED(obj);
+
+	LOG_INF("%s", __func__);
+
 	(void)k_work_cancel_delayable(&telemetry_timer);
 }
 

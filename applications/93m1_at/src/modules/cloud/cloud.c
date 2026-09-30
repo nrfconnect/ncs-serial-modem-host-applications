@@ -57,13 +57,15 @@ static int cloud_send_battery(int percent)
 		return -EINVAL;
 	}
 
+	LOG_DBG("Sending battery percentage: %d%%", percent);
+
 	err = modem_at_run(cmd, NULL, 0, CONFIG_APP_CLOUD_AT_TIMEOUT_SECONDS);
 	if (err) {
 		LOG_ERR("modem_at_run, error: %d", err);
 		return -ENETUNREACH;
 	}
 
-	LOG_INF("Battery percentage reported: %d%%", percent);
+	LOG_DBG("Battery percentage reported: %d%%", percent);
 
 	return 0;
 }
@@ -114,9 +116,10 @@ static void cloud_thread(void)
 			const struct cloud_msg *msg = (const struct cloud_msg *)msg_buf;
 
 			if (msg->type == CLOUD_BATTERY_SAMPLE) {
+				LOG_DBG("Battery sample received: %d%%", msg->battery_percent);
 				err = cloud_send_battery(msg->battery_percent);
 				if (err == -ENETUNREACH) {
-					LOG_WRN("Failed to sent battery data, network is down?");
+					LOG_WRN("Failed to send battery data, request failed or was rejected");
 				} else if (err) {
 					LOG_ERR("cloud_send_battery, error: %d", err);
 					FATAL_ERROR();

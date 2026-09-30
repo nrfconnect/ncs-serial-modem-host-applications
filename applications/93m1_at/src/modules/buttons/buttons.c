@@ -26,7 +26,7 @@ static void publish(enum button_msg_type type)
 	struct button_msg msg = { .type = type };
 	int err;
 
-	LOG_INF("Button %u pressed", type);
+	LOG_DBG("Button %u pressed", type);
 
 	err = zbus_chan_pub(&button_chan, &msg, PUB_TIMEOUT);
 	if (err) {
