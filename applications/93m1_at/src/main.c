@@ -78,7 +78,8 @@ static void connected_exit(void *obj);
 static void wdt_callback(int channel_id, void *user_data);
 
 static const struct smf_state states[] = {
-	[STATE_DISCONNECTED] = SMF_CREATE_STATE(disconnected_entry, disconnected_run, NULL, NULL, NULL),
+	[STATE_DISCONNECTED] = SMF_CREATE_STATE(disconnected_entry, disconnected_run,
+						NULL, NULL, NULL),
 	[STATE_CONNECTED] = SMF_CREATE_STATE(connected_entry, connected_run, connected_exit,
 					     NULL, NULL),
 };

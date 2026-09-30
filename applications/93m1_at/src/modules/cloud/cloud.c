@@ -119,7 +119,7 @@ static void cloud_thread(void)
 				LOG_DBG("Battery sample received: %d%%", msg->battery_percent);
 				err = cloud_send_battery(msg->battery_percent);
 				if (err == -ENETUNREACH) {
-					LOG_WRN("Failed to send battery data, request failed or was rejected");
+					LOG_WRN("Failed to send battery data, request rejected");
 				} else if (err) {
 					LOG_ERR("cloud_send_battery, error: %d", err);
 					FATAL_ERROR();
