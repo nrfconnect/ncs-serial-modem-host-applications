@@ -34,6 +34,24 @@ extern "C" {
  */
 int modem_at_run(const char *req, char *resp, size_t resp_size, uint32_t timeout_s);
 
+/** Build a CoAP code as reported in @c modem_at_run_coap(), e.g. COAP_CODE(4, 1) for 4.01. */
+#define COAP_CODE(class, detail) ((uint16_t)((class) * 100 + (detail)))
+
+/** CoAP 4.01 Unauthorized, e.g. device not onboarded to nRF Cloud. */
+#define MODEM_AT_COAP_UNAUTHORIZED COAP_CODE(4, 1)
+
+/**
+ * @brief Like modem_at_run(), but also reports the CoAP response code the modem
+ *        received while the command ran, so callers can react to it.
+ *
+ * @param coap_code Set to the CoAP code (see COAP_CODE()), or 0 if no CoAP
+ *                  response was received. May be NULL.
+ *
+ * Return values are the same as for modem_at_run().
+ */
+int modem_at_run_coap(const char *req, char *resp, size_t resp_size, uint32_t timeout_s,
+		      uint16_t *coap_code);
+
 /**
  * @brief URC callback. argv[0] is the matched prefix, argv[1..] the arguments.
  */

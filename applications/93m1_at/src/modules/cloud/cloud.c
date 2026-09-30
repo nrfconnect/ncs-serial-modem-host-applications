@@ -47,6 +47,7 @@ static int cloud_send_battery(int percent)
 {
 	char cmd[CONFIG_APP_CLOUD_PAYLOAD_BUFFER];
 	int len = sizeof(cmd);
+	uint16_t coap_code;
 	int err;
 
 	err = snprintk(cmd, len,
@@ -59,9 +60,12 @@ static int cloud_send_battery(int percent)
 
 	LOG_DBG("Sending battery percentage: %d%%", percent);
 
-	err = modem_at_run(cmd, NULL, 0, CONFIG_APP_CLOUD_AT_TIMEOUT_SECONDS);
+	err = modem_at_run_coap(cmd, NULL, 0, CONFIG_APP_CLOUD_AT_TIMEOUT_SECONDS, &coap_code);
 	if (err) {
-		LOG_ERR("modem_at_run, error: %d", err);
+		if (coap_code == MODEM_AT_COAP_UNAUTHORIZED) {
+			return -EACCES;
+		}
+		LOG_ERR("modem_at_run_coap, error: %d, CoAP code: %u", err, coap_code);
 		return -ENETUNREACH;
 	}
 
@@ -118,7 +122,10 @@ static void cloud_thread(void)
 			if (msg->type == CLOUD_BATTERY_SAMPLE) {
 				LOG_DBG("Battery sample received: %d%%", msg->battery_percent);
 				err = cloud_send_battery(msg->battery_percent);
-				if (err == -ENETUNREACH) {
+				if (err == -EACCES) {
+					LOG_WRN("Failed to send battery data, unauthorized "
+						"(device may not be onboarded to nRF Cloud)");
+				} else if (err == -ENETUNREACH) {
 					LOG_WRN("Failed to send battery data, request rejected");
 				} else if (err) {
 					LOG_ERR("cloud_send_battery, error: %d", err);

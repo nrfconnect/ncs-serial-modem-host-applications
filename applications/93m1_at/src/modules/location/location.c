@@ -84,6 +84,7 @@ static void on_location(char **argv, uint16_t argc, void *user_data)
 static int location_request(void)
 {
 	char cmd[40];
+	uint16_t coap_code;
 	int err;
 	int ret;
 
@@ -95,9 +96,12 @@ static int location_request(void)
 
 	LOG_DBG("Requesting location, method: %d", CONFIG_APP_LOCATION_METHOD);
 
-	err = modem_at_run(cmd, NULL, 0, CONFIG_APP_LOCATION_AT_TIMEOUT_SECONDS);
+	err = modem_at_run_coap(cmd, NULL, 0, CONFIG_APP_LOCATION_AT_TIMEOUT_SECONDS, &coap_code);
 	if (err) {
-		LOG_ERR("modem_at_run, error: %d", err);
+		if (coap_code == MODEM_AT_COAP_UNAUTHORIZED) {
+			return -EACCES;
+		}
+		LOG_ERR("modem_at_run_coap, error: %d, CoAP code: %u", err, coap_code);
 		return -ENETUNREACH;
 	}
 
@@ -158,7 +162,10 @@ static void location_thread(void)
 			if (msg->type == LOCATION_FIX_REQUEST) {
 				LOG_DBG("Location fix request received");
 				err = location_request();
-				if (err == -ENETUNREACH) {
+				if (err == -EACCES) {
+					LOG_WRN("Failed to request location, unauthorized "
+						"(device may not be onboarded to nRF Cloud)");
+				} else if (err == -ENETUNREACH) {
 					LOG_WRN("Failed to request location, request rejected");
 				} else if (err) {
 					LOG_ERR("location_request, error: %d", err);

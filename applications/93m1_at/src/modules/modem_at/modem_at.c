@@ -35,6 +35,7 @@ struct modem_at_ctx {
 	char *collect_buf;
 	size_t collect_size;
 	size_t collect_len;
+	uint16_t coap_code;
 	struct urc_sub urc_subs[CONFIG_APP_MODEM_AT_URC_SUBSCRIBERS];
 	struct k_mutex urc_lock;
 };
@@ -88,12 +89,12 @@ static void on_coap(struct modem_chat *c, char **argv, uint16_t argc, void *user
 	}
 
 	if (strcmp(argv[1], "RESPONSE") == 0 && argc >= 3 && argv[2] != NULL) {
-		if (strcmp(argv[2], "4.01") == 0) {
-			LOG_WRN("CoAP response: 4.01 Unauthorized "
-				"(device may not be onboarded to nRF Cloud)");
-		} else {
-			LOG_DBG("CoAP response: %s", argv[2]);
+		unsigned int class, detail;
+
+		if (sscanf(argv[2], "%u.%u", &class, &detail) == 2) {
+			at_ctx.coap_code = COAP_CODE(class, detail);
 		}
+		LOG_DBG("CoAP response: %s", argv[2]);
 	} else if (strcmp(argv[1], "DATA") == 0) {
 		LOG_DBG("CoAP data received");
 	} else {
@@ -197,7 +198,17 @@ static void init_script_chat(void)
 
 int modem_at_run(const char *req, char *resp, size_t resp_size, uint32_t timeout_s)
 {
+	return modem_at_run_coap(req, resp, resp_size, timeout_s, NULL);
+}
+
+int modem_at_run_coap(const char *req, char *resp, size_t resp_size, uint32_t timeout_s,
+		      uint16_t *coap_code)
+{
 	int ret;
+
+	if (coap_code != NULL) {
+		*coap_code = 0;
+	}
 
 	if (req == NULL) {
 		return -EINVAL;
@@ -221,6 +232,7 @@ int modem_at_run(const char *req, char *resp, size_t resp_size, uint32_t timeout
 	at_ctx.collect_buf = resp;
 	at_ctx.collect_size = resp_size;
 	at_ctx.collect_len = 0;
+	at_ctx.coap_code = 0;
 	if (resp != NULL && resp_size > 0) {
 		resp[0] = '\0';
 	}
@@ -256,6 +268,9 @@ int modem_at_run(const char *req, char *resp, size_t resp_size, uint32_t timeout
 	}
 
 release:
+	if (coap_code != NULL) {
+		*coap_code = at_ctx.coap_code;
+	}
 	at_ctx.collect_buf = NULL;
 	modem_at_user_pipe_release();
 	k_mutex_unlock(&at_ctx.run_lock);
