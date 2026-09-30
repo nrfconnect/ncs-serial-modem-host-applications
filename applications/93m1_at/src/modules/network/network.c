@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
 
+#include <string.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/net/conn_mgr_connectivity.h>
@@ -54,6 +55,7 @@ static void connected_entry(void *obj);
 static enum smf_state_result connected_run(void *obj);
 static void network_wdt_callback(int channel_id, void *user_data);
 static int configure_psm(void);
+static void log_device_uuid(void);
 
 static const struct smf_state states[] = {
 	[STATE_DISCONNECTED] = SMF_CREATE_STATE(disconnected_entry,
@@ -161,6 +163,8 @@ static void connected_entry(void *obj)
 	if (err) {
 		LOG_ERR("configure_psm, error: %d", err);
 	}
+
+	log_device_uuid();
 }
 
 static enum smf_state_result connected_run(void *obj)
@@ -201,6 +205,33 @@ static void network_wdt_callback(int channel_id, void *user_data)
 static int configure_psm(void)
 {
 	return modem_at_run("AT+CPSMS=1,,,\"00100001\",\"00001010\"", NULL, 0, 10);
+}
+
+static void log_device_uuid(void)
+{
+	static bool logged;
+	static const char prefix[] = "%DEVICEUUID: ";
+	char resp[64];
+	char *uuid = resp;
+	int err;
+
+	if (logged) {
+		return;
+	}
+
+	err = modem_at_run("AT%DEVICEUUID", resp, sizeof(resp), 10);
+	if (err) {
+		LOG_WRN("Failed to read the device UUID, error: %d", err);
+		return;
+	}
+
+	resp[strcspn(resp, "\r\n")] = '\0';
+	if (strncmp(uuid, prefix, sizeof(prefix) - 1) == 0) {
+		uuid += sizeof(prefix) - 1;
+	}
+
+	LOG_INF("Device UUID: %s", uuid);
+	logged = true;
 }
 
 static void network_module(void)
