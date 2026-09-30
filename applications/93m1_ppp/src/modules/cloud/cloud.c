@@ -443,7 +443,7 @@ static void state_connected_entry(void *obj)
 	enum pending_request pending = state_object->pending;
 
 	LOG_DBG("%s", __func__);
-	LOG_INF("Cloud connected");
+	LOG_DBG("Cloud connected");
 
 	state_object->pending = PENDING_NONE;
 

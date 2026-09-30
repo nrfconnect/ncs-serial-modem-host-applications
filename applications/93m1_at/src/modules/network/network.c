@@ -111,6 +111,7 @@ static void disconnected_entry(void *obj)
 {
 	ARG_UNUSED(obj);
 
+	LOG_DBG("%s", __func__);
 	LOG_DBG("Network module disconnected");
 }
 
@@ -122,6 +123,7 @@ static enum smf_state_result disconnected_run(void *obj)
 
 	switch (msg->type) {
 	case NETWORK_CONNECT:
+		LOG_DBG("Connect requested");
 
 		err = conn_mgr_all_if_up(true);
 		if (err) {
@@ -152,6 +154,7 @@ static void connected_entry(void *obj)
 
 	ARG_UNUSED(obj);
 
+	LOG_DBG("%s", __func__);
 	LOG_DBG("Network module connected");
 
 	err = configure_psm();
@@ -168,6 +171,8 @@ static enum smf_state_result connected_run(void *obj)
 
 	switch (msg->type) {
 	case NETWORK_DISCONNECT:
+		LOG_DBG("Disconnect requested");
+
 		err = conn_mgr_all_if_down(true);
 		if (err) {
 			LOG_ERR("conn_mgr_all_if_down, error: %d", err);

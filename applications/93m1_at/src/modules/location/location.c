@@ -71,8 +71,9 @@ static void on_location(char **argv, uint16_t argc, void *user_data)
 	ARG_UNUSED(user_data);
 
 	if (argc >= 5 && is_coordinate(argv[1])) {
-		LOG_INF("Location: %s,%s Uncertainty: %sm Method: %s",
+		LOG_DBG("Location: %s,%s Uncertainty: %sm Method: %s",
 			argv[1], argv[2], argv[3], location_method_str(argv[4]));
+		LOG_DBG("Google maps URL: https://maps.google.com/?q=%s,%s", argv[1], argv[2]);
 	} else if (argc >= 2) {
 		LOG_DBG("NRFCLOUDLOCATION status: %s", argv[1]);
 	} else {
@@ -91,6 +92,8 @@ static int location_request(void)
 		LOG_ERR("snprintk, error: %d", ret);
 		return -EINVAL;
 	}
+
+	LOG_DBG("Requesting location, method: %d", CONFIG_APP_LOCATION_METHOD);
 
 	err = modem_at_run(cmd, NULL, 0, CONFIG_APP_LOCATION_AT_TIMEOUT_SECONDS);
 	if (err) {
@@ -153,9 +156,10 @@ static void location_thread(void)
 			const struct location_msg *msg = (const struct location_msg *)msg_buf;
 
 			if (msg->type == LOCATION_FIX_REQUEST) {
+				LOG_DBG("Location fix request received");
 				err = location_request();
 				if (err == -ENETUNREACH) {
-					LOG_WRN("Failed to request location, network is down?");
+					LOG_WRN("Failed to request location, request failed or was rejected");
 				} else if (err) {
 					LOG_ERR("location_request, error: %d", err);
 					FATAL_ERROR();
