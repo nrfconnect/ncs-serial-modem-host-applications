@@ -16,8 +16,8 @@ Each release contains one zip per CI build flavor:
 
 | **Release zip** | **Application** | **Hardware** | **Description** |
 |-----------------|-----------------|--------------|-----------------|
-| `91m1_ppp-nrf54l15-v{VERSION}.zip` | [91m1_ppp](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/) | nRF54L15 DK + nRF9151 Serial Modem | Standard PPP host; nRF Cloud CoAP/DTLS on the host |
-| `91m1_ppp-nrf54lm20b-v{VERSION}.zip` | [91m1_ppp](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/) | nRF54LM20B DK + nRF9151 Serial Modem | Same feature set on nRF54LM20B |
+| `91m1_ppp-nrf54l15-v{VERSION}.zip` | [91m1_ppp](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/) | nRF54L15 DK + nRF9151 DK | Standard PPP host; nRF Cloud CoAP/DTLS on the host |
+| `91m1_ppp-nrf54lm20b-v{VERSION}.zip` | [91m1_ppp](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/) | nRF54LM20B DK + nRF9151 DK | Same feature set on nRF54LM20B |
 | `91m1_ppp-nrf54lm20b-location-v{VERSION}.zip` | [91m1_ppp](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/) | nRF54LM20B DK + nRF7002-EB2 + Serial Modem | Wi-Fi scan for cloud-assisted location |
 | `93m1_ppp-nrf93m1-v{VERSION}.zip` | [93m1_ppp](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/93m1_ppp/) | nRF93M1 DK | PPP host for the integrated nRF93M1 modem |
 | `93m1_at-nrf93m1-v{VERSION}.zip` | [93m1_at](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/93m1_at/) | nRF93M1 DK | AT host; modem terminates the cloud connection |

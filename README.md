@@ -6,17 +6,21 @@ Host-side firmware for Nordic Smart Modem modules. This repository is built on [
 
 ## Applications
 
-| Application | Cloud connectivity |
-|-------------|--------------------|
-| [nRF91M1 PPP Host Application](docs/applications/91m1_ppp/README.md) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP just carries IP to the nRF91M1 modem |
-| [nRF93M1 PPP Host Application](docs/applications/93m1_ppp/README.md) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP just carries IP to the nRF93M1 modem |
-| [nRF93M1 AT Host Application](docs/applications/93m1_at/README.md) | Modem terminates the connection itself with its built-in AT client. Host just sends AT commands |
+| Application | Hardware | Cloud connectivity |
+|-------------|----------|--------------------|
+| [nRF91M1 PPP Host Application](docs/applications/91m1_ppp/README.md) | [nRF54L15 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF54L15-DK) + [nRF9151 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF9151-DK)<br>[nRF54LM20B DK](https://www.nordicsemi.com/Products/Development-hardware/nRF54LM20-DK) + [nRF9151 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF9151-DK) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP just carries IP to the nRF91M1 modem |
+| [nRF93M1 PPP Host Application](docs/applications/93m1_ppp/README.md) | [nRF93M1 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF93M1-DK) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP just carries IP to the nRF93M1 modem |
+| [nRF93M1 AT Host Application](docs/applications/93m1_at/README.md) | [nRF93M1 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF93M1-DK) | Modem terminates the connection itself with its built-in AT client. Host just sends AT commands |
 
 ## Getting started
 
 See [Getting started](docs/getting-started.md) for toolchain installation, workspace setup, and building and flashing an application with either nRF Connect for VS Code or the command line.
 
 For pre-built firmware, download the [latest release](https://github.com/nrfconnect/ncs-serial-modem-host-applications/releases) and see [Release artifacts](docs/release-artifacts.md).
+
+## Application FOTA
+
+See [Application FOTA](docs/app-fota.md) for how to issue a FOTA update to the PPP host applications from the command line through nRF Cloud.
 
 ---
 

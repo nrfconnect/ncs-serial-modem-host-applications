@@ -77,5 +77,6 @@ nav:
     - Memfault: applications/91m1_ppp/memfault.md
   - nRF93M1 PPP Host Application: applications/93m1_ppp/README.md
   - nRF93M1 AT Host Application: applications/93m1_at/README.md
+  - Application FOTA: app-fota.md
   - CI and contribution: ci-and-contribution.md
   - Release artifacts: release-artifacts.md
