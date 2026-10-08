@@ -22,7 +22,6 @@ You need:
 - One host DK: nRF54L15 DK or nRF54LM20B DK.
 - An nRF7002-EB II, only for the Wi-Fi location setup.
 - Eight jumper wires: four for UART, one each for DTR, RI and modem reset, and one for ground.
-- A **1 kΩ** resistor for the reset wire, if the two DKs run at different IO voltages.
 - Two USB cables, one per DK.
 - [nRF Connect for Desktop](https://www.nordicsemi.com/Products/Development-tools/nRF-Connect-for-Desktop) with the [Board Configurator app](https://docs.nordicsemi.com/bundle/nrf-connect-board-configurator/page/index.html), and [nRF Util](https://www.nordicsemi.com/Products/Development-tools/nRF-Util) for flashing.
 
@@ -34,7 +33,7 @@ Each Board Configurator switch connects or disconnects a group of DK pins from t
 1. Open Board Configurator and select the nRF9151 DK.
 1. Set **VCOM0** to **Disconnected**. This frees UART0 (**P0.26**/**P0.27** data, **P0.14**/**P0.15** flow control) for the host link.
 1. Check that **VCOM0 HWFC** also reads **Disconnected**, and set it if not. If it stays connected, the interface MCU holds the modem's CTS deasserted through 150 Ω series resistors, and the modem never answers the host.
-1. Leave **VCOM1** and **VCOM1 HWFC** connected. VCOM1 carries the Serial Modem logs (UART1, **P0.28**/**P0.29**).
+1. Leave **VCOM1** and **VCOM1 HWFC** connected. VCOM1 carries the Serial Modem logs (UART1, **P0.28**/**P0.29**), so a terminal on this port must be set to **1000000 baud**.
 1. Note the **VDD** setting. You set the host DK to the same value in [Step 4](#step-4-configure-the-host-dk-in-board-configurator); 1.8 V is typical.
 1. Write the configuration to the board.
 
@@ -112,7 +111,6 @@ When wiring, check the following:
 
 - **The UART pairs cross.** Host TX goes to modem RX, and host RTS goes to modem CTS on **P0.15**, not **P0.14**, which is the modem's RTS. Wiring either pair straight through leaves the modem silent while it still boots and takes reset pulses normally.
 - **Connect all four UART wires plus DTR and RI.** The link is unreliable without flow control or DTR.
-- **Add the 1 kΩ series resistor** on the reset wire if the two DKs run at different IO voltages.
 - **Don't jumper P0.31 to GND** on the nRF9151 DK. That jumper is only for a PC host; this application drives DTR from host pin **P1.11**.
 
 ## Step 7: Build and flash the host application
@@ -153,7 +151,7 @@ west flash --recover
     - **nRF54L15 DK:** VCOM1, the secondary USB serial port.
     - **nRF54LM20B DK**, with or without the nRF7002-EB II: VCOM0, the primary USB serial port. Don't use VCOM1 while the EB II is attached.
 
-1. Open a second serial terminal at 1000000 baud on VCOM1 of the nRF9151 DK to see the Serial Modem logs. Keep both open while you bring up the link.
+1. Open a second serial terminal on VCOM1 of the nRF9151 DK to see the Serial Modem logs. Set it to **1000000 baud**; at the usual 115200 it shows nothing. Keep both terminals open while you bring up the link.
 1. Reset the host DK. On boot, the host pulses the modem's nRESET for 500 ms and gives it 2 s to start before the cellular driver opens the link.
 1. Wait for `Network connected` in the host console. This means the PPP link through the modem is up.
 
