@@ -12,7 +12,7 @@ The application connects to nRF Cloud over **CoAP/DTLS** from the host MCU (nRF5
     1. Configure both DKs in the Board Configurator and flash Serial Modem firmware with PPP and CMUX enabled on the nRF9151.
     1. Use the `serial_modem_*_nrf9151dk_nrf91m1.zip` from your [SMHA release bundle](../../release-artifacts.md#serial-modem-firmware-nrf9151-dk), or download the newest matching archive from [ncs-serial-modem releases](https://github.com/nrfconnect/ncs-serial-modem/releases).
 
-    See [Hardware setup](hardware-setup.md) for wiring, pin assignments, and how to flash the Serial Modem image.
+    See [Hardware Wiring Guide](hardware-setup.md) for wiring, pin assignments, and how to flash the Serial Modem image.
 
 1. **Build and flash nRF91M1 PPP Host Application on the host DK:**
 
@@ -38,11 +38,11 @@ The application connects to nRF Cloud over **CoAP/DTLS** from the host MCU (nRF5
     west flash --recover
     ```
 
-    For Wi-Fi® location with the nRF7002-EB II shield, see [Hardware setup - Wi-Fi location](hardware-setup.md#nrf54lm20b-dk-with-nrf7002-eb-ii-wi-fi-location).
+    For Wi-Fi® location with the nRF7002-EB II shield, see the [Hardware Wiring Guide](hardware-setup.md#step-7-build-and-flash-the-host-application).
 
 1. **Verify the host application boots:**
 
-    1. Open a serial terminal on the host **console** port (see [Hardware setup](hardware-setup.md) for which VCOM to use on your board).
+    1. Open a serial terminal on the host **console** port (see [Hardware Wiring Guide](hardware-setup.md) for which VCOM to use on your board).
     1. Confirm the application starts and note the **Device ID** from the boot log:
 
         ```text
@@ -184,7 +184,7 @@ This is how you get Serial Modem logs during operation. The modem prints its boo
 |-------|-------------|
 | [Application behavior](application-behavior.md) | Startup sequence, cloud sync, FOTA, and Memfault at runtime |
 | [Architecture](architecture.md) | Module design, zbus message passing, and SMF state machines |
-| [Hardware setup](hardware-setup.md) | Host + Serial Modem wiring (nRF54L15, nRF54LM20B, optional nRF7002-EB2 for Wi-Fi location), board configurator, Serial Modem firmware |
+| [Hardware Wiring Guide](hardware-setup.md) | Host + Serial Modem wiring (nRF54L15, nRF54LM20B, optional nRF7002-EB2 for Wi-Fi location), board configurator, Serial Modem firmware |
 | [Memfault remote debugging](memfault.md) | Open Memfault from nRF Cloud, upload symbol files, view coredumps |
 
 Module documentation:

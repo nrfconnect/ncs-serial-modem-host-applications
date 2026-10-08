@@ -65,7 +65,7 @@ nav:
   - Getting started: getting-started.md
   - nRF91M1 PPP Host Application:
     - Overview: applications/91m1_ppp/README.md
-    - Hardware setup: applications/91m1_ppp/hardware-setup.md
+    - Hardware wiring guide: applications/91m1_ppp/hardware-setup.md
     - Application behavior: applications/91m1_ppp/application-behavior.md
     - Architecture: applications/91m1_ppp/architecture.md
     - Modules:

@@ -217,7 +217,7 @@ Identities are therefore compared rather than assumed. `AT+CGSN=1` gives the IME
 
 The modem image is never built from source here. Nightly CI resolves the newest published [Serial Modem](https://github.com/nrfconnect/ncs-serial-modem/releases) release that ships the nRF91M1 bundle (`*_nrf9151dk_nrf91m1.zip`, including prereleases), locks that tag for the whole pipeline run, and passes it to every nRF91M1 hardware test and to the Release workflow. Tests download the archive, cache it under `build/serial-modem-firmware/<tag>/`, and flash the `.hex` from it. Release bundles copy the same archive unextracted into every `91m1_ppp` zip, so what ships is what CI tested that night.
 
-The Serial Modem uses the nRF91M1 UART pinout. The bench is wired for it. See [Hardware Setup](applications/91m1_ppp/hardware-setup.md).
+The Serial Modem uses the nRF91M1 UART pinout. The bench is wired for it. See the [Hardware Wiring Guide](applications/91m1_ppp/hardware-setup.md).
 
 Set `SERIAL_MODEM_RELEASE` to pin a specific upstream tag when running tests or the release workflow locally. Static settings such as `console_baudrate` live in [`tests/on_target/ci/serial_modem_firmware.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/tests/on_target/ci/serial_modem_firmware.yml).
 
