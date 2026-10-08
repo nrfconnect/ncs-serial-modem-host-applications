@@ -103,7 +103,7 @@ nrfutil device program \
 
 Replace `<tag>` with the version named in the bundle `README.md` (for example `2.0.0-preview3`).
 
-See [nRF91M1 PPP Host Application's hardware setup](applications/91m1_ppp/hardware-setup.md#serial-modem-firmware) for wiring and Board Configurator settings.
+See the [nRF91M1 PPP Host Application's Hardware Wiring Guide](applications/91m1_ppp/hardware-setup.md) for wiring, Board Configurator settings, and how to flash this firmware.
 
 ## Flashing a release
 
