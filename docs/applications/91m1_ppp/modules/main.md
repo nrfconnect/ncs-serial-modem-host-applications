@@ -16,7 +16,7 @@ The module subscribes to the channels of all enabled modules, plus its own priva
 | `location_chan` | Forward Wi-Fi® scan results to the Cloud module |
 | `main_priv_chan` | Receive the periodic cloud synchronization trigger |
 
-The periodic synchronization runs on a dedicated workqueue rather than in the state machine. The delayed work only publishes `MAIN_PRIV_CLOUD_SYNCHRONIZATION` on the [private channel](../architecture.md#private-channels) `main_priv_chan` and reschedules itself, so that the work never touches the state machine directly, and the synchronization itself is performed in the `main()` thread like every other event.
+The periodic synchronization runs on a dedicated workqueue rather than in the state machine. The delayed work only publishes `MAIN_PRIV_CLOUD_SYNCHRONIZATION` on the [private channel](../../../architecture.md#private-channels) `main_priv_chan` and reschedules itself, so that the work never touches the state machine directly, and the synchronization itself is performed in the `main()` thread like every other event.
 
 ### State diagram
 

@@ -59,11 +59,11 @@ Everything sits at the top level, with no nested directories:
 
 Use `merged.hex` for first-time programming or when you need to replace the full flash contents, including the bootloader and secure partitions. Host applications (`91m1_ppp`, `93m1_ppp`) are built with sysbuild, TF-M, and MCUboot; the merged image reflects that layout.
 
-After flashing, follow the application guide for hardware setup and cloud onboarding:
+After flashing, follow the getting-started guide for your application for hardware setup and cloud onboarding:
 
-- [nRF91M1 PPP Host Application](applications/91m1_ppp/README.md)
-- [nRF93M1 PPP Host Application](applications/93m1_ppp/README.md)
-- [nRF93M1 AT Host Application](applications/93m1_at/README.md)
+- [nRF91M1 PPP Host Application](getting-started/91m1-ppp.md)
+- [nRF93M1 PPP Host Application](getting-started/93m1-ppp.md)
+- [nRF93M1 AT Host Application](getting-started/93m1-at.md)
 
 ### ELF file with debug symbols
 
@@ -97,13 +97,16 @@ Extract it, flash the `.hex` on the Serial Modem DK first, then flash the host b
 
 ```shell
 unzip serial_modem_v<tag>_nrf9151dk_nrf91m1.zip
+nrfutil device recover --serial-number <modem_dk_serial_number>
 nrfutil device program \
-  --firmware serial_modem_v<tag>_nrf9151dk_nrf91m1.hex --recover
+  --firmware serial_modem_v<tag>_nrf9151dk_nrf91m1.hex \
+  --serial-number <modem_dk_serial_number>
+nrfutil device reset --serial-number <modem_dk_serial_number>
 ```
 
-Replace `<tag>` with the version named in the bundle `README.md` (for example `2.0.0-preview3`).
+Replace `<tag>` with the version named in the bundle `README.md` (for example `2.0.0-preview3`), and `<modem_dk_serial_number>` with the serial number that `nrfutil device list` shows for the nRF9151 DK.
 
-See the [nRF91M1 PPP Host Application's Hardware Wiring Guide](applications/91m1_ppp/hardware-setup.md) for wiring, Board Configurator settings, and how to flash this firmware.
+See [Set up the hardware](getting-started/91m1-ppp.md#step-1-set-up-the-hardware) in the nRF91M1 PPP getting-started guide for wiring and Board Configurator settings.
 
 ## Flashing a release
 
@@ -115,13 +118,15 @@ Extract the zip, then flash `merged.hex` from the extracted directory.
 west flash --hex-file merged.hex --recover
 ```
 
-**nrfutil**:
+**nrfutil**, replacing `<serial_number>` with the serial number that `nrfutil device list` shows for the DK:
 
 ```shell
-nrfutil device program --firmware merged.hex --recover
+nrfutil device recover --serial-number <serial_number>
+nrfutil device program --firmware merged.hex --serial-number <serial_number>
+nrfutil device reset --serial-number <serial_number>
 ```
 
-Use `--recover` on the first flash or when TF-M or credential storage must be reset. For routine re-flash during development, omit `--recover` if you want to keep TF-M Protected Storage credentials.
+Recover on the first flash or when TF-M or credential storage must be reset. For routine re-flash during development, skip `--recover` and `nrfutil device recover` if you want to keep TF-M Protected Storage credentials.
 
 For 91m1 two-board setups, extract the bundled Serial Modem archive and flash its `.hex` on the nRF9151 DK before programming the host `merged.hex`.
 
@@ -132,13 +137,13 @@ For 91m1 two-board setups, extract the bundled Serial Modem archive and flash it
 | `91m1_ppp-nrf54l15-*` | Host DK VCOM1 |
 | `91m1_ppp-nrf54lm20b-*` | nRF54LM20B DK VCOM0 |
 | `91m1_ppp-nrf54lm20b-location-*` | nRF54LM20B DK VCOM0 |
-| `93m1_ppp-nrf93m1-*`, `93m1_at-nrf93m1-*` | nRF93M1 DK default console |
+| `93m1_ppp-nrf93m1-*`, `93m1_at-nrf93m1-*` | nRF93M1 DK VCOM0 |
 
-See each application's [hardware setup](applications/91m1_ppp/hardware-setup.md) guide for wiring and serial port details.
+See the [getting-started guide](getting-started/index.md#choose-your-application) for your application for wiring and serial port details.
 
 ## Building locally instead
 
-Release zips are convenience binaries. To modify firmware or match an unreleased commit, build from source in an NCS workspace:
+Release zips are convenience binaries. To modify firmware or match an unreleased commit, set up a workspace as described in [Set up the repository and toolchain](getting-started/setup.md) and build from source:
 
 ```shell
 cd applications/<app>
@@ -146,7 +151,7 @@ west build -b <board> -p
 west flash --recover
 ```
 
-Board identifiers match CI; see [CI and contribution](ci-and-contribution.md) and each application's documentation for build arguments (for example Wi-Fi location overlays on `91m1_ppp`).
+Board identifiers match CI. Each application's [getting-started guide](getting-started/index.md#choose-your-application) lists its board targets and build arguments (for example the Wi-Fi location overlays on `91m1_ppp`).
 
 ## Related documentation
 

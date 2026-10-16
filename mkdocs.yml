@@ -62,21 +62,27 @@ ft_options:
 
 nav:
   - Overview: index.md
-  - Getting started: getting-started.md
-  - nRF91M1 PPP Host Application:
-    - Overview: applications/91m1_ppp/README.md
-    - Hardware wiring guide: applications/91m1_ppp/hardware-setup.md
-    - Application behavior: applications/91m1_ppp/application-behavior.md
-    - Architecture: applications/91m1_ppp/architecture.md
-    - Modules:
-      - Main: applications/91m1_ppp/modules/main.md
-      - Network: applications/91m1_ppp/modules/network.md
-      - Cloud: applications/91m1_ppp/modules/cloud.md
-      - FOTA: applications/91m1_ppp/modules/fota.md
-      - Location: applications/91m1_ppp/modules/location.md
-    - Memfault: applications/91m1_ppp/memfault.md
-  - nRF93M1 PPP Host Application: applications/93m1_ppp/README.md
-  - nRF93M1 AT Host Application: applications/93m1_at/README.md
+  - Getting started:
+    - Choose your application: getting-started/index.md
+    - Set up the repository and toolchain: getting-started/setup.md
+    - nRF91M1 PPP: getting-started/91m1-ppp.md
+    - nRF93M1 PPP: getting-started/93m1-ppp.md
+    - nRF93M1 AT: getting-started/93m1-at.md
+  - Applications:
+    - nRF91M1 PPP Host Application:
+      - Overview: applications/91m1_ppp/README.md
+      - Application behavior: applications/91m1_ppp/application-behavior.md
+      - Hardware reference: applications/91m1_ppp/hardware-setup.md
+      - Modules:
+        - Main: applications/91m1_ppp/modules/main.md
+        - Network: applications/91m1_ppp/modules/network.md
+        - Cloud: applications/91m1_ppp/modules/cloud.md
+        - FOTA: applications/91m1_ppp/modules/fota.md
+        - Location: applications/91m1_ppp/modules/location.md
+      - Memfault: applications/91m1_ppp/memfault.md
+    - nRF93M1 PPP Host Application: applications/93m1_ppp/README.md
+    - nRF93M1 AT Host Application: applications/93m1_at/README.md
+  - Architecture: architecture.md
   - Application FOTA: app-fota.md
-  - CI and contribution: ci-and-contribution.md
   - Release artifacts: release-artifacts.md
+  - CI and contribution: ci-and-contribution.md

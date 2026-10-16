@@ -13,7 +13,7 @@ This document describes how the repository is organized and how it is built, tes
 | [`applications/91m1_ppp/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/applications/91m1_ppp) | nRF91M1 PPP host application |
 | [`applications/93m1_ppp/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/applications/93m1_ppp) | nRF93M1 PPP host application |
 | [`applications/93m1_at/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/applications/93m1_at) | nRF93M1 AT host application |
-| [`docs/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/docs) | Documentation site source (application guides, CI and contribution, release artifacts) |
+| [`docs/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/docs) | Documentation site source (getting started, shared architecture, application reference, CI and contribution, release artifacts) |
 | [`scripts/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/scripts) | CI and gitlint helper scripts |
 | [`tests/on_target/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/tests/on_target) | On-target (hardware-in-the-loop) test suite |
 
@@ -133,7 +133,7 @@ Both runners need Docker and USB access to their DKs (`--privileged -v /dev:/dev
 
 The test DUT must be provisioned once (manually or by running the provisioning flow locally against it). CI flashes baseline firmware without recovery, so TF-M credentials persist. FOTA and coredump do not remove the device from nRF Cloud or Memfault after each run.
 
-For the first-time setup for the test DUT (`CI_NRF54L15_*`): follow [91m1_ppp cloud provisioning](applications/91m1_ppp/README.md) steps 3–6 on that board, or run the provisioning test locally with `TEST_JSON` from `91m1_ppp-provision-nrf54l15-nrf91` while pointing the `CI_NRF54L15_PROVISION_*` variables at the test board (once only). Register the device in the shared Memfault cohort `ci-91m1-test-nrf54l15-nrf91` (used by both coredump and FOTA tests).
+For the first-time setup for the test DUT (`CI_NRF54L15_*`): follow [Connect to nRF Cloud](getting-started/91m1-ppp.md#step-3-connect-to-nrf-cloud) in the 91m1_ppp getting-started guide on that board, or run the provisioning test locally with `TEST_JSON` from `91m1_ppp-provision-nrf54l15-nrf91` while pointing the `CI_NRF54L15_PROVISION_*` variables at the test board (once only). Register the device in the shared Memfault cohort `ci-91m1-test-nrf54l15-nrf91` (used by both coredump and FOTA tests).
 
 The nRF54LM20B FOTA test reuses DUT 3 (`CI_NRF54LM20B_PROVISION_*`) on the provisioning runner. The device must reach cloud connect before CI; the test calls `ensure_provisioned()` on the first run if credentials are missing and assigns the DUT to the Memfault cohort `ci-91m1-test-nrf54lm20b-nrf91` (separate from the provision cohort). When provision and FOTA run in the same CI batch, the FOTA test moves the device into the test cohort automatically.
 
@@ -202,7 +202,7 @@ Three further consequences worth knowing:
 
 The Serial Modem console runs at 1000000 baud, not the usual 115200. It is sized for modem traces. `console_baudrate` is recorded in [`tests/on_target/ci/serial_modem_firmware.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/tests/on_target/ci/serial_modem_firmware.yml); re-check it when upstream changes the overlay, because a baud mismatch produces an empty log rather than an error.
 
-Modem capture also requires VCOM1 enabled in Board Configurator on the nRF9151 or nRF9151 SMA DK, which is the documented [hardware setup](applications/91m1_ppp/hardware-setup.md).
+Modem capture also requires VCOM1 enabled in Board Configurator on the nRF9151 or nRF9151 SMA DK, which is the documented [hardware setup](getting-started/91m1-ppp.md#step-1-set-up-the-hardware).
 The same setup disconnects VCOM0 and VCOM0 HWFC, because the nRF91M1 build puts the host AT link on `uart0`, which uses the pins VCOM0 otherwise occupies. A rig that skips either switch fails with `init_chat_script: timed out`. The port is resolved from the rig's `CI_*_SERIAL_MODEM_SEGGER_SN`; set the matching `CI_*_SERIAL_MODEM_SERIAL_PORT` variable to pin it explicitly.
 
 Capture starts immediately after the modem is programmed, so the boot that programming triggers is always recorded even on rigs where the host nRESET line is not wired. Everything here is best-effort and never fails a test: if the port cannot be resolved, stays silent, or the modem never accepts `AT#XLOG=1`, the run warns and continues with host logs only. Use those warnings to tell the cases apart: a completely empty `modem-serial.log` points at VCOM1 or the baud rate, while a log holding only boot output means either `AT#XLOG=1` never got through or the captured board is not the one the host is talking to, which the next section covers.
@@ -217,7 +217,7 @@ Identities are therefore compared rather than assumed. `AT+CGSN=1` gives the IME
 
 The modem image is never built from source here. Nightly CI resolves the newest published [Serial Modem](https://github.com/nrfconnect/ncs-serial-modem/releases) release that ships the nRF91M1 bundle (`*_nrf9151dk_nrf91m1.zip`, including prereleases), locks that tag for the whole pipeline run, and passes it to every nRF91M1 hardware test and to the Release workflow. Tests download the archive, cache it under `build/serial-modem-firmware/<tag>/`, and flash the `.hex` from it. Release bundles copy the same archive unextracted into every `91m1_ppp` zip, so what ships is what CI tested that night.
 
-The Serial Modem uses the nRF91M1 UART pinout. The bench is wired for it. See the [Hardware Wiring Guide](applications/91m1_ppp/hardware-setup.md).
+The Serial Modem uses the nRF91M1 UART pinout. The bench is wired for it. See [Wire the DKs together](getting-started/91m1-ppp.md#wire-the-dks-together).
 
 Set `SERIAL_MODEM_RELEASE` to pin a specific upstream tag when running tests or the release workflow locally. Static settings such as `console_baudrate` live in [`tests/on_target/ci/serial_modem_firmware.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/tests/on_target/ci/serial_modem_firmware.yml).
 
@@ -238,7 +238,7 @@ docker run -d -p 8080:8080 plantuml/plantuml-server:jetty
 scripts/render_diagrams.py --server http://localhost:8080
 ```
 
-A source that does not parse fails with the error and line number the server reports. The notation the diagrams use is documented in [Diagram notation](applications/91m1_ppp/architecture.md#diagram-notation).
+A source that does not parse fails with the error and line number the server reports. The notation the diagrams use is documented in [Diagram notation](architecture.md#diagram-notation).
 
 ## Commit messages
 

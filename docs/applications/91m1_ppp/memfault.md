@@ -6,7 +6,7 @@ The nRF91M1 PPP Host Application forwards Memfault data through the existing **n
 
 ## Prerequisites
 
-Complete the [Getting started](README.md) section before proceeding.
+Complete the [getting-started guide](../../getting-started/91m1-ppp.md) before proceeding.
 The device must be onboarded to your nRF Cloud account and successfully connect (`Cloud connected` in the log). Memfault data is routed to the Memfault project linked to that nRF Cloud account.
 
 ## Setup

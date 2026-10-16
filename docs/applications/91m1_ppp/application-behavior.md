@@ -1,12 +1,12 @@
 # Application behavior
 
-This guide describes the general runtime behavior of the [nRF91M1 PPP Host Application](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/) host application. For the module design, zbus channels, and state machines, see [Architecture](architecture.md). For hardware wiring, build, and cloud provisioning, see the [main guide](README.md).
+This guide describes the general runtime behavior of the [nRF91M1 PPP Host Application](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/) host application. For the module design, zbus channels, and state machines, see [Architecture](../../architecture.md) and the [module overview](README.md#modules). For hardware wiring, build, and cloud provisioning, see the [getting-started guide](../../getting-started/91m1-ppp.md).
 
 ## Overview
 
 The application runs on the nRF54L15 host MCU and treats the nRF91M1 Serial Modem as a cellular data interface over PPP. Cloud connectivity uses host-native CoAP/DTLS to nRF Cloud. Credentials are stored in TF-M Protected Storage and used to sign JWTs for CoAP authentication.
 
-Cooperating modules run as dedicated threads, each with its own SMF state machine, and communicate through zbus channels. See [Architecture](architecture.md) for details about the modules and their interactions.
+Cooperating modules run as dedicated threads, each with its own SMF state machine, and communicate through zbus channels. See the [module overview](README.md#modules) for details about the modules and their interactions.
 
 ## Startup sequence
 
@@ -48,4 +48,4 @@ Check and configure the following Kconfig options for the application:
 - **CONFIG_NRF_CLOUD_SEC_TAG:**
   TLS credential tag for nRF Cloud. The default value is `16842753`.
 
-Per-module options are documented in the module guides linked from [Architecture](architecture.md).
+Per-module options are documented in the module guides linked from the [module overview](README.md#modules).
