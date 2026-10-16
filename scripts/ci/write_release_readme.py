@@ -26,7 +26,7 @@ CONSOLE_PORTS = {
     "nrf54l15": "host DK VCOM1",
     "nrf54lm20b": "host DK VCOM0",
     "nrf54lm20b-location": "host DK VCOM0",
-    "nrf93m1": "the nRF93M1 DK default console",
+    "nrf93m1": "nRF93M1 DK VCOM0",
 }
 
 
@@ -62,15 +62,28 @@ def _file_table(bundle_dir: Path, modem: dict | None) -> list[str]:
     return ["| File | What it is |", "|------|------------|", *rows]
 
 
+def _program_commands(firmware: str, serial: str) -> list[str]:
+    return [
+        f"nrfutil device recover --serial-number {serial}",
+        f"nrfutil device program --firmware {firmware} --serial-number {serial}",
+        f"nrfutil device reset --serial-number {serial}",
+    ]
+
+
 def _flash_section(modem: dict | None) -> list[str]:
-    lines = ["## Flashing", ""]
+    lines = [
+        "## Flashing",
+        "",
+        "Find each DK's serial number with `nrfutil device list`.",
+        "",
+    ]
     if modem is not None:
         lines += [
             "Program the nRF9151 / SMA DK first, from the extracted Serial Modem archive:",
             "",
             "```shell",
             f"unzip {modem['bundle']}",
-            f"nrfutil device program --firmware {modem['hex']} --recover",
+            *_program_commands(modem["hex"], "<modem_dk_serial_number>"),
             "```",
             "",
             "Then the host DK:",
@@ -78,10 +91,11 @@ def _flash_section(modem: dict | None) -> list[str]:
         ]
     lines += [
         "```shell",
-        "nrfutil device program --firmware merged.hex --recover",
+        *_program_commands("merged.hex", "<host_dk_serial_number>"),
         "```",
         "",
-        "Use `--recover` on a first flash, or when TF-M credential storage must be reset.",
+        "`nrfutil device recover` erases the whole chip, including TF-M credential storage.",
+        "Skip it when re-flashing a device whose credentials you want to keep.",
     ]
     return lines
 
@@ -106,6 +120,7 @@ def render_readme(bundle_dir: Path, *, app: str, board_type: str, version: str) 
     lines += [
         "## More",
         "",
+        f"- Getting started: {REPO_URL}/blob/v{version}/docs/getting-started/index.md",
         f"- Application documentation: {REPO_URL}/tree/v{version}/docs/applications/{app}",
         f"- Full artifact reference: {REPO_URL}/blob/v{version}/docs/release-artifacts.md",
     ]

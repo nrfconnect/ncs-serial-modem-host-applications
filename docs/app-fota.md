@@ -20,7 +20,7 @@ sequenceDiagram
 
 To follow this guide, you must meet the following requirements:
 
-- A device that is provisioned, onboarded to nRF Cloud, and logs `Cloud connected`. See the setup guide for [nRF91M1 PPP](applications/91m1_ppp/README.md) or [nRF93M1 PPP](applications/93m1_ppp/README.md).
+- A device that is provisioned, onboarded to nRF Cloud, and logs `Cloud connected`. See the getting-started guide for [nRF91M1 PPP](getting-started/91m1-ppp.md) or [nRF93M1 PPP](getting-started/93m1-ppp.md).
 - The Memfault CLI: `pip3 install memfault-cli`.
 - An organization auth token and the organization and project slugs. Open **Memfault** from the nRF Cloud sidebar (see [Memfault remote debugging](applications/91m1_ppp/memfault.md)), then go to **Admin** > **Organization Auth Tokens**. The slugs are part of the project URL.
 
