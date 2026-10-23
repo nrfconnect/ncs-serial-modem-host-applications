@@ -1,0 +1,36 @@
+#
+# Copyright (c) 2026 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+#
+
+menu "Serial Modem Host PPP"
+
+rsource "src/Kconfig.main"
+rsource "src/modules/network/Kconfig.network"
+rsource "src/modules/cloud/Kconfig.cloud"
+rsource "src/modules/fota/Kconfig.fota"
+rsource "src/modules/battery/Kconfig.battery"
+rsource "src/modules/modem_at/Kconfig.modem_at"
+rsource "src/modules/location/Kconfig.location"
+rsource "src/modules/buttons/Kconfig.buttons"
+
+# Redefine symbol due to it being dependent on nRF Modem Library in the original definition.
+config MEMFAULT_USE_NRF_CLOUD_COAP
+	bool "Use nRF Cloud CoAP for device communication"
+	default y
+
+endmenu
+
+menu "Zephyr Kernel"
+
+# Keep Memfault-reported software_version aligned with the application VERSION file
+# and the MCUboot image header (see Memfault NCS integration guide).
+config MEMFAULT_NCS_FW_VERSION
+	default "$(APP_VERSION_TWEAK_STRING)"
+
+config MCUBOOT_IMGTOOL_SIGN_VERSION
+	default MEMFAULT_NCS_FW_VERSION
+
+source "Kconfig.zephyr"
+endmenu

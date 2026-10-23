@@ -27,8 +27,11 @@ jobs:
           # Don't fail on 403 (Forbidden), 429 (rate limit), or 200.
           # github.com answers 503 under load, so retry with a wait and
           # cap concurrency instead of failing on the first transient error.
+          # Links to this repository's main branch are checked against the
+          # checkout, so a pull request that adds or moves files passes.
           args: >-
             --accept "200,403,429"
+            --remap 'https://github\.com/nrfconnect/ncs-serial-modem-host-applications/(?:blob|tree)/main/([^#?]*) file://${{ github.workspace }}/$1'
             --max-retries 5
             --retry-wait-time 10
             --max-concurrency 8

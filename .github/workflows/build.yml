@@ -57,20 +57,20 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - app: 91m1_ppp
+          - app: ppp
             board: nrf54l15dk/nrf54l15/cpuapp/ns
             board_type: nrf54l15
-          - app: 91m1_ppp
+          - app: ppp
             board: nrf54lm20dk/nrf54lm20b/cpuapp/ns
             board_type: nrf54lm20b
-          - app: 91m1_ppp
+          - app: ppp
             board: nrf54lm20dk/nrf54lm20b/cpuapp/ns
             board_type: nrf54lm20b-location
             extra_args: >-
               -- -DSHIELD=nrf7002eb2
               -DEXTRA_CONF_FILE=overlay-location.conf
               -DSB_EXTRA_CONF_FILE=sysbuild-location.conf
-          - app: 93m1_ppp
+          - app: ppp
             board: nrf93m1dk/nrf54l15/cpuapp/ns
             board_type: nrf93m1
           - app: 93m1_at

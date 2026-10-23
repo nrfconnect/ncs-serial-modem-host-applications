@@ -1,0 +1,62 @@
+/*
+ * Copyright (c) 2026 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+ *
+ * Based on ncs-serial-modem samples/sm_ppp_shell for nRF54L15 DK + nRF9151 DK.
+ * Disable VCOM0 in Board Configurator to release uart30 (P0 connector).
+ *
+ * Two-DK wiring (in addition to UART/DTR/RI from sm_ppp_shell):
+ *   nRF54L15 P1.10 (modem reset out) -> nRF9151 DK P5 pin 5 (RESET)
+ *   Add a 1 kOhm series resistor in the reset wire if VDD levels differ.
+ *   Set matching VDD on both DKs in Board Configurator (typically 1.8 V).
+ *
+ * RRAM/SRAM partitions: nrf54l15_cpuapp_ns_partitions.dtsi (MCUboot + TF-M).
+ */
+
+#include "nrf54l15_cpuapp_ns_partitions.dtsi"
+
+/ {
+	chosen {
+		zephyr,console = &uart20;
+		zephyr,shell-uart = &uart20;
+		nordic,pm-ext-flash = &mx25r64;
+	};
+	aliases {
+		modem = &modem;
+		/delete-property/ sw3;
+	};
+};
+
+/*
+ * BUTTON3 is the only button on gpio0. The DK library adds one GPIO callback to
+ * every port that has a button, and linking it into both port lists drops the
+ * other gpio1 callbacks (Serial Modem RI).
+ */
+/delete-node/ &button3;
+
+&uart30 {
+	status = "okay";
+	current-speed = <115200>;
+	hw-flow-control;
+	zephyr,pm-device-runtime-auto;
+
+	modem: modem {
+		compatible = "nordic,nrf91-sm-v2";
+		status = "okay";
+		mdm-reset-gpios = <&gpio1 10 (GPIO_ACTIVE_LOW | GPIO_OPEN_DRAIN)>;
+		mdm-ring-gpios = <&gpio1 12 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+		mdm-dtr-gpios = <&gpio1 11 GPIO_ACTIVE_LOW>;
+		zephyr,pm-device-runtime-auto;
+		autostarts;
+	};
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+/* Non-secure hardware watchdog, fallback for CONFIG_TASK_WDT_HW_FALLBACK. */
+&wdt31 {
+	status = "okay";
+};

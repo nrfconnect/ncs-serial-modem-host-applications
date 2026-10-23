@@ -6,7 +6,7 @@
 #
 # When adding tests, update workflow_dispatch options below and .github/test/tests.yml.
 #
-# Hardware layout (91m1_ppp + nRF91 Serial Modem):
+# Hardware layout (ppp on nRF54 hosts + nRF91 Serial Modem):
 # - DUT 1 (provision, nRF54L15): provisioning test every CI (recover flash, full onboard)
 # - DUT 2 (test, nRF54L15): coredump and FOTA as separate catalog entries on the same rig;
 #   stays provisioned
@@ -14,7 +14,7 @@
 #   provisioning, Wi-Fi location verification, and FOTA OTA (recover flash for provision
 #   tests; preprovisioned for FOTA)
 #
-# Hardware layout (93m1_ppp, modem on the DK):
+# Hardware layout (ppp on the nRF93M1 DK, modem on the DK):
 # - DUT 4 (provision, nRF93M1 DK): provisioning test every CI (recover flash, full onboard);
 #   the on-board nRF93M1 keeps its own firmware, so nothing is flashed on the modem side
 # - DUT 5 (test, nRF93M1 DK): FOTA; stays provisioned
@@ -59,12 +59,12 @@
 #   CI_NRF54LM20B_PROVISION_SERIAL_PORT  (optional)
 #   CI_NRF54LM20B_PROVISION_SERIAL_MODEM_SERIAL_PORT  (optional)
 #
-# GitHub variables (DUT 4 — 93m1_ppp provisioning on nRF93M1 DK):
+# GitHub variables (DUT 4 — ppp provisioning on nRF93M1 DK):
 #   CI_NRF93M1_PROVISION_SEGGER_SN
 #   CI_NRF93M1_PROVISION_DEVICE_ID
 #   CI_NRF93M1_PROVISION_SERIAL_PORT  (optional)
 #
-# GitHub variables (DUT 5 — 93m1_ppp FOTA on nRF93M1 DK, provisioned on first run):
+# GitHub variables (DUT 5 — ppp FOTA on nRF93M1 DK, provisioned on first run):
 #   CI_NRF93M1_SEGGER_SN
 #   CI_NRF93M1_DEVICE_ID
 #   CI_NRF93M1_SERIAL_PORT  (optional)
@@ -111,14 +111,14 @@ on:
         default: all
         options:
           - all
-          - 91m1_ppp-provision-nrf54l15-nrf91
-          - 91m1_ppp-provision-nrf54lm20b-nrf91
-          - 91m1_ppp-provision-location-nrf54lm20b-nrf91
-          - 93m1_ppp-provision-nrf93m1
-          - 91m1_ppp-memfault-coredump-nrf54l15-nrf91
-          - 91m1_ppp-application-fota-nrf54l15-nrf91
-          - 91m1_ppp-application-fota-nrf54lm20b-nrf91
-          - 93m1_ppp-application-fota-nrf93m1
+          - ppp-provision-nrf54l15-nrf91
+          - ppp-provision-nrf54lm20b-nrf91
+          - ppp-provision-location-nrf54lm20b-nrf91
+          - ppp-provision-nrf93m1
+          - ppp-memfault-coredump-nrf54l15-nrf91
+          - ppp-application-fota-nrf54l15-nrf91
+          - ppp-application-fota-nrf54lm20b-nrf91
+          - ppp-application-fota-nrf93m1
       use_prebuilt_firmware:
         description: Download firmware artifacts from a prior Build run in this workflow
         required: false
@@ -178,7 +178,7 @@ jobs:
   hardware_provision:
     needs: [plan, setup]
     if: needs.plan.outputs.run_provision == 'true'
-    name: 91m1_ppp-provision-nrf54l15-nrf91
+    name: ppp-provision-nrf54l15-nrf91
     runs-on: self-hosted-provisioning
     container:
       image: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.setup.outputs.toolchain-version }}
@@ -212,13 +212,13 @@ jobs:
       - name: Run hardware test
         uses: ./serial-modem-host-applications/.github/actions/run-hardware-test
         with:
-          test_id: 91m1_ppp-provision-nrf54l15-nrf91
+          test_id: ppp-provision-nrf54l15-nrf91
           use_prebuilt_firmware: ${{ inputs.use_prebuilt_firmware }}
 
   hardware_provision_nrf54lm20b:
     needs: [plan, setup]
     if: needs.plan.outputs.run_provision_nrf54lm20b == 'true'
-    name: 91m1_ppp-provision-nrf54lm20b-nrf91
+    name: ppp-provision-nrf54lm20b-nrf91
     runs-on: self-hosted-provisioning
     container:
       image: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.setup.outputs.toolchain-version }}
@@ -252,13 +252,13 @@ jobs:
       - name: Run hardware test
         uses: ./serial-modem-host-applications/.github/actions/run-hardware-test
         with:
-          test_id: 91m1_ppp-provision-nrf54lm20b-nrf91
+          test_id: ppp-provision-nrf54lm20b-nrf91
           use_prebuilt_firmware: ${{ inputs.use_prebuilt_firmware }}
 
   hardware_provision_location:
     needs: [plan, setup]
     if: needs.plan.outputs.run_provision_location == 'true'
-    name: 91m1_ppp-provision-location-nrf54lm20b-nrf91
+    name: ppp-provision-location-nrf54lm20b-nrf91
     runs-on: self-hosted-provisioning
     container:
       image: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.setup.outputs.toolchain-version }}
@@ -292,13 +292,13 @@ jobs:
       - name: Run hardware test
         uses: ./serial-modem-host-applications/.github/actions/run-hardware-test
         with:
-          test_id: 91m1_ppp-provision-location-nrf54lm20b-nrf91
+          test_id: ppp-provision-location-nrf54lm20b-nrf91
           use_prebuilt_firmware: ${{ inputs.use_prebuilt_firmware }}
 
   hardware_provision_nrf93m1:
     needs: [plan, setup]
     if: needs.plan.outputs.run_provision_nrf93m1 == 'true'
-    name: 93m1_ppp-provision-nrf93m1
+    name: ppp-provision-nrf93m1
     runs-on: self-hosted-provisioning
     container:
       image: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.setup.outputs.toolchain-version }}
@@ -329,13 +329,13 @@ jobs:
       - name: Run hardware test
         uses: ./serial-modem-host-applications/.github/actions/run-hardware-test
         with:
-          test_id: 93m1_ppp-provision-nrf93m1
+          test_id: ppp-provision-nrf93m1
           use_prebuilt_firmware: ${{ inputs.use_prebuilt_firmware }}
 
   hardware_coredump:
     needs: [plan, setup]
     if: needs.plan.outputs.run_coredump == 'true'
-    name: 91m1_ppp-memfault-coredump-nrf54l15-nrf91
+    name: ppp-memfault-coredump-nrf54l15-nrf91
     runs-on: self-hosted-test
     container:
       image: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.setup.outputs.toolchain-version }}
@@ -369,13 +369,13 @@ jobs:
       - name: Run hardware test
         uses: ./serial-modem-host-applications/.github/actions/run-hardware-test
         with:
-          test_id: 91m1_ppp-memfault-coredump-nrf54l15-nrf91
+          test_id: ppp-memfault-coredump-nrf54l15-nrf91
           use_prebuilt_firmware: ${{ inputs.use_prebuilt_firmware }}
 
   hardware_fota:
     needs: [plan, setup]
     if: needs.plan.outputs.run_fota == 'true'
-    name: 91m1_ppp-application-fota-nrf54l15-nrf91
+    name: ppp-application-fota-nrf54l15-nrf91
     runs-on: self-hosted-test
     container:
       image: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.setup.outputs.toolchain-version }}
@@ -409,13 +409,13 @@ jobs:
       - name: Run hardware test
         uses: ./serial-modem-host-applications/.github/actions/run-hardware-test
         with:
-          test_id: 91m1_ppp-application-fota-nrf54l15-nrf91
+          test_id: ppp-application-fota-nrf54l15-nrf91
           use_prebuilt_firmware: ${{ inputs.use_prebuilt_firmware }}
 
   hardware_fota_nrf54lm20b:
     needs: [plan, setup]
     if: needs.plan.outputs.run_fota_nrf54lm20b == 'true'
-    name: 91m1_ppp-application-fota-nrf54lm20b-nrf91
+    name: ppp-application-fota-nrf54lm20b-nrf91
     runs-on: self-hosted-provisioning
     container:
       image: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.setup.outputs.toolchain-version }}
@@ -449,13 +449,13 @@ jobs:
       - name: Run hardware test
         uses: ./serial-modem-host-applications/.github/actions/run-hardware-test
         with:
-          test_id: 91m1_ppp-application-fota-nrf54lm20b-nrf91
+          test_id: ppp-application-fota-nrf54lm20b-nrf91
           use_prebuilt_firmware: ${{ inputs.use_prebuilt_firmware }}
 
   hardware_fota_nrf93m1:
     needs: [plan, setup]
     if: needs.plan.outputs.run_fota_nrf93m1 == 'true'
-    name: 93m1_ppp-application-fota-nrf93m1
+    name: ppp-application-fota-nrf93m1
     runs-on: self-hosted-test
     container:
       image: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.setup.outputs.toolchain-version }}
@@ -486,5 +486,5 @@ jobs:
       - name: Run hardware test
         uses: ./serial-modem-host-applications/.github/actions/run-hardware-test
         with:
-          test_id: 93m1_ppp-application-fota-nrf93m1
+          test_id: ppp-application-fota-nrf93m1
           use_prebuilt_firmware: ${{ inputs.use_prebuilt_firmware }}

@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 REPO_URL = "https://github.com/nrfconnect/ncs-serial-modem-host-applications"
 
 # Ordered as the table should read. Entries missing from a bundle are skipped,
-# which is how 93m1_at (no signed image, no DFU package) and the 93m1 boards
+# which is how 93m1_at (no signed image, no DFU package) and the nRF93M1 DK
 # (integrated modem, so no modem zip) need no special casing here.
 FILE_DESCRIPTIONS = (
     ("merged.hex", "Full flash image: bootloader, secure firmware, application. Flash this."),
@@ -30,9 +30,9 @@ CONSOLE_PORTS = {
 }
 
 
-def _modem_config(app: str) -> dict | None:
-    """Resolved Serial Modem release, for the 91m1 bundles that carry it."""
-    if not app.startswith("91m1"):
+def _modem_config(board_type: str) -> dict | None:
+    """Resolved Serial Modem release, for the nRF54 host bundles that carry it."""
+    if not board_type.startswith("nrf54"):
         return None
 
     sys.path.insert(0, str(ROOT / "tests/on_target"))
@@ -87,7 +87,7 @@ def _flash_section(modem: dict | None) -> list[str]:
 
 
 def render_readme(bundle_dir: Path, *, app: str, board_type: str, version: str) -> str:
-    modem = _modem_config(app)
+    modem = _modem_config(board_type)
     console = CONSOLE_PORTS.get(board_type)
 
     lines = [
@@ -118,7 +118,7 @@ def render_readme(bundle_dir: Path, *, app: str, board_type: str, version: str) 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument("bundle_dir", type=Path, help="Staged release bundle directory")
-    parser.add_argument("--app", required=True, help="Application name, e.g. 91m1_ppp")
+    parser.add_argument("--app", required=True, help="Application name, e.g. ppp")
     parser.add_argument("--board-type", required=True, help="Board flavor, e.g. nrf54l15")
     parser.add_argument("--version", required=True, help="Release version without v prefix")
     args = parser.parse_args(argv)
