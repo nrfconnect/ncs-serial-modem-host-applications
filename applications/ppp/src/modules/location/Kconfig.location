@@ -1,0 +1,124 @@
+#
+# Copyright (c) 2026 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+#
+
+menuconfig APP_LOCATION
+	bool "Location module"
+	default y if LOCATION || DT_HAS_NORDIC_NRF93M1_ENABLED
+	depends on NRF_CLOUD_COAP
+	depends on LOCATION || (APP_MODEM_AT && DT_HAS_NORDIC_NRF93M1_ENABLED)
+	help
+	  Collects location measurements and publishes them for the cloud module
+	  to resolve into a position with the nRF Cloud ground-fix service.
+
+if APP_LOCATION
+
+choice APP_LOCATION_BACKEND
+	prompt "Location measurement backend"
+	default APP_LOCATION_BACKEND_MODEM_AT if DT_HAS_NORDIC_NRF93M1_ENABLED
+	default APP_LOCATION_BACKEND_LOCATION_LIB
+
+# CONFIG_LOCATION_DATA_DETAILS is deliberately not selected: it makes
+# <modem/location.h> include <nrf_modem_gnss.h>, which is only available when the
+# nRF Modem Library is built, and the modem is external on this host.
+config APP_LOCATION_BACKEND_LOCATION_LIB
+	bool "Location library"
+	depends on LOCATION
+	help
+	  Scans for Wi-Fi access points on the host, for example with an nRF7002
+	  EB II, through the Location library.
+
+config APP_LOCATION_BACKEND_MODEM_AT
+	bool "Modem AT commands"
+	depends on APP_MODEM_AT && DT_HAS_NORDIC_NRF93M1_ENABLED
+	help
+	  Scrapes single-cell (%BCINFO) and Wi-Fi (%WIFISCAN) measurements from the
+	  nRF93M1 over the shared AT pipe.
+
+endchoice
+
+config APP_LOCATION_SHELL
+	bool "location shell command"
+	default y if SHELL
+	help
+	  Adds `location search` and `location cancel` to start or cancel a
+	  location search on demand.
+
+config APP_LOCATION_THREAD_STACK_SIZE
+	int "Thread stack size"
+	default 4096 if APP_LOCATION_BACKEND_MODEM_AT
+	default 2560
+	help
+	  The modem AT backend sizes the %BCINFO and %WIFISCAN requests over the
+	  shared AT pipe and parses their responses on this stack. Resolving the
+	  measurements to a position is the responsibility of the cloud module, so
+	  no CoAP request is built here.
+
+config APP_LOCATION_WATCHDOG_TIMEOUT_SECONDS
+	int "Watchdog timeout"
+	default 120
+	help
+	  Timeout in seconds for the location module watchdog.
+	  The timeout given in this option covers both:
+	    * Waiting for an incoming message in zbus_sub_wait_msg().
+	    * Time spent processing the message, defined by
+	      CONFIG_APP_LOCATION_MSG_PROCESSING_TIMEOUT_SECONDS.
+	  The Location library backend starts an asynchronous Wi-Fi scan and
+	  returns immediately; the scan result arrives later through the Location
+	  library callback. The modem AT backend blocks on its cell and Wi-Fi scans,
+	  so both backends use timeouts that cover it.
+	  Ensure that this value exceeds CONFIG_APP_LOCATION_MSG_PROCESSING_TIMEOUT_SECONDS.
+
+config APP_LOCATION_MSG_PROCESSING_TIMEOUT_SECONDS
+	int "Maximum message processing time"
+	default 100
+	help
+	  Maximum time allowed for processing a single message in the module's state machine.
+	  With the modem AT backend, it must exceed
+	  2 * CONFIG_APP_LOCATION_BCINFO_TIMEOUT_SECONDS +
+	  CONFIG_APP_LOCATION_BCINFO_RETRY_DELAY_SECONDS +
+	  CONFIG_APP_LOCATION_WIFISCAN_TIMEOUT_SECONDS.
+	  The value must be smaller than CONFIG_APP_LOCATION_WATCHDOG_TIMEOUT_SECONDS.
+
+config APP_LOCATION_WIFI_APS_MAX
+	int "Maximum number of Wi-Fi APs"
+	default 6 if APP_LOCATION_BACKEND_MODEM_AT
+	default 10
+	help
+	  Maximum number of Wi-Fi access points to store in a location request.
+
+if APP_LOCATION_BACKEND_MODEM_AT
+
+config APP_LOCATION_AT_RESPONSE_SIZE
+	int "AT response buffer size"
+	default 2048
+	help
+	  Must hold the largest %BCINFO/%WIFISCAN response (up to 21 cells).
+
+config APP_LOCATION_BCINFO_TIMEOUT_SECONDS
+	int "%BCINFO command timeout (seconds)"
+	default 30
+
+config APP_LOCATION_WIFISCAN_TIMEOUT_SECONDS
+	int "%WIFISCAN command timeout (seconds)"
+	default 30
+
+config APP_LOCATION_BCINFO_RETRY_DELAY_SECONDS
+	int "%BCINFO retry delay (seconds)"
+	default 5
+	help
+	  Wait before retrying a failed %BCINFO. The modem answers ERROR while
+	  another command, such as the cellular driver's periodic %BCINFO on its
+	  own channel, is still running. A %WIFISCAN sent into that window returns
+	  no access points and leaves Wi-Fi scanning disabled until the modem is
+	  reset, so the delay must outlast the driver's 4 s measurement limit.
+
+endif # APP_LOCATION_BACKEND_MODEM_AT
+
+module = APP_LOCATION
+module-str = Location
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # APP_LOCATION

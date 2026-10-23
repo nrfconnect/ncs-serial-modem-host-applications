@@ -1,0 +1,49 @@
+#
+# Copyright (c) 2026 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+#
+
+menuconfig APP_CLOUD
+	bool "Cloud module"
+	default y
+	depends on MEMFAULT && NRF_CLOUD_COAP && MEMFAULT_USE_NRF_CLOUD_COAP
+
+if APP_CLOUD
+
+config APP_CLOUD_THREAD_STACK_SIZE
+	int "Cloud module thread stack size"
+	default 10240
+	help
+	  Sizes the requests issued on the nRF Cloud CoAP session: the device
+	  message, the device shadow poll, the Memfault data upload and the
+	  ground-fix request built from the measurements reported by the
+	  location module. The DTLS session is owned by the nRF Cloud CoAP
+	  client on its own thread, and the mbedTLS buffers are heap-allocated,
+	  so neither contributes here.
+
+config APP_CLOUD_WATCHDOG_TIMEOUT_SECONDS
+	int "Watchdog timeout"
+	default 300
+
+config APP_CLOUD_MSG_PROCESSING_TIMEOUT_SECONDS
+	int "Maximum message processing time"
+	default 290
+
+config APP_CLOUD_MSG_MAX_LEN
+	int "Maximum device message length"
+	default 512
+
+config APP_CLOUD_SHADOW_MAX_LEN
+	int "Maximum device shadow desired buffer length"
+	default 1024
+
+config APP_CLOUD_CREDENTIAL_RETRY_SECONDS
+	int "Retry interval when credentials are missing"
+	default 10
+
+module = APP_CLOUD
+module-str = Cloud
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # APP_CLOUD
