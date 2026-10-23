@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
-"""Download and flash Serial Modem firmware for 91m1 hardware tests."""
+"""Download and flash Serial Modem firmware for nRF54 host hardware tests."""
 
 from __future__ import annotations
 
