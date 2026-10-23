@@ -8,8 +8,7 @@ Host-side firmware for Nordic Smart Modem modules. This repository is built on [
 
 | Application | Hardware | Cloud connectivity |
 |-------------|----------|--------------------|
-| [nRF91M1 PPP Host Application](docs/applications/91m1_ppp/README.md) | [nRF54L15 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF54L15-DK) + [nRF9151 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF9151-DK)<br>[nRF54LM20B DK](https://www.nordicsemi.com/Products/Development-hardware/nRF54LM20-DK) + [nRF9151 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF9151-DK) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP just carries IP to the nRF91M1 modem |
-| [nRF93M1 PPP Host Application](docs/applications/93m1_ppp/README.md) | [nRF93M1 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF93M1-DK) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP just carries IP to the nRF93M1 modem |
+| [PPP Host Application](docs/applications/ppp/README.md) | [nRF54L15 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF54L15-DK) + [nRF9151 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF9151-DK)<br>[nRF54LM20B DK](https://www.nordicsemi.com/Products/Development-hardware/nRF54LM20-DK) + [nRF9151 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF9151-DK)<br>[nRF93M1 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF93M1-DK) | Host terminates CoAP/DTLS to nRF Cloud itself. PPP just carries IP to the nRF91M1 or nRF93M1 modem |
 | [nRF93M1 AT Host Application](docs/applications/93m1_at/README.md) | [nRF93M1 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF93M1-DK) | Modem terminates the connection itself with its built-in AT client. Host just sends AT commands |
 
 ## Getting started

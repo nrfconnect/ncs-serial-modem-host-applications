@@ -1,9 +1,9 @@
 tests:
-  - id: 91m1_ppp-provision-nrf54l15-nrf91
+  - id: ppp-provision-nrf54l15-nrf91
     enabled: true
     type: provision
     pytest_dir: tests/on_target/tests/test_provision/
-    app: 91m1_ppp
+    app: ppp
     board: nrf54l15dk/nrf54l15/cpuapp/ns
     board_type: nrf54l15
     hardware:
@@ -30,11 +30,11 @@ tests:
     provisioning:
       cleanup: false
 
-  - id: 91m1_ppp-provision-nrf54lm20b-nrf91
+  - id: ppp-provision-nrf54lm20b-nrf91
     enabled: true
     type: provision
     pytest_dir: tests/on_target/tests/test_provision/
-    app: 91m1_ppp
+    app: ppp
     board: nrf54lm20dk/nrf54lm20b/cpuapp/ns
     board_type: nrf54lm20b
     hardware:
@@ -61,11 +61,11 @@ tests:
     provisioning:
       cleanup: false
 
-  - id: 91m1_ppp-provision-location-nrf54lm20b-nrf91
+  - id: ppp-provision-location-nrf54lm20b-nrf91
     enabled: true
     type: provision
     pytest_dir: tests/on_target/tests/test_location/
-    app: 91m1_ppp
+    app: ppp
     board: nrf54lm20dk/nrf54lm20b/cpuapp/ns
     # Distinct from the plain nrf54lm20b build so the Build workflow artifact
     # downloaded in CI is the one with Wi-Fi location enabled.
@@ -99,11 +99,11 @@ tests:
     provisioning:
       cleanup: false
 
-  - id: 93m1_ppp-provision-nrf93m1
+  - id: ppp-provision-nrf93m1
     enabled: true
     type: provision
     pytest_dir: tests/on_target/tests/test_provision/
-    app: 93m1_ppp
+    app: ppp
     board: nrf93m1dk/nrf54l15/cpuapp/ns
     board_type: nrf93m1
     # The nRF93M1 modem is on the DK and runs its own firmware as-is, so there is
@@ -129,11 +129,11 @@ tests:
     provisioning:
       cleanup: false
 
-  - id: 93m1_ppp-application-fota-nrf93m1
+  - id: ppp-application-fota-nrf93m1
     enabled: true
     type: fota
     pytest_dir: tests/on_target/tests/test_fota/
-    app: 93m1_ppp
+    app: ppp
     board: nrf93m1dk/nrf54l15/cpuapp/ns
     board_type: nrf93m1
     hardware:
@@ -157,11 +157,11 @@ tests:
     provisioning:
       mode: preprovisioned
 
-  - id: 91m1_ppp-memfault-coredump-nrf54l15-nrf91
+  - id: ppp-memfault-coredump-nrf54l15-nrf91
     enabled: true
     type: memfault
     pytest_dir: tests/on_target/tests/test_memfault/
-    app: 91m1_ppp
+    app: ppp
     board: nrf54l15dk/nrf54l15/cpuapp/ns
     board_type: nrf54l15
     hardware:
@@ -188,11 +188,11 @@ tests:
     provisioning:
       mode: preprovisioned
 
-  - id: 91m1_ppp-application-fota-nrf54l15-nrf91
+  - id: ppp-application-fota-nrf54l15-nrf91
     enabled: true
     type: fota
     pytest_dir: tests/on_target/tests/test_fota/
-    app: 91m1_ppp
+    app: ppp
     board: nrf54l15dk/nrf54l15/cpuapp/ns
     board_type: nrf54l15
     hardware:
@@ -219,11 +219,11 @@ tests:
     provisioning:
       mode: preprovisioned
 
-  - id: 91m1_ppp-application-fota-nrf54lm20b-nrf91
+  - id: ppp-application-fota-nrf54lm20b-nrf91
     enabled: true
     type: fota
     pytest_dir: tests/on_target/tests/test_fota/
-    app: 91m1_ppp
+    app: ppp
     board: nrf54lm20dk/nrf54lm20b/cpuapp/ns
     board_type: nrf54lm20b
     hardware:

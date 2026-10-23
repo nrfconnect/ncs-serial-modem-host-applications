@@ -10,8 +10,7 @@ This document describes how the repository is organized and how it is built, tes
 | [`zephyr/module.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/zephyr/module.yml) | Registers this repo as a Zephyr module |
 | [`lib/include/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/lib/include) | Shared headers (`app_common.h`) |
 | [`cmake/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/cmake) | Shared CMake helpers (`merged_hex.cmake`) |
-| [`applications/91m1_ppp/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/applications/91m1_ppp) | nRF91M1 PPP host application |
-| [`applications/93m1_ppp/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/applications/93m1_ppp) | nRF93M1 PPP host application |
+| [`applications/ppp/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/applications/ppp) | PPP host application (nRF54 hosts with an nRF91M1, and the nRF93M1 DK) |
 | [`applications/93m1_at/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/applications/93m1_at) | nRF93M1 AT host application |
 | [`docs/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/docs) | Documentation site source (application guides, CI and contribution, release artifacts) |
 | [`scripts/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/scripts) | CI and gitlint helper scripts |
@@ -44,7 +43,7 @@ The version is derived from conventional commit prefixes in merged commits:
 | `BREAKING CHANGE` or `type!:` | Major |
 | `chore:`, `docs:`, `ci:`, and so on | No release |
 
-Firmware built for a release embeds that version through each application's [`VERSION`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/VERSION) file. The CI build step overwrites `VERSION` from the resolved semver before compiling (without committing the change). Memfault reads it through nRF Connect SDK (`CONFIG_MEMFAULT_NCS_FW_VERSION_STATIC` defaults to `APP_VERSION_TWEAK_STRING`). The `VERSION` files checked into the repository are for local development only.
+Firmware built for a release embeds that version through each application's [`VERSION`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/VERSION) file. The CI build step overwrites `VERSION` from the resolved semver before compiling (without committing the change). Memfault reads it through nRF Connect SDK (`CONFIG_MEMFAULT_NCS_FW_VERSION_STATIC` defaults to `APP_VERSION_TWEAK_STRING`). The `VERSION` files checked into the repository are for local development only.
 
 FOTA hardware tests on `main` use the same release semver as the baseline: CI passes `FIRMWARE_VERSION` to the Test workflow, flashes the Build artifact's `merged.hex` without rebuilding, then builds and deploys a patch-bumped update image (for example, `1.2.3` → `1.2.4`) for OTA verification. Local runs fall back to `baseline_version` in [`.github/test/tests.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/.github/test/tests.yml) and flash with `west flash --recover`.
 
@@ -52,24 +51,24 @@ Hardware tests use five rigs on two self-hosted runners (see [`.github/test/test
 
 | CI job | Runner | DUT | Every CI run |
 |--------|--------|-----|--------------|
-| `91m1_ppp-provision-nrf54l15-nrf91` | `self-hosted-provisioning` | Provisioning (`CI_NRF54L15_PROVISION_*`) | Recover flash, full nRF Cloud + Memfault onboard |
-| `91m1_ppp-provision-nrf54lm20b-nrf91` | `self-hosted-provisioning` | Location (`CI_NRF54LM20B_PROVISION_*`) | Recover flash, full nRF Cloud + Memfault onboard (plain build) |
-| `91m1_ppp-provision-location-nrf54lm20b-nrf91` | `self-hosted-provisioning` | Location (`CI_NRF54LM20B_PROVISION_*`) | Recover flash, full onboard, then Wi-Fi location data |
-| `93m1_ppp-provision-nrf93m1` | `self-hosted-provisioning` | nRF93M1 DK (`CI_NRF93M1_PROVISION_*`) | Recover flash, full nRF Cloud + Memfault onboard |
-| `91m1_ppp-memfault-coredump-nrf54l15-nrf91` | `self-hosted-test` | Test (`CI_NRF54L15_*`) | Coredump (no re-provision) |
-| `91m1_ppp-application-fota-nrf54l15-nrf91` | `self-hosted-test` | Test (`CI_NRF54L15_*`) | FOTA (queued with coredump on same runner) |
-| `91m1_ppp-application-fota-nrf54lm20b-nrf91` | `self-hosted-provisioning` | Location (`CI_NRF54LM20B_PROVISION_*`) | FOTA (queued with provision jobs on same runner) |
-| `93m1_ppp-application-fota-nrf93m1` | `self-hosted-test` | nRF93M1 test DK (`CI_NRF93M1_*`) | FOTA (queued with coredump and FOTA on same runner) |
+| `ppp-provision-nrf54l15-nrf91` | `self-hosted-provisioning` | Provisioning (`CI_NRF54L15_PROVISION_*`) | Recover flash, full nRF Cloud + Memfault onboard |
+| `ppp-provision-nrf54lm20b-nrf91` | `self-hosted-provisioning` | Location (`CI_NRF54LM20B_PROVISION_*`) | Recover flash, full nRF Cloud + Memfault onboard (plain build) |
+| `ppp-provision-location-nrf54lm20b-nrf91` | `self-hosted-provisioning` | Location (`CI_NRF54LM20B_PROVISION_*`) | Recover flash, full onboard, then Wi-Fi location data |
+| `ppp-provision-nrf93m1` | `self-hosted-provisioning` | nRF93M1 DK (`CI_NRF93M1_PROVISION_*`) | Recover flash, full nRF Cloud + Memfault onboard |
+| `ppp-memfault-coredump-nrf54l15-nrf91` | `self-hosted-test` | Test (`CI_NRF54L15_*`) | Coredump (no re-provision) |
+| `ppp-application-fota-nrf54l15-nrf91` | `self-hosted-test` | Test (`CI_NRF54L15_*`) | FOTA (queued with coredump on same runner) |
+| `ppp-application-fota-nrf54lm20b-nrf91` | `self-hosted-provisioning` | Location (`CI_NRF54LM20B_PROVISION_*`) | FOTA (queued with provision jobs on same runner) |
+| `ppp-application-fota-nrf93m1` | `self-hosted-test` | nRF93M1 test DK (`CI_NRF93M1_*`) | FOTA (queued with coredump and FOTA on same runner) |
 
 Provisioning runs in parallel with the first queued test job on the separate runners. Jobs sharing a runner run one at a time; GitHub queues whichever job does not get the runner first (coredump and both FOTA jobs on the test runner, the four provisioning jobs plus LM20B FOTA on the provisioning runner).
 
 Once the release is deployed, FOTA tests run `fota poll` on the DUT shell instead of waiting up to a full sync interval for the application to poll on its own. A poll that reports no update is retried, since nRF Cloud can lag behind the Memfault deployment.
 
-DUT 3 is an nRF54LM20B DK with an [nRF7002-EB II](applications/91m1_ppp/hardware-setup.md) shield, wired to an nRF91 Serial Modem. Both lm20b tests use host console VCOM0 (UART30): `91m1_ppp-provision-nrf54lm20b-nrf91` flashes the plain `nrf54lm20b` build and runs `test_cloud_provision`; `91m1_ppp-provision-location-nrf54lm20b-nrf91` flashes the Wi-Fi location build and verifies Wi-Fi scan plus nRF Cloud ground-fix. Local run for plain provisioning:
+DUT 3 is an nRF54LM20B DK with an [nRF7002-EB II](applications/ppp/hardware-setup.md) shield, wired to an nRF91 Serial Modem. Both lm20b tests use host console VCOM0 (UART30): `ppp-provision-nrf54lm20b-nrf91` flashes the plain `nrf54lm20b` build and runs `test_cloud_provision`; `ppp-provision-location-nrf54lm20b-nrf91` flashes the Wi-Fi location build and verifies Wi-Fi scan plus nRF Cloud ground-fix. Local run for plain provisioning:
 
 ```shell
 export REPO_ROOT=$PWD
-export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load 91m1_ppp-provision-nrf54lm20b-nrf91)"
+export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load ppp-provision-nrf54lm20b-nrf91)"
 PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_provision/ -c tests/on_target/tests/pytest.ini -v
 ```
 
@@ -77,15 +76,15 @@ Local run for the location test:
 
 ```shell
 export REPO_ROOT=$PWD
-export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load 91m1_ppp-provision-location-nrf54lm20b-nrf91)"
+export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load ppp-provision-location-nrf54lm20b-nrf91)"
 PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_location/ -c tests/on_target/tests/pytest.ini -v
 ```
 
-DUT 4 is an nRF93M1 DK running `93m1_ppp`, with the host console on UART20. The on-board nRF93M1 keeps the Serial Modem firmware it already has, so the test flashes only the host and captures no modem log. Local run:
+DUT 4 is an nRF93M1 DK running `ppp`, with the host console on UART20. The on-board nRF93M1 keeps the Serial Modem firmware it already has, so the test flashes only the host and captures no modem log. Local run:
 
 ```shell
 export REPO_ROOT=$PWD
-export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load 93m1_ppp-provision-nrf93m1)"
+export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load ppp-provision-nrf93m1)"
 PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_provision/ -c tests/on_target/tests/pytest.ini -v
 ```
 
@@ -129,21 +128,21 @@ Example for the test rig (DUT 2):
 
 Both runners need Docker and USB access to their DKs (`--privileged -v /dev:/dev` in the test workflow containers). Set the GitHub repository variables for each rig on the same repo (`CI_NRF54L15_PROVISION_*` and `CI_NRF54L15_PROVISION_SERIAL_MODEM_*` for DUT 1, `CI_NRF54L15_*` and `CI_NRF54L15_SERIAL_MODEM_*` for DUT 2, `CI_NRF54LM20B_PROVISION_*` and `CI_NRF54LM20B_PROVISION_SERIAL_MODEM_*` for DUT 3, `CI_NRF93M1_PROVISION_*` for DUT 4, `CI_NRF93M1_*` for DUT 5). The provisioning runner needs access to DUT 1, DUT 3 and DUT 4, and the test runner to DUT 2 and DUT 5; tests select their board by SEGGER serial number, so the DKs can share one runner host.
 
-91m1 on-target tests flash the newest upstream Serial Modem release that ships the external-MCU zip on the nRF9151 DK before programming the host.
+On-target tests for the nRF54 hosts flash the newest upstream Serial Modem release that ships the external-MCU zip on the nRF9151 DK before programming the host.
 
 The test DUT must be provisioned once (manually or by running the provisioning flow locally against it). CI flashes baseline firmware without recovery, so TF-M credentials persist. FOTA and coredump do not remove the device from nRF Cloud or Memfault after each run.
 
-For the first-time setup for the test DUT (`CI_NRF54L15_*`): follow [91m1_ppp cloud provisioning](applications/91m1_ppp/README.md) steps 3–6 on that board, or run the provisioning test locally with `TEST_JSON` from `91m1_ppp-provision-nrf54l15-nrf91` while pointing the `CI_NRF54L15_PROVISION_*` variables at the test board (once only). Register the device in the shared Memfault cohort `ci-91m1-test-nrf54l15-nrf91` (used by both coredump and FOTA tests).
+For the first-time setup for the test DUT (`CI_NRF54L15_*`): follow [ppp cloud provisioning](applications/ppp/README.md) steps 3–6 on that board, or run the provisioning test locally with `TEST_JSON` from `ppp-provision-nrf54l15-nrf91` while pointing the `CI_NRF54L15_PROVISION_*` variables at the test board (once only). Register the device in the shared Memfault cohort `ci-91m1-test-nrf54l15-nrf91` (used by both coredump and FOTA tests).
 
 The nRF54LM20B FOTA test reuses DUT 3 (`CI_NRF54LM20B_PROVISION_*`) on the provisioning runner. The device must reach cloud connect before CI; the test calls `ensure_provisioned()` on the first run if credentials are missing and assigns the DUT to the Memfault cohort `ci-91m1-test-nrf54lm20b-nrf91` (separate from the provision cohort). When provision and FOTA run in the same CI batch, the FOTA test moves the device into the test cohort automatically.
 
-The nRF54LM20B build reports Memfault hardware version `smha-nrf54lm20dk` instead of the NCS default board name (see [`boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.conf`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_ppp/boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.conf)). The shared Memfault project binds `nrf54lm20dk` to another software type, so OTA payloads for `smha-91m1` are rejected under that name. The nRF93M1 DK build reports `smha-nrf93m1dk` for the same reason (see [`boards/nrf93m1dk_nrf54l15_cpuapp_ns.conf`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/93m1_ppp/boards/nrf93m1dk_nrf54l15_cpuapp_ns.conf)): `nrf93m1dk` is bound to another software type, so OTA payloads for `smha-93m1` are rejected under that name.
+The nRF54LM20B build reports Memfault hardware version `smha-nrf54lm20dk` instead of the NCS default board name (see [`boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.conf`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.conf)). The shared Memfault project binds `nrf54lm20dk` to another software type, so OTA payloads for `smha-91m1` are rejected under that name. The nRF93M1 DK build reports `smha-nrf93m1dk` for the same reason (see [`boards/nrf93m1dk_nrf54l15_cpuapp_ns.conf`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/boards/nrf93m1dk_nrf54l15_cpuapp_ns.conf)): `nrf93m1dk` is bound to another software type, so OTA payloads for `smha-93m1` are rejected under that name.
 
 Memfault coredump tests connect to nRF Cloud, trigger `mflt test busfault` over the shell, and verify a new bus fault coredump for the device appears in the Memfault Traces REST API. "New" means newer than the device's newest coredump recorded before the fault, so the check does not depend on the device clock agreeing with the runner. A bus fault is used because TF-M traps HardFaults before Memfault's handler runs. Local run:
 
 ```shell
 export REPO_ROOT=$PWD
-export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load 91m1_ppp-memfault-coredump-nrf54l15-nrf91)"
+export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load ppp-memfault-coredump-nrf54l15-nrf91)"
 PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_memfault/ -c tests/on_target/tests/pytest.ini -v
 ```
 
@@ -151,9 +150,9 @@ Run coredump then FOTA locally (same order as CI):
 
 ```shell
 export REPO_ROOT=$PWD
-export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load 91m1_ppp-memfault-coredump-nrf54l15-nrf91)"
+export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load ppp-memfault-coredump-nrf54l15-nrf91)"
 PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_memfault/ -c tests/on_target/tests/pytest.ini -v
-export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load 91m1_ppp-application-fota-nrf54l15-nrf91)"
+export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load ppp-application-fota-nrf54l15-nrf91)"
 PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_fota/ -c tests/on_target/tests/pytest.ini -v
 ```
 
@@ -161,7 +160,7 @@ Local run for nRF54LM20B FOTA (plain `nrf54lm20b` build, same DUT as provision t
 
 ```shell
 export REPO_ROOT=$PWD
-export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load 91m1_ppp-application-fota-nrf54lm20b-nrf91)"
+export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load ppp-application-fota-nrf54lm20b-nrf91)"
 PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_fota/ -c tests/on_target/tests/pytest.ini -v
 ```
 
@@ -169,7 +168,7 @@ The nRF93M1 FOTA test runs on its own nRF93M1 DK (DUT 5, `CI_NRF93M1_*`, host co
 
 ```shell
 export REPO_ROOT=$PWD
-export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load 93m1_ppp-application-fota-nrf93m1)"
+export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load ppp-application-fota-nrf93m1)"
 PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_fota/ -c tests/on_target/tests/pytest.ini -v
 ```
 
@@ -202,7 +201,7 @@ Three further consequences worth knowing:
 
 The Serial Modem console runs at 1000000 baud, not the usual 115200. It is sized for modem traces. `console_baudrate` is recorded in [`tests/on_target/ci/serial_modem_firmware.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/tests/on_target/ci/serial_modem_firmware.yml); re-check it when upstream changes the overlay, because a baud mismatch produces an empty log rather than an error.
 
-Modem capture also requires VCOM1 enabled in Board Configurator on the nRF9151 or nRF9151 SMA DK, which is the documented [hardware setup](applications/91m1_ppp/hardware-setup.md).
+Modem capture also requires VCOM1 enabled in Board Configurator on the nRF9151 or nRF9151 SMA DK, which is the documented [hardware setup](applications/ppp/hardware-setup.md).
 The same setup disconnects VCOM0 and VCOM0 HWFC, because the nRF91M1 build puts the host AT link on `uart0`, which uses the pins VCOM0 otherwise occupies. A rig that skips either switch fails with `init_chat_script: timed out`. The port is resolved from the rig's `CI_*_SERIAL_MODEM_SEGGER_SN`; set the matching `CI_*_SERIAL_MODEM_SERIAL_PORT` variable to pin it explicitly.
 
 Capture starts immediately after the modem is programmed, so the boot that programming triggers is always recorded even on rigs where the host nRESET line is not wired. Everything here is best-effort and never fails a test: if the port cannot be resolved, stays silent, or the modem never accepts `AT#XLOG=1`, the run warns and continues with host logs only. Use those warnings to tell the cases apart: a completely empty `modem-serial.log` points at VCOM1 or the baud rate, while a log holding only boot output means either `AT#XLOG=1` never got through or the captured board is not the one the host is talking to, which the next section covers.
@@ -215,9 +214,9 @@ Identities are therefore compared rather than assumed. `AT+CGSN=1` gives the IME
 
 #### Serial Modem release
 
-The modem image is never built from source here. Nightly CI resolves the newest published [Serial Modem](https://github.com/nrfconnect/ncs-serial-modem/releases) release that ships the nRF91M1 bundle (`*_nrf9151dk_nrf91m1.zip`, including prereleases), locks that tag for the whole pipeline run, and passes it to every nRF91M1 hardware test and to the Release workflow. Tests download the archive, cache it under `build/serial-modem-firmware/<tag>/`, and flash the `.hex` from it. Release bundles copy the same archive unextracted into every `91m1_ppp` zip, so what ships is what CI tested that night.
+The modem image is never built from source here. Nightly CI resolves the newest published [Serial Modem](https://github.com/nrfconnect/ncs-serial-modem/releases) release that ships the nRF91M1 bundle (`*_nrf9151dk_nrf91m1.zip`, including prereleases), locks that tag for the whole pipeline run, and passes it to every nRF91M1 hardware test and to the Release workflow. Tests download the archive, cache it under `build/serial-modem-firmware/<tag>/`, and flash the `.hex` from it. Release bundles copy the same archive unextracted into every nRF54 host `ppp` zip, so what ships is what CI tested that night.
 
-The Serial Modem uses the nRF91M1 UART pinout. The bench is wired for it. See [Hardware Setup](applications/91m1_ppp/hardware-setup.md).
+The Serial Modem uses the nRF91M1 UART pinout. The bench is wired for it. See [Hardware Setup](applications/ppp/hardware-setup.md).
 
 Set `SERIAL_MODEM_RELEASE` to pin a specific upstream tag when running tests or the release workflow locally. Static settings such as `console_baudrate` live in [`tests/on_target/ci/serial_modem_firmware.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/tests/on_target/ci/serial_modem_firmware.yml).
 
@@ -238,7 +237,7 @@ docker run -d -p 8080:8080 plantuml/plantuml-server:jetty
 scripts/render_diagrams.py --server http://localhost:8080
 ```
 
-A source that does not parse fails with the error and line number the server reports. The notation the diagrams use is documented in [Diagram notation](applications/91m1_ppp/architecture.md#diagram-notation).
+A source that does not parse fails with the error and line number the server reports. The notation the diagrams use is documented in [Diagram notation](applications/ppp/architecture.md#diagram-notation).
 
 ## Commit messages
 
@@ -251,7 +250,7 @@ We use a title format that combines [Conventional Commits](https://www.conventio
 Examples:
 
 ```
-feat: applications: 91m1_ppp: improve FOTA and cloud sync support
+feat: applications: ppp: improve FOTA and cloud sync support
 fix: tests: on_target: reset dut after onboarding
 ci: .github: workflows: add push orchestrator
 ```

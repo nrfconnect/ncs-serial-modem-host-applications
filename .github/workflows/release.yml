@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       serial_modem_release:
-        description: Upstream Serial Modem release tag bundled in 91m1 zips (empty = resolve latest)
+        description: Upstream Serial Modem release tag bundled in nRF54 host zips (empty = resolve latest)
         required: false
         type: string
         default: ""
@@ -19,7 +19,7 @@ on:
         required: true
         type: string
       serial_modem_release:
-        description: Upstream Serial Modem release tag bundled in 91m1 zips (empty = resolve latest)
+        description: Upstream Serial Modem release tag bundled in nRF54 host zips (empty = resolve latest)
         required: false
         type: string
         default: ""
@@ -116,11 +116,11 @@ jobs:
               copy_release_file "${root}/dfu_application.zip" "${bundle_dir}/dfu_application.zip"
             fi
 
-            # Only 91m1 hosts pair with a Serial Modem DK. A 93m1 board has an
-            # integrated modem, so the modem archive does not belong in its
-            # bundle.
-            case "$app" in
-            91m1_*)
+            # Only the nRF54 hosts pair with a Serial Modem DK. The nRF93M1 DK
+            # has an integrated modem, so the modem archive does not belong in
+            # its bundle.
+            case "$board_type" in
+            nrf54*)
               cp "$modem_zip" "${bundle_dir}/"
               ;;
             esac

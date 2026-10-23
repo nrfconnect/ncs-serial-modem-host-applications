@@ -1,0 +1,101 @@
+# Cloud module
+
+The Cloud module owns the nRF Cloud connection. It runs the CoAP/DTLS session from the host MCU using the [nRF Cloud CoAP](https://docs.nordicsemi.com/bundle/ncs-latest/page/nrf/libraries/networking/nrf_cloud_coap.html) library, sends device messages, polls the device shadow, and resolves Wi-Fi® based location requests. Cellular data passes through the Serial Modem over PPP, but the security session terminates on the host.
+
+The module never decides on its own when to connect. It connects when the application requests it, and only reconnects on its own when a request shows that an established session has stopped working.
+
+## Architecture
+
+Connecting requires the following two things that are not available at boot:
+
+- Valid time, which is needed to sign the JWT used for CoAP authentication
+- Installed nRF Cloud credentials.
+
+The module therefore retries. Entering `STATE_CONNECTING` publishes `CLOUD_PRIV_CONNECT_ATTEMPT` on the [private channel](../architecture.md#private-channels) `priv_cloud_chan`, and an attempt that finds no credentials with `nrf_cloud_credentials_check()`, finds no valid time, or fails in `nrf_cloud_coap_connect()`, schedules the next attempt `CONFIG_APP_CLOUD_CREDENTIAL_RETRY_SECONDS` later. Time is requested over NTP, and the date/time handler publishes an attempt of its own as soon as time arrives instead of waiting out the interval. See the [main guide](../README.md) for how to install credentials and onboard the device.
+
+Because an attempt is a single message, the module is back to waiting for messages between attempts, where it feeds its watchdog and answers `CLOUD_DISCONNECT` like any other request. What makes a single attempt long is the DTLS handshake in `nrf_cloud_coap_connect()`, which is why the module has a dedicated thread and a generous message processing budget.
+
+A connected session can still stop working, for example when a CoAP request times out and the nRF Cloud CoAP library marks the session as needing a reconnect. Every later request would then fail. As in the Asset Tracker Template, the module enables `CONFIG_NRF_CLOUD_COAP_DISCONNECT_ON_FAILED_REQUEST` and treats any failed device message, shadow poll, or location request as a broken session. It publishes `CLOUD_PRIV_REQUEST_FAILED` to itself and returns to `STATE_CONNECTING`, which closes the session, publishes `CLOUD_DISCONNECTED` and starts connecting again. A location request that nRF Cloud answers with no location found is not a failure.
+
+The module posts pending [Memfault](../memfault.md) data over the same CoAP session when the application asks for it with `CLOUD_MEMFAULT_POST_REQUEST`.
+
+### State diagram
+
+The Cloud module implements a flat state machine with the following states and transitions:
+
+![Cloud module state machine](../diagrams/cloud.svg)
+
+### States
+
+The following states are used by the module:
+
+- **STATE_DISCONNECTED:** The initial state, in which there is no cloud connection. A `CLOUD_CONNECT` message starts connecting.
+- **STATE_CONNECTING:** The module is attempting to connect, one attempt per `CLOUD_PRIV_CONNECT_ATTEMPT` message, until credentials and valid time are available. It publishes `CLOUD_CONNECTED` to itself on success, which is what moves the state machine on. Leaving the state cancels a scheduled retry.
+- **STATE_CONNECTED:** The cloud connection is up, and the module serves device message, shadow poll, Memfault post, and location requests. A `CLOUD_PRIV_REQUEST_FAILED` message moves the module back to `STATE_CONNECTING`. Leaving this state closes the CoAP session with `nrf_cloud_coap_disconnect()` and publishes `CLOUD_DISCONNECTED`.
+
+### Location ground fix
+
+When the [Location module](location.md) is enabled, `cloud_location.c` handles `CLOUD_LOCATION_REQUEST` messages. It converts the serving cell and the scanned access points into the format expected by nRF Cloud and calls `nrf_cloud_coap_location_get()`, which asks the nRF Cloud location service to resolve them into a position. The resolved position is logged together with a Google Maps URL. The ground-fix schema requires at least `NRF_CLOUD_LOCATION_WIFI_AP_CNT_MIN` (two) access points, so with fewer the request carries the cell alone. The Location module only publishes results that contain a cell or enough access points. Positions the service cannot resolve are logged and dropped.
+
+## Messages
+
+The Cloud module communicates on the `cloud_chan` channel, and uses `priv_cloud_chan` for the connect attempts it schedules for itself and for reporting failed requests to itself. The messages are defined in `cloud.h`.
+
+### Input messages
+
+The following describes the input messages supported by the module:
+
+- **CLOUD_CONNECT**: Request to establish the cloud connection.
+- **CLOUD_DISCONNECT**: Request to tear down the cloud connection.
+- **CLOUD_MESSAGE_SEND**: Request to send the device message in the `.payload` field as JSON.
+- **CLOUD_SHADOW_POLL_REQUEST**: Request to poll the device shadow for a desired configuration.
+- **CLOUD_MEMFAULT_POST_REQUEST**: Request to post any pending Memfault data.
+- **CLOUD_LOCATION_REQUEST**: Request to resolve the cell and Wi-Fi measurements in the `.location_request` field into a position. Only available when `CONFIG_APP_LOCATION` is enabled.
+
+### Output messages
+
+The following describes the output messages supported by the module:
+
+- **CLOUD_CONNECTED**: The cloud connection is established.
+- **CLOUD_DISCONNECTED**: The cloud connection is down.
+- **CLOUD_SHADOW_POLLED**: The device shadow has been polled.
+- **CLOUD_MESSAGE_SENT**: The device message in `.payload` has been sent, or the send attempt finished.
+- **CLOUD_MEMFAULT_POSTED**: Pending Memfault data has been posted, or the post attempt finished.
+
+### Message structure
+
+The following describes the message structure of the module:
+
+```c
+struct cloud_msg {
+	enum cloud_msg_type type;
+	char payload[CONFIG_APP_CLOUD_MSG_MAX_LEN];
+	size_t payload_len;
+#if defined(CONFIG_APP_LOCATION)
+	/** Valid for @ref CLOUD_LOCATION_REQUEST messages. */
+	struct location_search_wifi_cell_result location_request;
+#endif /* CONFIG_APP_LOCATION */
+};
+```
+
+## Configurations
+
+Check and configure the following Kconfig options:
+
+- **CONFIG_APP_CLOUD**: Enables the Cloud module. Enabled by default.
+
+- **CONFIG_APP_CLOUD_THREAD_STACK_SIZE**: Sets the stack size for the cloud module thread. The default of 10240 accommodates the DTLS handshake.
+
+- **CONFIG_APP_CLOUD_WATCHDOG_TIMEOUT_SECONDS**: Defines the timeout in seconds for the cloud module watchdog. This timeout covers both waiting for incoming messages and message processing time.
+
+- **CONFIG_APP_CLOUD_MSG_PROCESSING_TIMEOUT_SECONDS**: Sets the maximum time allowed for processing a single message in the module's state machine. This value must be smaller than the watchdog timeout, and must leave room for a connect attempt, including the DTLS handshake.
+
+- **CONFIG_APP_CLOUD_MSG_MAX_LEN**: Sets the maximum length of a device message payload, and thereby the size of `struct cloud_msg`.
+
+- **CONFIG_APP_CLOUD_SHADOW_MAX_LEN**: Sets the buffer size used when polling the device shadow. A larger shadow is truncated and logged as a warning.
+
+- **CONFIG_APP_CLOUD_CREDENTIAL_RETRY_SECONDS**: Sets the delay before the next connect attempt when credentials or valid time are missing, or when connecting fails.
+
+- **CONFIG_APP_CLOUD_LOG_LEVEL_***: Controls the logging level for the cloud module. This follows Zephyr's standard logging configuration pattern.
+
+The nRF Cloud security tag used for the DTLS credentials is set with `CONFIG_NRF_CLOUD_SEC_TAG`, and the device ID is derived from the host SoC hardware ID (`CONFIG_NRF_CLOUD_CLIENT_ID_SRC_HW_ID`).

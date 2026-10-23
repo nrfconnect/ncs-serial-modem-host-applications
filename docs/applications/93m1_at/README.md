@@ -16,7 +16,7 @@ To follow this guide, you must meet the following requirements:
 
 - [nRF93M1 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF93M1-DK).
 - nRF Connect for Desktop [Serial Terminal app](https://docs.nordicsemi.com/bundle/swtools_docs/page/app/pc-nrfconnect-serial-terminal/index.html).
-- An [nRF Cloud account](https://nrfcloud.com/).
+- An [nRF Cloud account](https://nrfcloud.nordicsemi.com/).
 
 ## Building and flashing
 
@@ -111,7 +111,7 @@ OK
 In the UI, go to **Fleet** and then select **Devices** and find your device. Its last seen time updates after each sync, every 10 minutes, or right away when you press **Button 1**.
 
 > [!NOTE]
-> nRF Cloud is transitioning to a Memfault-integrated experience. For now, the device data is only visible in the **legacy nRF Cloud portal**. After logging in at [nrfcloud.com](https://nrfcloud.com), open the legacy app using the link in the **bottom left corner** of the new UI.
+> nRF Cloud is transitioning to a Memfault-integrated experience. For now, the device data is only visible in the **legacy nRF Cloud portal**. After logging in at [nRF Cloud](https://nrfcloud.nordicsemi.com/), open the legacy app using the link in the **bottom left corner** of the new UI.
 
 1. In the legacy app:
 

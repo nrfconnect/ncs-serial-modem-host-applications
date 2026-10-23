@@ -63,19 +63,19 @@ ft_options:
 nav:
   - Overview: index.md
   - Getting started: getting-started.md
-  - nRF91M1 PPP Host Application:
-    - Overview: applications/91m1_ppp/README.md
-    - Hardware setup: applications/91m1_ppp/hardware-setup.md
-    - Application behavior: applications/91m1_ppp/application-behavior.md
-    - Architecture: applications/91m1_ppp/architecture.md
+  - PPP Host Application:
+    - Overview: applications/ppp/README.md
+    - Hardware setup: applications/ppp/hardware-setup.md
+    - nRF93M1 DK: applications/ppp/nrf93m1dk.md
+    - Application behavior: applications/ppp/application-behavior.md
+    - Architecture: applications/ppp/architecture.md
     - Modules:
-      - Main: applications/91m1_ppp/modules/main.md
-      - Network: applications/91m1_ppp/modules/network.md
-      - Cloud: applications/91m1_ppp/modules/cloud.md
-      - FOTA: applications/91m1_ppp/modules/fota.md
-      - Location: applications/91m1_ppp/modules/location.md
-    - Memfault: applications/91m1_ppp/memfault.md
-  - nRF93M1 PPP Host Application: applications/93m1_ppp/README.md
+      - Main: applications/ppp/modules/main.md
+      - Network: applications/ppp/modules/network.md
+      - Cloud: applications/ppp/modules/cloud.md
+      - FOTA: applications/ppp/modules/fota.md
+      - Location: applications/ppp/modules/location.md
+    - Memfault: applications/ppp/memfault.md
   - nRF93M1 AT Host Application: applications/93m1_at/README.md
   - Application FOTA: app-fota.md
   - CI and contribution: ci-and-contribution.md

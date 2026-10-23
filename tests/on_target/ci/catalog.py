@@ -11,14 +11,14 @@ from pathlib import Path
 
 import yaml
 
-PROVISION_TEST_ID = "91m1_ppp-provision-nrf54l15-nrf91"
-PROVISION_NRF54LM20B_TEST_ID = "91m1_ppp-provision-nrf54lm20b-nrf91"
-PROVISION_LOCATION_TEST_ID = "91m1_ppp-provision-location-nrf54lm20b-nrf91"
-PROVISION_NRF93M1_TEST_ID = "93m1_ppp-provision-nrf93m1"
-COREDUMP_TEST_ID = "91m1_ppp-memfault-coredump-nrf54l15-nrf91"
-FOTA_TEST_ID = "91m1_ppp-application-fota-nrf54l15-nrf91"
-FOTA_NRF54LM20B_TEST_ID = "91m1_ppp-application-fota-nrf54lm20b-nrf91"
-FOTA_NRF93M1_TEST_ID = "93m1_ppp-application-fota-nrf93m1"
+PROVISION_TEST_ID = "ppp-provision-nrf54l15-nrf91"
+PROVISION_NRF54LM20B_TEST_ID = "ppp-provision-nrf54lm20b-nrf91"
+PROVISION_LOCATION_TEST_ID = "ppp-provision-location-nrf54lm20b-nrf91"
+PROVISION_NRF93M1_TEST_ID = "ppp-provision-nrf93m1"
+COREDUMP_TEST_ID = "ppp-memfault-coredump-nrf54l15-nrf91"
+FOTA_TEST_ID = "ppp-application-fota-nrf54l15-nrf91"
+FOTA_NRF54LM20B_TEST_ID = "ppp-application-fota-nrf54lm20b-nrf91"
+FOTA_NRF93M1_TEST_ID = "ppp-application-fota-nrf93m1"
 
 
 def _catalog_path(root: Path) -> Path:

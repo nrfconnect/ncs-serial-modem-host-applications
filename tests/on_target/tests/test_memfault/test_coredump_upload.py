@@ -43,7 +43,7 @@ CLOUD_CONNECT_TIMEOUT = 120.0
 REBOOT_TIMEOUT = 60.0
 SHELL_COMMAND_TIMEOUT = 60.0
 MEMFAULT_TRACE_TIMEOUT = 300.0
-# The main watchdog timeout (CONFIG_APP_MAIN_WATCHDOG_TIMEOUT_SECONDS) is 120s; allow the
+# The main watchdog timeout (CONFIG_APP_MAIN_WATCHDOG_TIMEOUT_SECONDS) is 30s; allow the
 # watchdog to trip and the device to reboot within a generous margin.
 WATCHDOG_TRIP_TIMEOUT = 180.0
 
