@@ -21,6 +21,7 @@ This guide takes you from an unboxed development kit (DK) to a device that sends
     | [nRF54L15 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF54L15-DK) or [nRF54LM20B DK](https://www.nordicsemi.com/Products/Development-hardware/nRF54LM20-DK), wired to an [nRF9151 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF9151-DK) | PPP Host Application | [Get started with PPP on an nRF54 DK](ppp-nrf54.md) |
     | [nRF93M1 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF93M1-DK) | PPP Host Application | [Get started with PPP on the nRF93M1 DK](ppp-nrf93m1.md) |
     | [nRF93M1 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF93M1-DK) | nRF93M1 AT Host Application | [Get started with nRF93M1 AT](93m1-at.md) |
+    | [nRF54LM20B DK](https://www.nordicsemi.com/Products/Development-hardware/nRF54LM20-DK), wired to an [nRF9151 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF9151-DK) | nRF91 AT Host Application | [Get started with nRF91 AT](91m1-at.md) |
 
 1. Choose how you get the firmware:
 

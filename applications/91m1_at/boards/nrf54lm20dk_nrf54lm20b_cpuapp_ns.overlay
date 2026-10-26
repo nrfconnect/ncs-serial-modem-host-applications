@@ -1,0 +1,82 @@
+/*
+ * Copyright (c) 2026 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+ *
+ * nRF54LM20B DK + nRF9151 DK.
+ *
+ * Console uses uart30 (VCOM0).
+ *
+ * The Serial Modem link uses uart21 on P1.14–P1.15 (TX/RX, P2 connector) and
+ * P1.23–P1.24 (RTS/CTS, P3 connector). DTR/reset use P1.11/P1.10 (P2
+ * connector). RI (P1.12) is wired but unused, as DTR stays asserted.
+ *
+ * Set matching VDD on both DKs (typically 1.8 V).
+ *
+ * Wiring: see docs/getting-started/ppp-nrf54.md.
+ */
+
+/ {
+	chosen {
+		zephyr,console = &uart30;
+		zephyr,shell-uart = &uart30;
+	};
+
+	/* Serial Modem link. The application drives the modem with AT commands over
+	 * modem-uart, holds DTR asserted to keep the Serial Modem UART enabled, and
+	 * pulses nRESET at boot.
+	 */
+	zephyr,user {
+		modem-uart = <&uart21>;
+		mdm-reset-gpios = <&gpio1 10 (GPIO_ACTIVE_LOW | GPIO_OPEN_DRAIN)>;
+		mdm-dtr-gpios = <&gpio1 11 GPIO_ACTIVE_LOW>;
+	};
+};
+
+&uart30 {
+	status = "okay";
+	current-speed = <115200>;
+};
+
+&pinctrl {
+	uart21_default: uart21_default {
+		group1 {
+			psels = <NRF_PSEL(UART_TX, 1, 14)>,
+				<NRF_PSEL(UART_RTS, 1, 23)>;
+		};
+
+		group2 {
+			psels = <NRF_PSEL(UART_RX, 1, 15)>,
+				<NRF_PSEL(UART_CTS, 1, 24)>;
+			bias-pull-up;
+		};
+	};
+
+	uart21_sleep: uart21_sleep {
+		group1 {
+			psels = <NRF_PSEL(UART_TX, 1, 14)>,
+				<NRF_PSEL(UART_RX, 1, 15)>,
+				<NRF_PSEL(UART_RTS, 1, 23)>,
+				<NRF_PSEL(UART_CTS, 1, 24)>;
+			low-power-enable;
+		};
+	};
+};
+
+&uart21 {
+	status = "okay";
+	current-speed = <115200>;
+	pinctrl-0 = <&uart21_default>;
+	pinctrl-1 = <&uart21_sleep>;
+	pinctrl-names = "default", "sleep";
+	hw-flow-control;
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+/* Non-secure hardware watchdog, fallback for CONFIG_TASK_WDT_HW_FALLBACK. */
+&wdt31 {
+	status = "okay";
+};

@@ -109,9 +109,9 @@ jobs:
             copy_release_file "${root}/merged.hex" "${bundle_dir}/merged.hex"
             copy_release_file "${zephyr}/zephyr.elf" "${bundle_dir}/zephyr.elf"
             copy_release_file "${zephyr}/.config" "${bundle_dir}/.config"
-            # 93m1_at ships neither an update payload nor the signed image it
-            # is built from.
-            if [ "$app" != "93m1_at" ]; then
+            # The AT applications ship neither an update payload nor the signed
+            # image it is built from.
+            if [ "$app" != "93m1_at" ] && [ "$app" != "91m1_at" ]; then
               copy_release_file "${zephyr}/zephyr.signed.bin" "${bundle_dir}/zephyr.signed.bin"
               copy_release_file "${root}/dfu_application.zip" "${bundle_dir}/dfu_application.zip"
             fi

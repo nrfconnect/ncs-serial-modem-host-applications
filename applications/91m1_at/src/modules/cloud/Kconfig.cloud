@@ -1,0 +1,68 @@
+#
+# Copyright (c) 2026 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+#
+
+menuconfig APP_CLOUD
+	bool "Cloud module (nRF Cloud through the Serial Modem)"
+	default y
+	depends on APP_MODEM_AT
+	depends on APP_NETWORK
+	help
+	  Onboards the Serial Modem to nRF Cloud with its provisioning commands
+	  (AT#XNRFPROV) and connects the modem's nRF Cloud client (AT#XNRFCLOUD).
+	  The connection state is reported on cloud_chan.
+
+if APP_CLOUD
+
+config APP_CLOUD_THREAD_STACK_SIZE
+	int "Thread stack size"
+	default 2048
+
+config APP_CLOUD_AT_TIMEOUT_SECONDS
+	int "Cloud AT command timeout (seconds)"
+	default 30
+	help
+	  Time to wait for OK from each AT command the module sends.
+
+config APP_CLOUD_PROVISIONING_STEP_TIMEOUT_SECONDS
+	int "Provisioning step timeout (seconds)"
+	default 180
+	help
+	  Time to wait for the #XNRFPROV result after each provisioning step. When the
+	  host brings LTE back up, the Serial Modem waits up to 120 seconds for the
+	  network before it reports the next step.
+
+config APP_CLOUD_CONNECT_TIMEOUT_SECONDS
+	int "nRF Cloud connect timeout (seconds)"
+	default 60
+	help
+	  Time to wait for the #XNRFCLOUD result after AT#XNRFCLOUD=1.
+
+config APP_CLOUD_RETRY_SECONDS
+	int "Retry interval (seconds)"
+	default 60
+	help
+	  Delay before provisioning or connecting is retried after a failure, for
+	  example while the device is not yet claimed in nRF Cloud.
+
+config APP_CLOUD_WATCHDOG_TIMEOUT_SECONDS
+	int "Watchdog timeout"
+	default 300
+
+config APP_CLOUD_MSG_PROCESSING_TIMEOUT_SECONDS
+	int "Maximum message processing time"
+	default 290
+	help
+	  A provisioning step can wait for the shared AT channel
+	  (CONFIG_APP_MODEM_AT_WAIT_TIMEOUT_SECONDS), then for OK
+	  (CONFIG_APP_CLOUD_AT_TIMEOUT_SECONDS), then for the result
+	  (CONFIG_APP_CLOUD_PROVISIONING_STEP_TIMEOUT_SECONDS). This value must exceed
+	  that combined worst case.
+
+module = APP_CLOUD
+module-str = cloud
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # APP_CLOUD

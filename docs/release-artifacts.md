@@ -21,6 +21,7 @@ Each release contains one zip per CI build flavor:
 | `ppp-nrf54lm20b-location-v{VERSION}.zip` | [ppp](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/) | nRF54LM20B DK + nRF7002-EB2 + Serial Modem | Wi-Fi scan for cloud-assisted location |
 | `ppp-nrf93m1-v{VERSION}.zip` | [ppp](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/) | nRF93M1 DK | PPP host for the integrated nRF93M1 modem |
 | `93m1_at-nrf93m1-v{VERSION}.zip` | [93m1_at](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/93m1_at/) | nRF93M1 DK | AT host; modem terminates the cloud connection |
+| `91m1_at-nrf54lm20b-v{VERSION}.zip` | [91m1_at](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_at/) | nRF54LM20B DK + nRF9151 DK | AT host; Serial Modem onboards itself and terminates the cloud connection |
 
 Replace `{VERSION}` with the release tag without the `v` prefix (for example `1.2.3` for tag `v1.2.3`).
 
@@ -41,7 +42,7 @@ ppp-nrf54l15-v1.2.3/
 └── serial_modem_v{VERSION}_nrf9151dk_nrf91m1.zip              firmware for the companion nRF9151 / SMA DK
 ```
 
-`ppp-nrf93m1` bundles carry no modem archive, their board having an integrated modem, and `93m1_at` additionally has neither `zephyr.signed.bin` nor `dfu_application.zip`. File names are fixed so scripts and documentation stay valid after extraction.
+`ppp-nrf93m1` bundles carry no modem archive, their board having an integrated modem, and the AT host bundles (`93m1_at`, `91m1_at`) have neither `zephyr.signed.bin` nor `dfu_application.zip`. File names are fixed so scripts and documentation stay valid after extraction.
 
 ### Top-level files
 
@@ -50,10 +51,10 @@ ppp-nrf54l15-v1.2.3/
 | `README.md` | Generated per bundle: the files it contains, flash commands, and console port | Flashing a downloaded zip without opening this page |
 | `merged.hex` | Full sysbuild image (TF-M, MCUboot where applicable, signed application, partition layout). Same contents as `build/merged.hex` from a local sysbuild. | Programming the device with a J-Link debugger or `nrfutil` |
 | `zephyr.elf` | ELF file with debug symbols | Debugging, coredump analysis, nRF Cloud symbol upload, `addr2line` |
-| `zephyr.signed.bin` | MCUboot-signed application image | FOTA through nRF Cloud (not included in `93m1_at` bundles) |
-| `dfu_application.zip` | DFU package wrapping the signed image with its manifest | nRF Cloud FOTA jobs (not included in `93m1_at` bundles) |
+| `zephyr.signed.bin` | MCUboot-signed application image | FOTA through nRF Cloud (not included in AT host bundles) |
+| `dfu_application.zip` | DFU package wrapping the signed image with its manifest | nRF Cloud FOTA jobs (not included in AT host bundles) |
 | `.config` | Kconfig snapshot from the release build | Inspecting which options were enabled without rebuilding |
-| `serial_modem_*_nrf9151dk_nrf91m1.zip` | Serial Modem release tested by CI that night, exactly as published upstream | Programming the companion DK (nRF54 host `ppp` bundles only) |
+| `serial_modem_*_nrf9151dk_nrf91m1.zip` | Serial Modem release tested by CI that night, exactly as published upstream | Programming the companion DK (nRF54 host bundles only) |
 
 ### Full sysbuild image
 
@@ -64,6 +65,7 @@ After flashing, follow the getting-started guide for your application for hardwa
 - [PPP Host Application on an nRF54 DK](getting-started/ppp-nrf54.md)
 - [PPP Host Application on the nRF93M1 DK](getting-started/ppp-nrf93m1.md)
 - [nRF93M1 AT Host Application](getting-started/93m1-at.md)
+- [nRF91 AT Host Application](getting-started/91m1-at.md)
 
 ### ELF file with debug symbols
 
@@ -75,11 +77,11 @@ The `.config` file is useful when comparing behavior between releases or confirm
 
 ### MCUboot-signed application image
 
-The `zephyr.signed.bin` file is for signed application-only payload for over-the-air updates. CI FOTA tests build a patch-bumped copy locally; production OTA is typically managed through releases in your nRF Cloud project. Not produced for `93m1_at`, which does not ship a signed update image in CI.
+The `zephyr.signed.bin` file is for signed application-only payload for over-the-air updates. CI FOTA tests build a patch-bumped copy locally; production OTA is typically managed through releases in your nRF Cloud project. Not produced for the AT host applications, which do not ship a signed update image in CI.
 
 ### DFU package wrapping
 
-The `dfu_application.zip` file is for the same signed image packaged with the manifest an nRF Cloud FOTA job expects, so a release can be deployed without rebuilding. Not produced for `93m1_at`.
+The `dfu_application.zip` file is for the same signed image packaged with the manifest an nRF Cloud FOTA job expects, so a release can be deployed without rebuilding. Not produced for the AT host applications.
 
 ### Everything else from the build
 
@@ -137,6 +139,7 @@ For the nRF54 host two-board setups, extract the bundled Serial Modem archive an
 | `ppp-nrf54l15-*` | Host DK VCOM1 |
 | `ppp-nrf54lm20b-*` | nRF54LM20B DK VCOM0 |
 | `ppp-nrf54lm20b-location-*` | nRF54LM20B DK VCOM0 |
+| `91m1_at-nrf54lm20b-*` | nRF54LM20B DK VCOM0 |
 | `ppp-nrf93m1-*`, `93m1_at-nrf93m1-*` | nRF93M1 DK VCOM0 |
 
 See the [getting-started guide](getting-started/index.md#step-1-choose-your-application) for your application for wiring and serial port details.

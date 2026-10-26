@@ -62,11 +62,11 @@ def should_use_prebuilt_firmware(app_dir: Path, app_name: str) -> bool:
     if os.environ.get("CI_USE_PREBUILT_FIRMWARE") != "1":
         return False
 
-    required = (
-        merged_hex_path(app_dir),
-        signed_image_path(app_dir, app_name),
-        elf_image_path(app_dir, app_name),
-    )
+    required = [merged_hex_path(app_dir), elf_image_path(app_dir, app_name)]
+    # Only MCUboot builds produce a signed application image.
+    if (app_dir / "build" / "mcuboot").is_dir():
+        required.append(signed_image_path(app_dir, app_name))
+
     missing = [str(path) for path in required if not path.is_file()]
     if missing:
         raise RuntimeError(

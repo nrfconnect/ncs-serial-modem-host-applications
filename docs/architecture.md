@@ -4,7 +4,7 @@ All the host applications in this repository share one modular, event-driven arc
 
 The architecture is implemented using [Zephyr bus (zbus)](https://docs.nordicsemi.com/bundle/ncs-latest/page/zephyr/services/zbus/index.html) for inter-module communication and the [State Machine Framework](https://docs.nordicsemi.com/bundle/ncs-latest/page/zephyr/services/smf/index.html) (SMF) for managing module behavior.
 
-This document describes the pattern that every application follows, with a focus on the zbus message passing and the modules' state machines. The code examples are taken from the [PPP Host Application](applications/ppp/README.md), and the nRF93M1 AT Host Application implements the same pattern. Which modules each application has is listed in [Modules per application](#modules-per-application).
+This document describes the pattern that every application follows, with a focus on the zbus message passing and the modules' state machines. The code examples are taken from the [PPP Host Application](applications/ppp/README.md), and the nRF93M1 AT and nRF91 AT Host Applications implement the same pattern. Which modules each application has is listed in [Modules per application](#modules-per-application).
 
 ## Diagram notation
 
@@ -45,16 +45,16 @@ See the module overview of each application for its modules and the diagram of t
 
 The applications share the pattern but not the code. Each application has its own copy of its modules, adapted to its modem and cloud connection. The PPP Host Application builds the same modules for every board and selects board-specific behavior through Kconfig and the board files:
 
-| Module | PPP | nRF93M1 AT |
-|--------|-----|------------|
-| Main | State machine | State machine |
-| Network | State machine. PPP link to the Serial Modem | State machine. PPP link used only for connectivity status |
-| Cloud | State machine. nRF Cloud CoAP from the host | Message loop. Modem nRF Cloud client through AT commands |
-| FOTA | State machine. Host firmware updates through nRF Cloud | Not included |
-| Location | On the nRF54 hosts, state machine. Wi-Fi scan with the nRF7002-EB II, only with the location overlay. On the nRF93M1 DK, message loop. Cell and Wi-Fi measurements from the modem | Message loop. Location fix from the modem nRF Cloud client |
-| Battery | Message loop. Fuel gauge sampling, only on the nRF93M1 DK | Message loop. Fuel gauge sampling |
-| Buttons | No thread. Publishes DK button presses | No thread. Publishes DK button presses |
-| Modem AT | No channel. Serializes access to the modem AT pipe | No channel. Serializes access to the modem AT pipe |
+| Module | PPP | nRF93M1 AT | nRF91 AT |
+|--------|-----|------------|----------|
+| Main | State machine | State machine | State machine |
+| Network | State machine. PPP link to the Serial Modem | State machine. PPP link used only for connectivity status | State machine. LTE registration from `+CEREG`, no PPP |
+| Cloud | State machine. nRF Cloud CoAP from the host | Message loop. Modem nRF Cloud client through AT commands | State machine. Serial Modem provisioning (`AT#XNRFPROV`) and nRF Cloud client through AT commands |
+| FOTA | State machine. Host firmware updates through nRF Cloud | Not included | Not included |
+| Location | On the nRF54 hosts, state machine. Wi-Fi scan with the nRF7002-EB II, only with the location overlay. On the nRF93M1 DK, message loop. Cell and Wi-Fi measurements from the modem | Message loop. Location fix from the modem nRF Cloud client | Message loop. Cell fix through nRF Cloud, GNSS fallback, both from the Serial Modem |
+| Battery | Message loop. Fuel gauge sampling, only on the nRF93M1 DK | Message loop. Fuel gauge sampling | Not included |
+| Buttons | No thread. Publishes DK button presses | No thread. Publishes DK button presses | Not included |
+| Modem AT | No channel. Serializes access to the modem AT pipe | No channel. Serializes access to the modem AT pipe | No channel. Owns the Serial Modem UART, serializes AT commands, and routes URCs |
 
 A **state machine** module runs its messages through an SMF state machine, as described in this document. A **message loop** module has its own thread, channel, and watchdog like the others, but handles each message in a plain `switch` statement because it has no state worth modeling. The Buttons module publishes from the button callback and needs no thread. The Modem AT module is a helper that other modules and the shell call directly.
 
@@ -138,16 +138,16 @@ The wait is bounded rather than `K_FOREVER` so that the watchdog is fed even whe
 
 Each module configures its own watchdog timeout and message processing budget with the `CONFIG_APP_<MODULE>_WATCHDOG_TIMEOUT_SECONDS` and `CONFIG_APP_<MODULE>_MSG_PROCESSING_TIMEOUT_SECONDS` options, sized after the longest operation the module performs while handling a message. The defaults, as watchdog timeout / processing budget, are:
 
-| Module | PPP | nRF93M1 AT |
-|--------|----:|-----------:|
-| Main | 30 s / 5 s | 300 s / 290 s |
-| Network | 120 s / 110 s | 300 s / 290 s |
-| Cloud | 300 s / 290 s | 120 s / 100 s |
-| FOTA | 300 s / 290 s | Not included |
-| Location | 120 s / 100 s | 150 s / 130 s |
-| Battery | 60 s / 30 s | 30 s / 10 s |
+| Module | PPP | nRF93M1 AT | nRF91 AT |
+|--------|----:|-----------:|---------:|
+| Main | 30 s / 5 s | 300 s / 290 s | 300 s / 290 s |
+| Network | 120 s / 110 s | 300 s / 290 s | 300 s / 290 s |
+| Cloud | 300 s / 290 s | 120 s / 100 s | 300 s / 290 s |
+| FOTA | 300 s / 290 s | Not included | Not included |
+| Location | 120 s / 100 s | 150 s / 130 s | 300 s / 290 s |
+| Battery | 60 s / 30 s | 30 s / 10 s | Not included |
 
-The PPP Host Application uses the same timeouts on every board. Modules whose handlers make blocking calls get long timeouts. In the PPP Host Application, the Cloud and FOTA handlers make blocking CoAP calls. In the Cloud module a connect attempt performs a DTLS handshake, and the shadow, message, location, and remote debugging requests are blocking CoAP exchanges. In the FOTA module the poll makes reliable CoAP calls to check for and report a job; the image download itself does not block, because the module uses the nRF Cloud FOTA poll library in non-blocking mode and drives the download from its callbacks. The nRF93M1 AT Host Application sizes its timeouts the same way, after the operations its own modules perform.
+The PPP Host Application uses the same timeouts on every board. Modules whose handlers make blocking calls get long timeouts. In the PPP Host Application, the Cloud and FOTA handlers make blocking CoAP calls. In the Cloud module a connect attempt performs a DTLS handshake, and the shadow, message, location, and remote debugging requests are blocking CoAP exchanges. In the FOTA module the poll makes reliable CoAP calls to check for and report a job; the image download itself does not block, because the module uses the nRF Cloud FOTA poll library in non-blocking mode and drives the download from its callbacks. The AT host applications size their timeouts the same way, after the operations their own modules perform. In the nRF91 AT Host Application, each provisioning step and each location attempt waits for a Serial Modem result URC, which can take minutes.
 
 Modules that never block in their handlers only publish messages, drive the connection manager, or start asynchronous work, all of which return immediately while results arrive later as messages or callbacks. Their timeouts are short, sized only to catch a genuinely stuck thread rather than to cover a long operation. In the PPP Host Application, the Main module is such a module. Two others have longer budgets for one blocking case each:
 

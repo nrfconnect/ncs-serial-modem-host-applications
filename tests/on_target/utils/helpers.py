@@ -18,6 +18,13 @@ DEVICE_ID_LOG_RE = re.compile(
     r"(?:Device ID:|nRF Cloud client ID:)\s*([0-9A-Fa-f]{16})"
 )
 
+# nRF91 modem UUID. AT host applications onboard the modem itself, so its UUID is
+# the nRF Cloud device ID.
+MODEM_UUID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+)
+MODEM_UUID_LOG_RE = re.compile(r"Device UUID:\s*([0-9A-Fa-f-]{36})")
+
 
 def load_test_config() -> dict:
     return json.loads(os.environ["TEST_JSON"])
@@ -53,6 +60,38 @@ def assert_dut_device_id(device_id: str, expected_device_id: str) -> str:
         raise ValueError(
             "Refusing nRF Cloud operation: serial log device ID "
             f"{normalized} does not match configured DUT allowlist {expected_device_id}"
+        )
+    return normalized
+
+
+def load_expected_modem_uuid(test_config: dict) -> str:
+    hardware = test_config.get("hardware", {})
+    device_id_var = hardware["device_id_var"]
+    try:
+        modem_uuid = os.environ[device_id_var]
+    except KeyError as exc:
+        raise RuntimeError(
+            f"{device_id_var} must be set to the DUT modem UUID allowlist "
+            "before running hardware tests"
+        ) from exc
+
+    normalized = modem_uuid.strip().lower()
+    if not MODEM_UUID_RE.fullmatch(normalized):
+        raise ValueError(f"{device_id_var} must be a modem UUID, got {modem_uuid!r}")
+    return normalized
+
+
+def assert_dut_modem_uuid(modem_uuid: str, expected_uuid: str) -> str:
+    """Refuse cloud operations unless *modem_uuid* matches the configured DUT."""
+    normalized = modem_uuid.strip().lower()
+    if not MODEM_UUID_RE.fullmatch(normalized):
+        raise ValueError(
+            f"Refusing nRF Cloud operation for invalid modem UUID format: {modem_uuid!r}"
+        )
+    if normalized != expected_uuid:
+        raise ValueError(
+            "Refusing nRF Cloud operation: modem UUID "
+            f"{normalized} does not match configured DUT allowlist {expected_uuid}"
         )
     return normalized
 

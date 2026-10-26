@@ -1,0 +1,19 @@
+#
+# Copyright (c) 2026 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+#
+
+menu "Serial Modem Host 91m1 (AT)"
+
+rsource "src/Kconfig.main"
+rsource "src/modules/network/Kconfig.network"
+rsource "src/modules/modem_at/Kconfig.modem_at"
+rsource "src/modules/cloud/Kconfig.cloud"
+rsource "src/modules/location/Kconfig.location"
+
+endmenu
+
+menu "Zephyr Kernel"
+source "Kconfig.zephyr"
+endmenu
