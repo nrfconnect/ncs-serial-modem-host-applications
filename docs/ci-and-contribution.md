@@ -12,6 +12,7 @@ This document describes how the repository is organized and how it is built, tes
 | [`cmake/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/cmake) | Shared CMake helpers (`merged_hex.cmake`) |
 | [`applications/ppp/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/applications/ppp) | PPP host application (nRF54 hosts with an nRF91M1, and the nRF93M1 DK) |
 | [`applications/93m1_at/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/applications/93m1_at) | nRF93M1 AT host application |
+| [`applications/91m1_at/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/applications/91m1_at) | nRF91 AT host application (nRF54LM20B DK with an nRF91 Serial Modem) |
 | [`docs/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/docs) | Documentation site source (getting started, shared architecture, application reference, CI and contribution, release artifacts) |
 | [`scripts/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/scripts) | CI and gitlint helper scripts |
 | [`tests/on_target/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/tests/on_target) | On-target (hardware-in-the-loop) test suite |
@@ -55,12 +56,13 @@ Hardware tests use five rigs on two self-hosted runners (see [`.github/test/test
 | `ppp-provision-nrf54lm20b-nrf91` | `self-hosted-provisioning` | Location (`CI_NRF54LM20B_PROVISION_*`) | Recover flash, full nRF Cloud onboard (plain build) |
 | `ppp-provision-location-nrf54lm20b-nrf91` | `self-hosted-provisioning` | Location (`CI_NRF54LM20B_PROVISION_*`) | Recover flash, full onboard, then Wi-Fi location data |
 | `ppp-provision-nrf93m1` | `self-hosted-provisioning` | nRF93M1 DK (`CI_NRF93M1_PROVISION_*`) | Recover flash, full nRF Cloud onboard |
+| `91m1_at-provision-nrf54lm20b-nrf91` | `self-hosted-provisioning` | Location (`CI_NRF54LM20B_PROVISION_*`) | Recover flash, unclaim the nRF9151, then claim it and check that the Serial Modem onboards itself (`AT#XNRFPROV`) |
 | `ppp-memfault-coredump-nrf54l15-nrf91` | `self-hosted-test` | Test (`CI_NRF54L15_*`) | Coredump (no re-provision) |
 | `ppp-application-fota-nrf54l15-nrf91` | `self-hosted-test` | Test (`CI_NRF54L15_*`) | FOTA (queued with coredump on same runner) |
 | `ppp-application-fota-nrf54lm20b-nrf91` | `self-hosted-provisioning` | Location (`CI_NRF54LM20B_PROVISION_*`) | FOTA (queued with provision jobs on same runner) |
 | `ppp-application-fota-nrf93m1` | `self-hosted-test` | nRF93M1 test DK (`CI_NRF93M1_*`) | FOTA (queued with coredump and FOTA on same runner) |
 
-Provisioning runs in parallel with the first queued test job on the separate runners. Jobs sharing a runner run one at a time; GitHub queues whichever job does not get the runner first (coredump and both FOTA jobs on the test runner, the four provisioning jobs plus LM20B FOTA on the provisioning runner).
+Provisioning runs in parallel with the first queued test job on the separate runners. Jobs sharing a runner run one at a time; GitHub queues whichever job does not get the runner first (coredump and both FOTA jobs on the test runner, the five provisioning jobs plus LM20B FOTA on the provisioning runner).
 
 Once the release is deployed, FOTA tests run `fota poll` on the DUT shell instead of waiting up to a full sync interval for the application to poll on its own. A poll that reports no update is retried, since nRF Cloud can take a while to offer a newly deployed release.
 

@@ -1,0 +1,85 @@
+#
+# Copyright (c) 2026 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+#
+
+menuconfig APP_MODEM_AT
+	bool "Modem AT handler (Serial Modem UART)"
+	default y
+	select MODEM_MODULES
+	select MODEM_CHAT
+	select MODEM_PIPE
+	select MODEM_BACKEND_UART
+	help
+	  Owns the UART to the Serial Modem. Provides a shared AT request/response
+	  API and routes the modem's URCs to the application modules.
+
+if APP_MODEM_AT
+
+config APP_MODEM_AT_SHELL
+	bool "at shell command"
+	default y if SHELL
+	help
+	  Adds the interactive `at "<command>"` shell on top of the shared handler.
+
+config APP_MODEM_AT_COMMAND_MAX_SIZE
+	int "Maximum AT command length"
+	default 256
+
+config APP_MODEM_AT_RESPONSE_MAX_SIZE
+	int "Maximum collected AT response size"
+	default 1024
+
+config APP_MODEM_AT_CHAT_RECEIVE_BUF_SIZE
+	int "Chat receive buffer size"
+	default 1024
+	help
+	  Must hold the longest single response line (e.g. an attestation token from
+	  %ATTESTTOKEN) plus the longest match.
+
+config APP_MODEM_AT_UART_RX_BUF_SIZE
+	int "UART receive buffer size"
+	default 1024
+
+config APP_MODEM_AT_UART_TX_BUF_SIZE
+	int "UART transmit buffer size"
+	default 512
+
+config APP_MODEM_AT_TIMEOUT_SECONDS
+	int "Default AT command timeout (seconds)"
+	default 30
+
+config APP_MODEM_AT_WAIT_TIMEOUT_SECONDS
+	int "Max time to wait for the AT channel if another module is using it"
+	default 60
+	help
+	  modem_at_run() shares one AT channel across modules. This bounds how long a
+	  call will wait for another module's in-progress command to finish before
+	  giving up. Should be at least as long as the slowest AT command timeout
+	  among the modules sharing the channel, so a caller does not give up on a
+	  still-legitimate exchange.
+
+config APP_MODEM_AT_URC_SUBSCRIBERS
+	int "Maximum URC subscribers"
+	default 4
+
+config APP_MODEM_AT_URC_WAITERS
+	int "Maximum concurrent URC waits"
+	default 2
+	help
+	  Number of modem_at_run_wait_urc() calls that can wait for their URC at the
+	  same time, one per module that uses it.
+
+config APP_MODEM_AT_URC_MAX_SIZE
+	int "Maximum URC argument length"
+	default 128
+	help
+	  Buffer for the arguments of a URC that no waiter or subscriber handles,
+	  before it is collected or logged.
+
+module = APP_MODEM_AT
+module-str = modem_at
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # APP_MODEM_AT

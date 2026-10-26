@@ -28,7 +28,14 @@ from utils.flash_tools import (
 )
 from utils.dut_lifecycle import CloudDutSession
 from utils.memfault_ota import read_build_metadata
-from utils.helpers import MODEM_SERIAL_LOG, REPO_ROOT, SERIAL_LOG, load_test_config
+from utils.helpers import (
+    MODEM_SERIAL_LOG,
+    REPO_ROOT,
+    SERIAL_LOG,
+    load_expected_modem_uuid,
+    load_test_config,
+)
+from utils.nrf_cloud_device import delete_modem_if_exists, unclaim_modem_if_claimed
 from utils.logger import get_logger
 from utils.provisioning_config import flash_recover_enabled, nrf_cloud_cleanup_enabled
 from utils.serial_port import resolve_modem_serial_port, resolve_serial_port
@@ -99,8 +106,11 @@ def _prepare_baseline_firmware(
     modem_uart, modem_serial_port = _flash_serial_modem_if_configured(test_config)
 
     app_name = test_config["app"]
+    # Only Memfault builds carry the version metadata that ties a prebuilt image
+    # to FIRMWARE_VERSION.
+    uses_memfault = "memfault" in test_config
     prebuilt_metadata = None
-    if should_use_prebuilt_firmware(app_dir, app_name):
+    if should_use_prebuilt_firmware(app_dir, app_name) and uses_memfault:
         prebuilt_metadata = read_build_metadata(app_dir, app_name)
 
     baseline_semver = resolve_baseline_version(
@@ -110,8 +120,8 @@ def _prepare_baseline_firmware(
     expected_baseline = memfault_software_version(baseline_semver)
 
     if should_use_prebuilt_firmware(app_dir, app_name):
-        metadata = prebuilt_metadata or read_build_metadata(app_dir, app_name)
-        if metadata["software_version"] != expected_baseline:
+        metadata = prebuilt_metadata
+        if metadata is not None and metadata["software_version"] != expected_baseline:
             raise RuntimeError(
                 "Prebuilt firmware version "
                 f"{metadata['software_version']!r} != expected baseline "
@@ -189,6 +199,27 @@ def test_config() -> dict:
 def provision_dut(request: pytest.FixtureRequest, test_config: dict) -> types.SimpleNamespace:
     """Prepare the provisioning DUT with recover flash."""
     dut = _prepare_baseline_firmware(test_config, recover=True)
+
+    yield dut
+
+    _stop_capture(request, dut)
+
+
+@pytest.fixture(scope="function")
+def at_provision_dut(
+    request: pytest.FixtureRequest, test_config: dict
+) -> types.SimpleNamespace:
+    """Prepare an AT host DUT whose Serial Modem onboards itself to nRF Cloud.
+
+    The modem UUID is the nRF Cloud device ID. It is deleted and unclaimed before
+    flashing, so the application finds an unclaimed device on its first attempt.
+    """
+    expected_uuid = load_expected_modem_uuid(test_config)
+    delete_modem_if_exists(expected_uuid, expected_uuid)
+    unclaim_modem_if_claimed(expected_uuid, expected_uuid)
+
+    dut = _prepare_baseline_firmware(test_config, recover=True)
+    dut.expected_uuid = expected_uuid
 
     yield dut
 

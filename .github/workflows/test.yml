@@ -12,7 +12,9 @@
 #   stays provisioned
 # - DUT 3 (provision + location + FOTA, nRF54LM20 DK + nRF7002-EB2): plain-build cloud
 #   provisioning, Wi-Fi location verification, and FOTA OTA (recover flash for provision
-#   tests; preprovisioned for FOTA)
+#   tests; preprovisioned for FOTA). The 91m1_at provisioning test also runs on DUT 3: the
+#   Serial Modem onboards itself with AT#XNRFPROV, so the test unclaims, deletes and
+#   re-claims the nRF9151 modem UUID instead of the host device ID
 #
 # Hardware layout (ppp on the nRF93M1 DK, modem on the DK):
 # - DUT 4 (provision, nRF93M1 DK): provisioning test every CI (recover flash, full onboard);
@@ -26,9 +28,9 @@
 # - self-hosted-provisioning: provisioning tests on DUT 1, DUT 3 and DUT 4, plus FOTA on DUT 3
 #
 # CI scheduling:
-# - provision, provision-nrf54lm20b, provision-location, provision-nrf93m1, and
-#   FOTA-nrf54lm20b start after plan on self-hosted-provisioning (DUT 1, DUT 3 and DUT 4),
-#   queued one at a time on that runner
+# - provision, provision-nrf54lm20b, provision-location, provision-nrf93m1,
+#   91m1_at-provision-nrf54lm20b, and FOTA-nrf54lm20b start after plan on
+#   self-hosted-provisioning (DUT 1, DUT 3 and DUT 4), queued one at a time on that runner
 # - coredump, FOTA, and FOTA-nrf93m1 start after plan on self-hosted-test (DUT 2 and DUT 5)
 # - they share one test runner, so GitHub queues them one at a time
 #
@@ -56,6 +58,7 @@
 #   CI_NRF54LM20B_PROVISION_SEGGER_SN
 #   CI_NRF54LM20B_PROVISION_SERIAL_MODEM_SEGGER_SN
 #   CI_NRF54LM20B_PROVISION_DEVICE_ID
+#   CI_NRF54LM20B_PROVISION_MODEM_UUID  (nRF9151 modem UUID, for the 91m1_at test)
 #   CI_NRF54LM20B_PROVISION_SERIAL_PORT  (optional)
 #   CI_NRF54LM20B_PROVISION_SERIAL_MODEM_SERIAL_PORT  (optional)
 #
@@ -115,6 +118,7 @@ on:
           - ppp-provision-nrf54lm20b-nrf91
           - ppp-provision-location-nrf54lm20b-nrf91
           - ppp-provision-nrf93m1
+          - 91m1_at-provision-nrf54lm20b-nrf91
           - ppp-memfault-coredump-nrf54l15-nrf91
           - ppp-application-fota-nrf54l15-nrf91
           - ppp-application-fota-nrf54lm20b-nrf91
@@ -156,6 +160,7 @@ jobs:
       run_provision_nrf54lm20b: ${{ steps.resolve.outputs.run_provision_nrf54lm20b }}
       run_provision_location: ${{ steps.resolve.outputs.run_provision_location }}
       run_provision_nrf93m1: ${{ steps.resolve.outputs.run_provision_nrf93m1 }}
+      run_at_provision_nrf54lm20b: ${{ steps.resolve.outputs.run_at_provision_nrf54lm20b }}
       run_coredump: ${{ steps.resolve.outputs.run_coredump }}
       run_fota: ${{ steps.resolve.outputs.run_fota }}
       run_fota_nrf54lm20b: ${{ steps.resolve.outputs.run_fota_nrf54lm20b }}
@@ -253,6 +258,39 @@ jobs:
         uses: ./serial-modem-host-applications/.github/actions/run-hardware-test
         with:
           test_id: ppp-provision-nrf54lm20b-nrf91
+          use_prebuilt_firmware: ${{ inputs.use_prebuilt_firmware }}
+
+  hardware_at_provision_nrf54lm20b:
+    needs: [plan, setup]
+    if: needs.plan.outputs.run_at_provision_nrf54lm20b == 'true'
+    name: 91m1_at-provision-nrf54lm20b-nrf91
+    runs-on: self-hosted-provisioning
+    container:
+      image: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.setup.outputs.toolchain-version }}
+      options: --privileged -v /dev:/dev
+    defaults:
+      run:
+        shell: bash
+    env:
+      CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
+      FIRMWARE_VERSION: ${{ inputs.firmware_version }}
+      SERIAL_MODEM_RELEASE: ${{ inputs.serial_modem_release }}
+      NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
+      CI_NRF54LM20B_PROVISION_SEGGER_SN: ${{ vars.CI_NRF54LM20B_PROVISION_SEGGER_SN }}
+      CI_NRF54LM20B_PROVISION_SERIAL_MODEM_SEGGER_SN: ${{ vars.CI_NRF54LM20B_PROVISION_SERIAL_MODEM_SEGGER_SN }}
+      CI_NRF54LM20B_PROVISION_SERIAL_PORT: ${{ vars.CI_NRF54LM20B_PROVISION_SERIAL_PORT }}
+      CI_NRF54LM20B_PROVISION_SERIAL_MODEM_SERIAL_PORT: ${{ vars.CI_NRF54LM20B_PROVISION_SERIAL_MODEM_SERIAL_PORT }}
+      CI_NRF54LM20B_PROVISION_MODEM_UUID: ${{ vars.CI_NRF54LM20B_PROVISION_MODEM_UUID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          path: serial-modem-host-applications
+
+      - name: Run hardware test
+        uses: ./serial-modem-host-applications/.github/actions/run-hardware-test
+        with:
+          test_id: 91m1_at-provision-nrf54lm20b-nrf91
           use_prebuilt_firmware: ${{ inputs.use_prebuilt_firmware }}
 
   hardware_provision_location:

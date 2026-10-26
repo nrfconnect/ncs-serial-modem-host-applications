@@ -1,0 +1,79 @@
+#
+# Copyright (c) 2026 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+#
+
+menuconfig APP_LOCATION
+	bool "Location module"
+	default y
+	depends on APP_MODEM_AT
+	depends on APP_CLOUD
+	help
+	  Gets a location fix on request through the Serial Modem, which does all
+	  nRF Cloud communication. Neighbour-cell positioning (AT#XNRFCLOUDPOS) is
+	  tried first; if it fails, GNSS with nRF Cloud A-GNSS (AT#XGNSS) is used,
+	  and the Serial Modem sends the GNSS fix to nRF Cloud.
+
+if APP_LOCATION
+
+config APP_LOCATION_CELL_COUNT
+	int "Number of cells in a cellular location request"
+	range 1 15
+	default 4
+	help
+	  Passed as <cell_count> to AT#XNRFCLOUDPOS. One gives single-cell
+	  positioning; more cells give multicell positioning.
+
+config APP_LOCATION_CELL_TIMEOUT_SECONDS
+	int "Cellular location timeout (seconds)"
+	default 60
+	help
+	  Time to wait for the #XNRFCLOUDPOS result. This covers the neighbour cell
+	  measurements and the nRF Cloud round trip.
+
+config APP_LOCATION_GNSS
+	bool "Fall back to GNSS"
+	default y
+	help
+	  Run a single GNSS fix with nRF Cloud A-GNSS when cellular positioning fails.
+
+if APP_LOCATION_GNSS
+
+config APP_LOCATION_GNSS_TIMEOUT_SECONDS
+	int "GNSS fix timeout (seconds)"
+	default 120
+	help
+	  Passed as <timeout> to AT#XGNSS. GNSS only runs while LTE is idle, so the
+	  fix takes longer than with LTE off.
+
+config APP_LOCATION_GNSS_ANTENNA_CMD
+	string "GNSS antenna configuration command"
+	default "AT%XCOEX0=1,1,1565,1586"
+	help
+	  Sent once before the first GNSS fix. The default enables the onboard GNSS
+	  antenna of the nRF9151 DK. Leave empty to skip.
+
+endif # APP_LOCATION_GNSS
+
+config APP_LOCATION_THREAD_STACK_SIZE
+	int "Thread stack size"
+	default 2048
+
+config APP_LOCATION_WATCHDOG_TIMEOUT_SECONDS
+	int "Watchdog timeout"
+	default 300
+
+config APP_LOCATION_MSG_PROCESSING_TIMEOUT_SECONDS
+	int "Maximum message processing time"
+	default 290
+	help
+	  Each attempt (cellular, then GNSS) is handled as its own message. A single
+	  attempt can wait for the shared AT channel, then for OK, then for its
+	  result, and this value must exceed that combined worst case.
+
+module = APP_LOCATION
+module-str = location
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # APP_LOCATION
