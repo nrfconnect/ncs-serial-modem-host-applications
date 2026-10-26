@@ -18,7 +18,9 @@
 #
 # Hardware layout (ppp on the nRF93M1 DK, modem on the DK):
 # - DUT 4 (provision, nRF93M1 DK): provisioning test every CI (recover flash, full onboard);
-#   the on-board nRF93M1 keeps its own firmware, so nothing is flashed on the modem side
+#   the on-board nRF93M1 keeps its own firmware, so nothing is flashed on the modem side.
+#   The 93m1_at provisioning test also runs on DUT 4: the modem is the nRF Cloud client, so
+#   the test deletes the nRF93M1 modem UUID and onboards it again with AT%REGJWT
 # - DUT 5 (test, nRF93M1 DK): FOTA; stays provisioned
 #
 # Runners (dedicated labels; do not rely on the default self-hosted label):
@@ -29,8 +31,9 @@
 #
 # CI scheduling:
 # - provision, provision-nrf54lm20b, provision-location, provision-nrf93m1,
-#   91m1_at-provision-nrf54lm20b, and FOTA-nrf54lm20b start after plan on
-#   self-hosted-provisioning (DUT 1, DUT 3 and DUT 4), queued one at a time on that runner
+#   91m1_at-provision-nrf54lm20b, 93m1_at-provision-nrf93m1, and FOTA-nrf54lm20b start
+#   after plan on self-hosted-provisioning (DUT 1, DUT 3 and DUT 4), queued one at a time
+#   on that runner
 # - coredump, FOTA, and FOTA-nrf93m1 start after plan on self-hosted-test (DUT 2 and DUT 5)
 # - they share one test runner, so GitHub queues them one at a time
 #
@@ -65,6 +68,7 @@
 # GitHub variables (DUT 4 — ppp provisioning on nRF93M1 DK):
 #   CI_NRF93M1_PROVISION_SEGGER_SN
 #   CI_NRF93M1_PROVISION_DEVICE_ID
+#   CI_NRF93M1_PROVISION_MODEM_UUID  (nRF93M1 modem UUID, for the 93m1_at test)
 #   CI_NRF93M1_PROVISION_SERIAL_PORT  (optional)
 #
 # GitHub variables (DUT 5 — ppp FOTA on nRF93M1 DK, provisioned on first run):
@@ -119,6 +123,7 @@ on:
           - ppp-provision-location-nrf54lm20b-nrf91
           - ppp-provision-nrf93m1
           - 91m1_at-provision-nrf54lm20b-nrf91
+          - 93m1_at-provision-nrf93m1
           - ppp-memfault-coredump-nrf54l15-nrf91
           - ppp-application-fota-nrf54l15-nrf91
           - ppp-application-fota-nrf54lm20b-nrf91
@@ -161,6 +166,7 @@ jobs:
       run_provision_location: ${{ steps.resolve.outputs.run_provision_location }}
       run_provision_nrf93m1: ${{ steps.resolve.outputs.run_provision_nrf93m1 }}
       run_at_provision_nrf54lm20b: ${{ steps.resolve.outputs.run_at_provision_nrf54lm20b }}
+      run_at_provision_nrf93m1: ${{ steps.resolve.outputs.run_at_provision_nrf93m1 }}
       run_coredump: ${{ steps.resolve.outputs.run_coredump }}
       run_fota: ${{ steps.resolve.outputs.run_fota }}
       run_fota_nrf54lm20b: ${{ steps.resolve.outputs.run_fota_nrf54lm20b }}
@@ -291,6 +297,36 @@ jobs:
         uses: ./serial-modem-host-applications/.github/actions/run-hardware-test
         with:
           test_id: 91m1_at-provision-nrf54lm20b-nrf91
+          use_prebuilt_firmware: ${{ inputs.use_prebuilt_firmware }}
+
+  hardware_at_provision_nrf93m1:
+    needs: [plan, setup]
+    if: needs.plan.outputs.run_at_provision_nrf93m1 == 'true'
+    name: 93m1_at-provision-nrf93m1
+    runs-on: self-hosted-provisioning
+    container:
+      image: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.setup.outputs.toolchain-version }}
+      options: --privileged -v /dev:/dev
+    defaults:
+      run:
+        shell: bash
+    env:
+      CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
+      FIRMWARE_VERSION: ${{ inputs.firmware_version }}
+      NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
+      CI_NRF93M1_PROVISION_SEGGER_SN: ${{ vars.CI_NRF93M1_PROVISION_SEGGER_SN }}
+      CI_NRF93M1_PROVISION_SERIAL_PORT: ${{ vars.CI_NRF93M1_PROVISION_SERIAL_PORT }}
+      CI_NRF93M1_PROVISION_MODEM_UUID: ${{ vars.CI_NRF93M1_PROVISION_MODEM_UUID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          path: serial-modem-host-applications
+
+      - name: Run hardware test
+        uses: ./serial-modem-host-applications/.github/actions/run-hardware-test
+        with:
+          test_id: 93m1_at-provision-nrf93m1
           use_prebuilt_firmware: ${{ inputs.use_prebuilt_firmware }}
 
   hardware_provision_location:

@@ -53,7 +53,10 @@ def _retry_after(exc: urllib.error.HTTPError) -> float:
         return 0.0
 
 
-def _request(method: str, url: str, *, api_key: str, body: dict | None = None) -> int:
+def _send(
+    method: str, url: str, *, api_key: str, body: dict | None = None
+) -> tuple[int, bytes]:
+    """Send a request and return its status and response body, error or not."""
     headers = {"Authorization": f"Bearer {api_key}"}
     data = None
     if body is not None:
@@ -66,14 +69,16 @@ def _request(method: str, url: str, *, api_key: str, body: dict | None = None) -
     # failing a hardware test on another job's API calls.
     backoff = 5.0
     status = 0
+    payload = b""
     requested = 0.0
 
     for attempt in range(1, RETRY_STATUS_ATTEMPTS + 1):
         try:
             with urllib.request.urlopen(request) as response:
-                return response.status
+                return response.status, response.read()
         except urllib.error.HTTPError as exc:
             status = exc.code
+            payload = exc.read()
             requested = _retry_after(exc)
 
         if status not in RETRY_STATUSES or attempt == RETRY_STATUS_ATTEMPTS:
@@ -92,6 +97,11 @@ def _request(method: str, url: str, *, api_key: str, body: dict | None = None) -
         time.sleep(delay)
         backoff *= 2
 
+    return status, payload
+
+
+def _request(method: str, url: str, *, api_key: str, body: dict | None = None) -> int:
+    status, _ = _send(method, url, api_key=api_key, body=body)
     return status
 
 
@@ -161,6 +171,49 @@ def claim_modem(attestation_token: str, modem_uuid: str, expected_uuid: str) -> 
     if status not in {200, 201, 202}:
         raise RuntimeError(f"Failed to claim device {validated}: HTTP {status}")
     logger.info("DUT %s claimed", validated)
+
+
+def fetch_tenant_id() -> str:
+    """Return the nRF Cloud team's tenant ID, the identifier a registration JWT binds to."""
+    status, payload = _send("GET", f"{API_HOST}/account", api_key=_api_key())
+    if status != 200:
+        raise RuntimeError(f"Failed to fetch the nRF Cloud account: HTTP {status}")
+    try:
+        tenant_id = json.loads(payload)["team"]["tenantId"]
+    except (ValueError, KeyError, TypeError) as exc:
+        raise RuntimeError("nRF Cloud account response has no team.tenantId") from exc
+    return tenant_id
+
+
+def onboard_modem_with_jwt(
+    registration_jwt: str,
+    modem_uuid: str,
+    expected_uuid: str,
+    *,
+    sub_type: str = "nRF93M1",
+) -> None:
+    """Onboard the DUT modem with the registration JWT from AT%REGJWT.
+
+    Mirrors nrf93_onboard in nRFCloud/utils: the JWT is the onboarding token, and
+    nRF Cloud checks it against the device key the modem signed it with.
+    """
+    validated = assert_dut_modem_uuid(modem_uuid, expected_uuid)
+    logger.info("Onboarding DUT %s with its registration JWT", validated)
+    status, payload = _send(
+        "POST",
+        _device_url(validated),
+        api_key=_api_key(),
+        body={
+            "onboardingToken": registration_jwt,
+            "subType": sub_type,
+            "tags": [f"{sub_type}-EK"],
+            "supportedFirmwareTypes": ["MODEM"],
+        },
+    )
+    if not 200 <= status < 300:
+        detail = payload.decode("utf-8", errors="replace").strip()
+        raise RuntimeError(f"Failed to onboard device {validated}: HTTP {status} {detail}")
+    logger.info("DUT %s onboarded", validated)
 
 
 def onboard(csv_path: str) -> None:

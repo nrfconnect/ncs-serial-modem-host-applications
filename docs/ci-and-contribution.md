@@ -57,12 +57,13 @@ Hardware tests use five rigs on two self-hosted runners (see [`.github/test/test
 | `ppp-provision-location-nrf54lm20b-nrf91` | `self-hosted-provisioning` | Location (`CI_NRF54LM20B_PROVISION_*`) | Recover flash, full onboard, then Wi-Fi location data |
 | `ppp-provision-nrf93m1` | `self-hosted-provisioning` | nRF93M1 DK (`CI_NRF93M1_PROVISION_*`) | Recover flash, full nRF Cloud onboard |
 | `91m1_at-provision-nrf54lm20b-nrf91` | `self-hosted-provisioning` | Location (`CI_NRF54LM20B_PROVISION_*`) | Recover flash, unclaim the nRF9151, then claim it and check that the Serial Modem onboards itself (`AT#XNRFPROV`) |
+| `93m1_at-provision-nrf93m1` | `self-hosted-provisioning` | nRF93M1 DK (`CI_NRF93M1_PROVISION_*`) | Recover flash, delete the nRF93M1 modem from nRF Cloud, then onboard it with its registration JWT (`AT%REGJWT`) and check for a location fix |
 | `ppp-memfault-coredump-nrf54l15-nrf91` | `self-hosted-test` | Test (`CI_NRF54L15_*`) | Coredump (no re-provision) |
 | `ppp-application-fota-nrf54l15-nrf91` | `self-hosted-test` | Test (`CI_NRF54L15_*`) | FOTA (queued with coredump on same runner) |
 | `ppp-application-fota-nrf54lm20b-nrf91` | `self-hosted-provisioning` | Location (`CI_NRF54LM20B_PROVISION_*`) | FOTA (queued with provision jobs on same runner) |
 | `ppp-application-fota-nrf93m1` | `self-hosted-test` | nRF93M1 test DK (`CI_NRF93M1_*`) | FOTA (queued with coredump and FOTA on same runner) |
 
-Provisioning runs in parallel with the first queued test job on the separate runners. Jobs sharing a runner run one at a time; GitHub queues whichever job does not get the runner first (coredump and both FOTA jobs on the test runner, the five provisioning jobs plus LM20B FOTA on the provisioning runner).
+Provisioning runs in parallel with the first queued test job on the separate runners. Jobs sharing a runner run one at a time; GitHub queues whichever job does not get the runner first (coredump and both FOTA jobs on the test runner, the six provisioning jobs plus LM20B FOTA on the provisioning runner).
 
 Once the release is deployed, FOTA tests run `fota poll` on the DUT shell instead of waiting up to a full sync interval for the application to poll on its own. A poll that reports no update is retried, since nRF Cloud can take a while to offer a newly deployed release.
 
