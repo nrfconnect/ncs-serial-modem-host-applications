@@ -1,14 +1,14 @@
 # Architecture
 
-The [PPP Host Application](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/) is built on a modular, event-driven architecture. The modules interact through messages that are processed as events by the modules' state machines.
+All the host applications in this repository share one modular, event-driven architecture, the same one used by the [Asset Tracker Template](https://github.com/nrfconnect/Asset-Tracker-Template). The modules interact through messages that are processed as events by the modules' state machines.
 
 The architecture is implemented using [Zephyr bus (zbus)](https://docs.nordicsemi.com/bundle/ncs-latest/page/zephyr/services/zbus/index.html) for inter-module communication and the [State Machine Framework](https://docs.nordicsemi.com/bundle/ncs-latest/page/zephyr/services/smf/index.html) (SMF) for managing module behavior.
 
-This document provides an overview of the architecture, with a focus on the zbus message passing and the modules' state machines. For an overview of the application's runtime behavior, see [Application behavior](application-behavior.md).
+This document describes the pattern that every application follows, with a focus on the zbus message passing and the modules' state machines. The code examples are taken from the [PPP Host Application](applications/ppp/README.md), and the nRF93M1 AT Host Application implements the same pattern. Which modules each application has is listed in [Modules per application](#modules-per-application).
 
 ## Diagram notation
 
-The diagrams in this guide and in the module guides are generated from the PlantUML sources in [`diagrams/`](diagrams/), which describe the implementation as it is. They use the following conventions:
+The diagrams in this guide and in the module guides are generated from the PlantUML sources in each application's `diagrams/` folder, for example [`docs/applications/ppp/diagrams/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/docs/applications/ppp/diagrams), which describe the implementation as it is. They use the following conventions:
 
 | Notation | Meaning |
 |----------|---------|
@@ -18,31 +18,47 @@ The diagrams in this guide and in the module guides are generated from the Plant
 | `EVENT [guard]` on a transition | A transition taken only when the guard holds |
 | Dashed state or transition | Present only in some build configurations. The Kconfig symbol is named in the state |
 
-To change a diagram, edit its `.puml` file and regenerate the `.svg` with [`scripts/render_diagrams.py`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/scripts/render_diagrams.py), as described in [CI and contribution](../../ci-and-contribution.md#documentation-diagrams).
+To change a diagram, edit its `.puml` file and regenerate the `.svg` with [`scripts/render_diagrams.py`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/scripts/render_diagrams.py), as described in [CI and contribution](ci-and-contribution.md#documentation-diagrams).
 
 ## System overview
 
-The application runs on the host MCU (nRF54L15 or nRF54LM20B) and uses the nRF91M1 Serial Modem as a cellular data interface over PPP. It consists of the following modules:
+Each application runs on the host MCU and uses a Serial Modem for cellular connectivity. The application is split into modules that each own one zbus channel. Both the requests sent to a module and the notifications it publishes go on that channel. All communication passes through the Main module, which implements the business logic and is the only module that knows about the others.
 
-- **[Main module](modules/main.md)**: Implements the business logic and controls the overall application behavior. Uniquely, it is not in the `modules` folder.
-- **[Network module](modules/network.md)**: Brings the PPP link to the Serial Modem up and down, and tracks connectivity status.
-- **[Cloud module](modules/cloud.md)**: Handles communication with nRF Cloud using CoAP.
-- **[FOTA module](modules/fota.md)**: Manages firmware over-the-air updates of the host application.
-- **[Location module](modules/location.md)**: Provides Wi-Fi® based positioning. Only built with the location overlay.
-- **Buttons module**: Publishes DK button presses, and their `button` shell equivalents, on `button_chan`. It has no state machine or thread of its own. See [Buttons and shell commands](application-behavior.md#buttons-and-shell-commands).
-- **Modem AT module**: Serializes access to the modem AT pipe behind `modem_at_run()`. It is the one module that has no zbus channel and no state machine and is called directly from the host shell. See [Reaching Serial Modem AT commands](README.md#reaching-serial-modem-at-commands).
-
-The following diagram shows how the modules interact. Each module owns one channel, and both the requests sent to a module and the notifications it publishes go on that channel. All communication passes through the Main module, which is the only module that knows about the others.
-
-![Modules and the zbus channels they communicate over](diagrams/modules.svg)
+```mermaid
+flowchart LR
+    Main["Main module: business logic"]
+    Network["Network module"] <-->|network_chan| Main
+    Cloud["Cloud module"] <-->|cloud_chan| Main
+    Location["Location module"] <-->|location_chan| Main
+    Other["Other modules: FOTA, battery, buttons"] <-->|"one channel each"| Main
+```
 
 The following steps show the simplified flow of a typical operation:
 
-1. The Network module connects on startup, and publishes `NETWORK_CONNECTED` on the `network_chan` channel once the PPP link carries IP traffic.
-1. The Main module responds by requesting a cloud connection with `CLOUD_CONNECT` on the `cloud_chan` channel. The Cloud module waits for valid time and installed credentials, connects to nRF Cloud, and publishes `CLOUD_CONNECTED`.
-1. While the cloud connection is up, the Main module runs a periodic **cloud synchronization**: it sends a device message, triggers a location search, polls the device shadow, requests a FOTA poll, and posts pending Memfault data.
-1. A location search runs asynchronously. The Location module scans for Wi-Fi access points and publishes the result as `LOCATION_SEARCH_WIFI_CELL_RESULT`, which the Main module forwards to the Cloud module for resolution by the nRF Cloud location service.
-1. If the FOTA poll finds a job, the FOTA module downloads the update and asks the Main module to reboot with `FOTA_REBOOT_REQUEST`.
+1. The Network module brings up the cellular link on startup and publishes `NETWORK_CONNECTED` on `network_chan` once it is usable.
+1. The Main module responds by starting a periodic **cloud synchronization**. Depending on the application, it connects to nRF Cloud, sends data, requests a location fix, and polls for firmware updates, one step at a time, by publishing requests on the other modules' channels and waiting for their replies.
+1. Each module does its work in its own thread and publishes the result on its channel, which the Main module uses to move to the next step.
+
+See the module overview of each application for its modules and the diagram of the channels between them, for example the [PPP modules](applications/ppp/README.md#modules).
+
+## Modules per application
+
+The applications share the pattern but not the code. Each application has its own copy of its modules, adapted to its modem and cloud connection. The PPP Host Application builds the same modules for every board and selects board-specific behavior through Kconfig and the board files:
+
+| Module | PPP | nRF93M1 AT |
+|--------|-----|------------|
+| Main | State machine | State machine |
+| Network | State machine. PPP link to the Serial Modem | State machine. PPP link used only for connectivity status |
+| Cloud | State machine. nRF Cloud CoAP from the host | Message loop. Modem nRF Cloud client through AT commands |
+| FOTA | State machine. Host firmware updates through nRF Cloud | Not included |
+| Location | On the nRF54 hosts, state machine. Wi-Fi scan with the nRF7002-EB II, only with the location overlay. On the nRF93M1 DK, message loop. Cell and Wi-Fi measurements from the modem | Message loop. Location fix from the modem nRF Cloud client |
+| Battery | Message loop. Fuel gauge sampling, only on the nRF93M1 DK | Message loop. Fuel gauge sampling |
+| Buttons | No thread. Publishes DK button presses | No thread. Publishes DK button presses |
+| Modem AT | No channel. Serializes access to the modem AT pipe | No channel. Serializes access to the modem AT pipe |
+
+A **state machine** module runs its messages through an SMF state machine, as described in this document. A **message loop** module has its own thread, channel, and watchdog like the others, but handles each message in a plain `switch` statement because it has no state worth modeling. The Buttons module publishes from the button callback and needs no thread. The Modem AT module is a helper that other modules and the shell call directly.
+
+The module guides for the PPP Host Application, linked from its [module overview](applications/ppp/README.md#modules), describe each module's states and messages in detail.
 
 ## Module design
 
@@ -50,7 +66,7 @@ Each module follows a similar design:
 
 - **Message channel**: Each module defines its own zbus channel. A single channel is used for all messages that are specific to a module.
 - **Message types**: Each module exposes a set of input and output message types. These can be considered events in the state machine sense and might have associated data.
-- **State machine**: Each module implements a state machine using SMF to manage its internal state and behavior.
+- **State machine**: Modules with state implement a state machine using SMF to manage their internal state and behavior. Simpler modules handle messages directly, as listed in [Modules per application](#modules-per-application).
 - **Thread**: Each module has its own thread, so that blocking calls in one module cannot stall another.
 - **Watchdog**: Each module thread is monitored by a task watchdog. Each thread periodically calls `task_wdt_feed()`. If a thread fails to feed its watchdog within its configured timeout, the system resets.
 - **Initialization**: Modules are initialized in their dedicated thread, which is started with `K_THREAD_DEFINE()`.
@@ -66,7 +82,7 @@ The Main module deviates from the pattern in the following two ways:
 
 ### Module threads
 
-Each module's thread follows the same pattern of waiting for new messages and handling them by executing a state machine. For example, a simplified version of the Network module's thread looks like this:
+Each module's thread follows the same pattern of waiting for new messages and handling them by executing a state machine. Message loop modules use the same loop, with a `switch` on the message type in place of `smf_run_state()`. For example, a simplified version of the Network module's thread looks like this:
 
 ```c
 static void network_module(void)
@@ -120,27 +136,27 @@ The wait is bounded rather than `K_FOREVER` so that the watchdog is fed even whe
 
 ### Watchdog timeouts
 
-Each module configures its own watchdog timeout and message processing budget, sized after the longest operation the module performs while handling a message:
+Each module configures its own watchdog timeout and message processing budget with the `CONFIG_APP_<MODULE>_WATCHDOG_TIMEOUT_SECONDS` and `CONFIG_APP_<MODULE>_MSG_PROCESSING_TIMEOUT_SECONDS` options, sized after the longest operation the module performs while handling a message. The defaults, as watchdog timeout / processing budget, are:
 
-| Module | Watchdog timeout | Message processing budget |
-|--------|-----------------:|--------------------------:|
-| Main | 30 s | 5 s |
-| Network | 120 s | 110 s |
-| Cloud | 300 s | 290 s |
-| FOTA | 300 s | 290 s |
-| Location | 120 s | 100 s |
+| Module | PPP | nRF93M1 AT |
+|--------|----:|-----------:|
+| Main | 30 s / 5 s | 300 s / 290 s |
+| Network | 120 s / 110 s | 300 s / 290 s |
+| Cloud | 300 s / 290 s | 120 s / 100 s |
+| FOTA | 300 s / 290 s | Not included |
+| Location | 120 s / 100 s | 150 s / 130 s |
+| Battery | 60 s / 30 s | 30 s / 10 s |
 
-The Cloud and FOTA modules have the longest timeouts because their handlers make blocking CoAP calls. In the Cloud module a connect attempt performs a DTLS handshake, and the shadow, message, location, and Memfault requests are blocking CoAP exchanges. In the FOTA module the poll makes reliable CoAP calls to check for and report a job; the image download itself does not block, because the module uses the nRF Cloud FOTA poll library in non-blocking mode and drives the download from its callbacks.
+The PPP Host Application uses the same timeouts on every board. Modules whose handlers make blocking calls get long timeouts. In the PPP Host Application, the Cloud and FOTA handlers make blocking CoAP calls. In the Cloud module a connect attempt performs a DTLS handshake, and the shadow, message, location, and remote debugging requests are blocking CoAP exchanges. In the FOTA module the poll makes reliable CoAP calls to check for and report a job; the image download itself does not block, because the module uses the nRF Cloud FOTA poll library in non-blocking mode and drives the download from its callbacks. The nRF93M1 AT Host Application sizes its timeouts the same way, after the operations its own modules perform.
 
-The Main module never blocks in its handlers. It only publishes messages and schedules work, so its timeout is short, sized only to catch a genuinely stuck thread rather than to cover a long operation.
+Modules that never block in their handlers only publish messages, drive the connection manager, or start asynchronous work, all of which return immediately while results arrive later as messages or callbacks. Their timeouts are short, sized only to catch a genuinely stuck thread rather than to cover a long operation. In the PPP Host Application, the Main module is such a module. Two others have longer budgets for one blocking case each:
 
-The Network module drives the connection manager, whose calls return immediately while results arrive later as events. The exception is bringing the interface down, where Zephyr's `modem_cellular` driver blocks the thread for up to 30 seconds while it suspends the modem, so the processing budget covers that.
-
-The Location module has two backends. The Location library backend, used on the nRF54 hosts, starts an asynchronous Wi-Fi scan that returns immediately, with the result arriving later through a callback. The modem AT backend, used on the nRF93M1 DK, blocks on its cell and Wi-Fi scans. The timeouts cover the blocking backend, so they are the same on every board.
+- The Network module drives the connection manager, whose calls return immediately while results arrive later as events. The exception is bringing the interface down, where Zephyr's `modem_cellular` driver blocks the thread for up to 30 seconds while it suspends the modem.
+- The Location module has two backends. The Location library backend, used on the nRF54 hosts, starts an asynchronous Wi-Fi scan that returns immediately, with the result arriving later through a callback. The modem AT backend, used on the nRF93M1 DK, blocks on its cell and Wi-Fi scans. The timeouts cover the blocking backend, so they are the same on every board.
 
 ## Message passing with zbus
 
-The zbus library is part of Zephyr and implements channel-based message passing between threads. This section covers how zbus is used in this application. See the [zbus documentation](https://docs.nordicsemi.com/bundle/ncs-latest/page/zephyr/services/zbus/index.html) for an introduction to zbus.
+The zbus library is part of Zephyr and implements channel-based message passing between threads. This section covers how zbus is used in the applications. See the [zbus documentation](https://docs.nordicsemi.com/bundle/ncs-latest/page/zephyr/services/zbus/index.html) for an introduction to zbus.
 
 ### Channels
 
@@ -195,7 +211,7 @@ enum cloud_msg_type {
 	CLOUD_SHADOW_POLLED,
 	/* The device message in cloud_msg::payload has been sent. */
 	CLOUD_MESSAGE_SENT,
-	/* Pending Memfault data has been posted. */
+	/* Pending remote debugging data has been posted. */
 	CLOUD_MEMFAULT_POSTED,
 
 	/* Input message types */
@@ -239,7 +255,7 @@ Zbus copies the message, so the original message struct is no longer needed afte
 
 ### Receiving messages
 
-In zbus, structures called _observers_ are used to receive messages on one or more zbus channels. There are multiple types of observers. All modules in this application use **message subscribers**, which receive messages asynchronously in the module's own thread.
+In zbus, structures called _observers_ are used to receive messages on one or more zbus channels. There are multiple types of observers. All modules with a thread use **message subscribers**, which receive messages asynchronously in the module's own thread.
 
 A message subscriber queues up messages that are received while the module is busy processing another message. The module then processes the messages in the order they were received. An incoming message can never interrupt the processing of another message.
 
@@ -280,7 +296,7 @@ CHANNEL_LIST(ADD_OBSERVERS)
 
 ### Private channels
 
-When a module needs internal state handling that should not be exposed to other modules, it uses a private channel. Private channels are reserved exclusively for the respective module and are not intended for external use. Otherwise, they are defined, published to, and subscribed to just like public channels. Three modules use one:
+When a module needs internal state handling that should not be exposed to other modules, it uses a private channel. Private channels are reserved exclusively for the respective module and are not intended for external use. Otherwise, they are defined, published to, and subscribed to just like public channels. In the PPP Host Application, three modules use one:
 
 - The Cloud module uses `priv_cloud_chan` to turn every attempt at connecting into a message, so that it can retry without blocking its state machine.
 - The FOTA module uses `priv_fota_chan` to move the nRF Cloud FOTA library callbacks, which run in the library's own context, into the module's state machine.
@@ -290,7 +306,7 @@ Private channels are defined in the module's `.c` file and are never declared in
 
 ## State machines
 
-The State Machine Framework (SMF) is a Zephyr library that provides a way to implement hierarchical state machines in a structured manner. In a hierarchical state machine, you can implement behavior common to multiple states in a shared parent state. The Main, FOTA, and Location modules use hierarchical state machines, while the Network and Cloud modules are simple enough to use flat ones.
+The State Machine Framework (SMF) is a Zephyr library that provides a way to implement hierarchical state machines in a structured manner. In a hierarchical state machine, you can implement behavior common to multiple states in a shared parent state. In the PPP Host Application, the Main and FOTA modules and the Location library backend of the Location module use hierarchical state machines, while the Network and Cloud modules are simple enough to use flat ones.
 
 The state machines follow a run-to-completion model where:
 
@@ -306,9 +322,9 @@ This section covers how SMF is used in the modules. See the [SMF documentation](
 
 SMF supports defining a hierarchy of states. For example, the FOTA module's states can be graphically described as follows:
 
-![Simplified FOTA module state hierarchy](diagrams/fota-hierarchy.svg)
+![Simplified FOTA module state hierarchy](applications/ppp/diagrams/fota-hierarchy.svg)
 
-In the diagram, the black dots with arrows indicate initial transitions. In this case, the initial state of the machine is set to the top-level `STATE_RUNNING` state. In the state definitions, an initial transition is configured such that the state machine ends up in `STATE_WAITING_FOR_POLL_REQUEST` when first initialized. See [FOTA module](modules/fota.md) for the complete set of transitions.
+In the diagram, the black dots with arrows indicate initial transitions. In this case, the initial state of the machine is set to the top-level `STATE_RUNNING` state. In the state definitions, an initial transition is configured such that the state machine ends up in `STATE_WAITING_FOR_POLL_REQUEST` when first initialized. See [FOTA module](applications/ppp/modules/fota.md) for the complete set of transitions.
 
 In SMF, a single state is defined using the `SMF_CREATE_STATE` macro. You can specify the following parameters:
 

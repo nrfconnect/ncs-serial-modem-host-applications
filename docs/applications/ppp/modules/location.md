@@ -2,7 +2,7 @@
 
 The Location module collects location measurements on request and publishes them for the application to resolve into a position. It has two backends, selected with the `APP_LOCATION_BACKEND` choice. Both publish the same messages:
 
-- **Location library** (`CONFIG_APP_LOCATION_BACKEND_LOCATION_LIB`, `location_lib.c`): Scans for nearby Wi-Fi® access points on the host through the [Location](https://docs.nordicsemi.com/bundle/ncs-latest/page/nrf/libraries/modem/location.html) library. It is used on the nRF54 host DKs. It is only built with the location overlay, which requires an nRF7002-EB2 shield for Wi-Fi scanning. See [Hardware setup](../hardware-setup.md#nrf54lm20b-dk-with-nrf7002-eb-ii-wi-fi-location) for wiring and build commands.
+- **Location library** (`CONFIG_APP_LOCATION_BACKEND_LOCATION_LIB`, `location_lib.c`): Scans for nearby Wi-Fi® access points on the host through the [Location](https://docs.nordicsemi.com/bundle/ncs-latest/page/nrf/libraries/modem/location.html) library. It is used on the nRF54 host DKs. It is only built with the location overlay, which requires an nRF7002-EB2 shield for Wi-Fi scanning. See the [getting-started guide](../../../getting-started/ppp-nrf54.md) for wiring and build commands.
 - **Modem AT commands** (`CONFIG_APP_LOCATION_BACKEND_MODEM_AT`, `location_at.c`): Reads the serving cell (`%BCINFO`) and scans for Wi-Fi access points (`%WIFISCAN`) through the nRF93M1 over the shared AT pipe. It is the default on the nRF93M1 DK, where the module is enabled in the default build.
 
 ## Modem AT backend

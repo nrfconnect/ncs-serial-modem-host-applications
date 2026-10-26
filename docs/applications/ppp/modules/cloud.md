@@ -11,13 +11,13 @@ Connecting requires the following two things that are not available at boot:
 - Valid time, which is needed to sign the JWT used for CoAP authentication
 - Installed nRF Cloud credentials.
 
-The module therefore retries. Entering `STATE_CONNECTING` publishes `CLOUD_PRIV_CONNECT_ATTEMPT` on the [private channel](../architecture.md#private-channels) `priv_cloud_chan`, and an attempt that finds no credentials with `nrf_cloud_credentials_check()`, finds no valid time, or fails in `nrf_cloud_coap_connect()`, schedules the next attempt `CONFIG_APP_CLOUD_CREDENTIAL_RETRY_SECONDS` later. Time is requested over NTP, and the date/time handler publishes an attempt of its own as soon as time arrives instead of waiting out the interval. See the [main guide](../README.md) for how to install credentials and onboard the device.
+The module therefore retries. Entering `STATE_CONNECTING` publishes `CLOUD_PRIV_CONNECT_ATTEMPT` on the [private channel](../../../architecture.md#private-channels) `priv_cloud_chan`, and an attempt that finds no credentials with `nrf_cloud_credentials_check()`, finds no valid time, or fails in `nrf_cloud_coap_connect()`, schedules the next attempt `CONFIG_APP_CLOUD_CREDENTIAL_RETRY_SECONDS` later. Time is requested over NTP, and the date/time handler publishes an attempt of its own as soon as time arrives instead of waiting out the interval. See Connect to nRF Cloud in the getting-started guide for [an nRF54 DK](../../../getting-started/ppp-nrf54.md#step-5-connect-to-nrf-cloud) or [the nRF93M1 DK](../../../getting-started/ppp-nrf93m1.md#step-5-connect-to-nrf-cloud) for how to install credentials and onboard the device.
 
 Because an attempt is a single message, the module is back to waiting for messages between attempts, where it feeds its watchdog and answers `CLOUD_DISCONNECT` like any other request. What makes a single attempt long is the DTLS handshake in `nrf_cloud_coap_connect()`, which is why the module has a dedicated thread and a generous message processing budget.
 
 A connected session can still stop working, for example when a CoAP request times out and the nRF Cloud CoAP library marks the session as needing a reconnect. Every later request would then fail. As in the Asset Tracker Template, the module enables `CONFIG_NRF_CLOUD_COAP_DISCONNECT_ON_FAILED_REQUEST` and treats any failed device message, shadow poll, or location request as a broken session. It publishes `CLOUD_PRIV_REQUEST_FAILED` to itself and returns to `STATE_CONNECTING`, which closes the session, publishes `CLOUD_DISCONNECTED` and starts connecting again. A location request that nRF Cloud answers with no location found is not a failure.
 
-The module posts pending [Memfault](../memfault.md) data over the same CoAP session when the application asks for it with `CLOUD_MEMFAULT_POST_REQUEST`.
+The module posts pending [remote debugging](../remote-debugging.md) data over the same CoAP session when the application asks for it with `CLOUD_MEMFAULT_POST_REQUEST`.
 
 ### State diagram
 
@@ -31,7 +31,7 @@ The following states are used by the module:
 
 - **STATE_DISCONNECTED:** The initial state, in which there is no cloud connection. A `CLOUD_CONNECT` message starts connecting.
 - **STATE_CONNECTING:** The module is attempting to connect, one attempt per `CLOUD_PRIV_CONNECT_ATTEMPT` message, until credentials and valid time are available. It publishes `CLOUD_CONNECTED` to itself on success, which is what moves the state machine on. Leaving the state cancels a scheduled retry.
-- **STATE_CONNECTED:** The cloud connection is up, and the module serves device message, shadow poll, Memfault post, and location requests. A `CLOUD_PRIV_REQUEST_FAILED` message moves the module back to `STATE_CONNECTING`. Leaving this state closes the CoAP session with `nrf_cloud_coap_disconnect()` and publishes `CLOUD_DISCONNECTED`.
+- **STATE_CONNECTED:** The cloud connection is up, and the module serves device message, shadow poll, remote debugging data post, and location requests. A `CLOUD_PRIV_REQUEST_FAILED` message moves the module back to `STATE_CONNECTING`. Leaving this state closes the CoAP session with `nrf_cloud_coap_disconnect()` and publishes `CLOUD_DISCONNECTED`.
 
 ### Location ground fix
 
@@ -49,7 +49,7 @@ The following describes the input messages supported by the module:
 - **CLOUD_DISCONNECT**: Request to tear down the cloud connection.
 - **CLOUD_MESSAGE_SEND**: Request to send the device message in the `.payload` field as JSON.
 - **CLOUD_SHADOW_POLL_REQUEST**: Request to poll the device shadow for a desired configuration.
-- **CLOUD_MEMFAULT_POST_REQUEST**: Request to post any pending Memfault data.
+- **CLOUD_MEMFAULT_POST_REQUEST**: Request to post any pending remote debugging data.
 - **CLOUD_LOCATION_REQUEST**: Request to resolve the cell and Wi-Fi measurements in the `.location_request` field into a position. Only available when `CONFIG_APP_LOCATION` is enabled.
 
 ### Output messages
@@ -60,7 +60,7 @@ The following describes the output messages supported by the module:
 - **CLOUD_DISCONNECTED**: The cloud connection is down.
 - **CLOUD_SHADOW_POLLED**: The device shadow has been polled.
 - **CLOUD_MESSAGE_SENT**: The device message in `.payload` has been sent, or the send attempt finished.
-- **CLOUD_MEMFAULT_POSTED**: Pending Memfault data has been posted, or the post attempt finished.
+- **CLOUD_MEMFAULT_POSTED**: Pending remote debugging data has been posted, or the post attempt finished.
 
 ### Message structure
 
