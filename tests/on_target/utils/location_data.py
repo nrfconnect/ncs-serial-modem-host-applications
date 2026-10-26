@@ -17,11 +17,11 @@ logger = get_logger()
 
 # Logged by the cloud module when it hands a Wi-Fi scan to nRF Cloud, and when
 # nRF Cloud resolves the scan into a position and returns it to the device.
-LOCATION_REQUEST_LOG = "Requesting location from nRF Cloud using"
+LOCATION_REQUEST_LOG = "Ground-fix requested"
 LOCATION_RESULT_LOG = "Google maps URL:"
 LOCATION_NOT_FOUND_LOG = "location coordinates not found"
 
-AP_COUNT_RE = re.compile(rf"{LOCATION_REQUEST_LOG} (\d+) Wi-Fi access points")
+AP_COUNT_RE = re.compile(rf"{LOCATION_REQUEST_LOG}, cell: \w+, Wi-Fi APs: (\d+)")
 # Matches the firmware log line, e.g. "Google maps URL: https://maps.google.com/?q=63.42,10.43".
 MAPS_URL_RE = re.compile(
     rf"{LOCATION_RESULT_LOG}\s*(https://maps\.google\.com/\?q=(-?\d+\.\d+),(-?\d+\.\d+))"
