@@ -100,6 +100,11 @@ tests:
       device_id_var: CI_NRF93M1_PROVISION_MODEM_UUID
     nrf_cloud:
       api_key_var: NRF_CLOUD_API_KEY
+      # Onboarding goes through the linked project's bulk endpoint, which takes
+      # the organization auth token rather than the legacy API key.
+      org_token_var: MEMFAULT_ORG_TOKEN
+      org_var: MEMFAULT_ORG
+      project_var: MEMFAULT_PROJECT
 
   - id: ppp-provision-location-nrf54lm20b-nrf91
     enabled: true

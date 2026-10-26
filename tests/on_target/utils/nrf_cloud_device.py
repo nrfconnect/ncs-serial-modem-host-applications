@@ -8,6 +8,7 @@ import os
 import subprocess
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 from utils.helpers import assert_dut_device_id, assert_dut_modem_uuid
@@ -27,6 +28,10 @@ ONBOARDING_TAG = "nrf-cloud-onboarding"
 RETRY_STATUSES = frozenset({429, 500, 502, 503, 504})
 RETRY_STATUS_ATTEMPTS = 4
 RETRY_MAX_DELAY_SECONDS = 60.0
+
+# Bulk onboarding is asynchronous; one row normally finishes within seconds.
+BULK_ONBOARD_TIMEOUT_SECONDS = 120.0
+BULK_ONBOARD_POLL_SECONDS = 3.0
 
 
 def _device_url(device_id: str) -> str:
@@ -54,7 +59,12 @@ def _retry_after(exc: urllib.error.HTTPError) -> float:
 
 
 def _send(
-    method: str, url: str, *, api_key: str, body: dict | None = None
+    method: str,
+    url: str,
+    *,
+    api_key: str,
+    body: dict | None = None,
+    csv: str | None = None,
 ) -> tuple[int, bytes]:
     """Send a request and return its status and response body, error or not."""
     headers = {"Authorization": f"Bearer {api_key}"}
@@ -62,6 +72,9 @@ def _send(
     if body is not None:
         headers["Content-Type"] = "application/json"
         data = json.dumps(body).encode("utf-8")
+    elif csv is not None:
+        headers["Content-Type"] = "text/csv"
+        data = csv.encode("utf-8")
     request = urllib.request.Request(url, data=data, method=method, headers=headers)
 
     # A full suite run drives several DUTs through one nRF Cloud account, which
@@ -190,30 +203,49 @@ def onboard_modem_with_jwt(
     modem_uuid: str,
     expected_uuid: str,
     *,
-    sub_type: str = "nRF93M1",
+    org: str,
+    project: str,
+    org_token: str,
 ) -> None:
     """Onboard the DUT modem with the registration JWT from AT%REGJWT.
 
-    Mirrors nrf93_onboard in nRFCloud/utils: the JWT is the onboarding token, and
-    nRF Cloud checks it against the device key the modem signed it with.
+    Uses the project's bulk onboarding endpoint with a one-row CSV, as the nRF
+    Cloud app does for nRF93M1 devices. The legacy POST /devices/{id} rejects an
+    onboardingToken field. The upload is accepted asynchronously, so poll its
+    status until nRF Cloud reports a result.
     """
     validated = assert_dut_modem_uuid(modem_uuid, expected_uuid)
     logger.info("Onboarding DUT %s with its registration JWT", validated)
     status, payload = _send(
         "POST",
-        _device_url(validated),
-        api_key=_api_key(),
-        body={
-            "onboardingToken": registration_jwt,
-            "subType": sub_type,
-            "tags": [f"{sub_type}-EK"],
-            "supportedFirmwareTypes": ["MODEM"],
-        },
+        f"{API_HOST}/organizations/{org}/projects/{project}/long-range/devices/bulk",
+        api_key=org_token,
+        csv=f"deviceId,onboardingToken\n{validated},{registration_jwt}\n",
     )
-    if not 200 <= status < 300:
-        detail = payload.decode("utf-8", errors="replace").strip()
+    detail = payload.decode("utf-8", errors="replace").strip()
+    if status != 202:
         raise RuntimeError(f"Failed to onboard device {validated}: HTTP {status} {detail}")
-    logger.info("DUT %s onboarded", validated)
+    try:
+        status_url = urllib.parse.urljoin(API_HOST, json.loads(payload)["url"])
+    except (ValueError, KeyError, TypeError) as exc:
+        raise RuntimeError(f"Bulk onboarding response has no status URL: {detail}") from exc
+
+    deadline = time.monotonic() + BULK_ONBOARD_TIMEOUT_SECONDS
+    while time.monotonic() < deadline:
+        status, payload = _send("GET", status_url, api_key=org_token)
+        detail = payload.decode("utf-8", errors="replace").strip()
+        if status != 200:
+            raise RuntimeError(f"Failed to read onboarding status: HTTP {status} {detail}")
+        result = json.loads(payload).get("status")
+        if result == "SUCCEEDED":
+            logger.info("DUT %s onboarded", validated)
+            return
+        if result != "IN_PROGRESS":
+            raise RuntimeError(f"Failed to onboard device {validated}: {detail}")
+        time.sleep(BULK_ONBOARD_POLL_SECONDS)
+    raise TimeoutError(
+        f"Onboarding of {validated} still in progress after {BULK_ONBOARD_TIMEOUT_SECONDS:.0f}s"
+    )
 
 
 def onboard(csv_path: str) -> None:
