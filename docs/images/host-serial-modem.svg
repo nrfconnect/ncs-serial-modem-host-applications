@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="170" viewBox="0 0 900 170" role="img" aria-labelledby="title desc">
+  <title id="title">Host MCU and Serial Modem</title>
+  <desc id="desc">A host MCU running the application talks to a Serial Modem over UART, using AT commands and PPP over CMUX. The Serial Modem connects over the cellular network to nRF Cloud.</desc>
+  <!-- Colors follow the Nordic Semiconductor brand palette:
+       Blue Slate #0033A0, Lake #0077C8, Nordic Blue #00A9CE, Sky #6AD1E3,
+       Light Grey #D9E1E2, Middle Grey #768692, Dark Grey #333F48. -->
+  <style>
+    text { font-family: "GT Walsheim Pro", "GT Walsheim", Helvetica, Arial, sans-serif; }
+    .bg { fill: #ffffff; }
+    .host { fill: #0033a0; }
+    .modem { fill: #0077c8; }
+    .cloud { fill: #00a9ce; }
+    .title { font-size: 20px; font-weight: 700; fill: #ffffff; }
+    .sub { font-size: 14px; fill: #ffffff; }
+    .link { font-size: 16px; font-weight: 700; fill: #0077c8; }
+    .label { font-size: 13px; fill: #333f48; }
+    .cloudlabel { font-size: 14px; font-weight: 700; fill: #333f48; }
+    .uart { stroke: #00a9ce; stroke-width: 3; fill: none; }
+    .head { fill: #00a9ce; }
+    .cell { stroke: #768692; stroke-width: 2; stroke-dasharray: 6 5; fill: none; }
+    .headcell { fill: #768692; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #333f48; }
+      .link { fill: #6ad1e3; }
+      .label, .cloudlabel { fill: #d9e1e2; }
+      .cell { stroke: #d9e1e2; }
+      .headcell { fill: #d9e1e2; }
+    }
+  </style>
+
+  <rect class="bg" x="0" y="0" width="900" height="170" rx="12"/>
+
+  <!-- Host MCU -->
+  <rect class="host" x="30" y="25" width="240" height="120" rx="8"/>
+  <text class="title" x="150" y="70" text-anchor="middle">Host MCU</text>
+  <text class="sub" x="150" y="96" text-anchor="middle">nRF54L Series</text>
+  <text class="sub" x="150" y="118" text-anchor="middle">Runs the host application</text>
+
+  <!-- UART link -->
+  <line class="uart" x1="284" y1="85" x2="426" y2="85"/>
+  <path class="head" d="M272 85 L288 76 L288 94 Z"/>
+  <path class="head" d="M438 85 L422 76 L422 94 Z"/>
+  <text class="link" x="355" y="70" text-anchor="middle">UART</text>
+  <text class="label" x="355" y="110" text-anchor="middle">AT commands</text>
+  <text class="label" x="355" y="128" text-anchor="middle">PPP over CMUX</text>
+
+  <!-- Serial Modem -->
+  <rect class="modem" x="440" y="25" width="240" height="120" rx="8"/>
+  <text class="title" x="560" y="70" text-anchor="middle">Serial Modem</text>
+  <text class="sub" x="560" y="96" text-anchor="middle">nRF9151 · nRF93M1</text>
+  <text class="sub" x="560" y="118" text-anchor="middle">Cellular connectivity</text>
+
+  <!-- Cellular link -->
+  <line class="cell" x1="682" y1="85" x2="752" y2="85"/>
+  <path class="headcell" d="M764 85 L750 77 L750 93 Z"/>
+  <text class="label" x="722" y="70" text-anchor="middle">LTE</text>
+
+  <!-- nRF Cloud -->
+  <path class="cloud" d="M790 110 a22 22 0 0 1 4 -43 a30 30 0 0 1 56 -6 a22 22 0 0 1 26 30 a18 18 0 0 1 -8 19 Z"/>
+  <text class="cloudlabel" x="828" y="142" text-anchor="middle">nRF Cloud</text>
+</svg>

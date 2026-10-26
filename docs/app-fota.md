@@ -1,6 +1,6 @@
 # Application FOTA
 
-This page describes how to update the host application firmware over the air (FOTA) on the [PPP Host Application](applications/ppp/README.md) from the command line. You publish the update with the [Memfault CLI](https://docs.memfault.com/docs/ci/install-memfault-cli), and the device fetches it from nRF Cloud over its existing CoAP session. The same steps run in CI in [`test_application_fota.py`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/tests/on_target/tests/test_fota/test_application_fota.py).
+This page describes how to update the host application firmware over the air (FOTA) on the [PPP Host Application](applications/ppp/README.md) from the command line. You publish the update to nRF Cloud with the [`memfault` CLI](https://docs.memfault.com/docs/ci/install-memfault-cli), and the device fetches it from nRF Cloud over its existing CoAP session.
 
 ```mermaid
 sequenceDiagram
@@ -20,12 +20,9 @@ sequenceDiagram
 
 To follow this guide, you must meet the following requirements:
 
-- A device that is provisioned, onboarded to nRF Cloud, and logs `Cloud connected`. See the setup guide for the [nRF54 host DKs](applications/ppp/README.md) or the [nRF93M1 DK](applications/ppp/nrf93m1dk.md).
-- The Memfault CLI: `pip3 install memfault-cli`.
-- An organization auth token and the organization and project slugs. Open **Memfault** from the nRF Cloud sidebar (see [Memfault remote debugging](applications/ppp/memfault.md)), then go to **Admin** > **Organization Auth Tokens**. The slugs are part of the project URL.
-
-> [!NOTE]
-> Devices are assigned to the `default` cohort when they first connect, and this guide deploys the release there. A release deployed to `default` is offered to every device in the project with the same hardware version and software type that runs an older version.
+- A device that is provisioned, onboarded to nRF Cloud, and logs `Cloud connected`. See the getting-started guide for [an nRF54 DK](getting-started/ppp-nrf54.md) or [the nRF93M1 DK](getting-started/ppp-nrf93m1.md).
+- The `memfault` CLI for nRF Cloud: `pip3 install memfault-cli`.
+- An organization auth token and the organization and project slugs. Login to nRF Cloud then go to **Admin** > **Organization Auth Tokens** to generate one.
 
 ## Release parameters
 
@@ -126,8 +123,6 @@ nRF Cloud can take up to a minute to offer a newly deployed release. If the poll
 
 ### 4. Wait for the device to reboot
 
-A download of about 540 KiB over cellular takes four to five minutes. When it completes, the device logs the following and reboots:
-
 ```text
 <inf> main: FOTA successful, rebooting to apply the update
 ```
@@ -146,29 +141,9 @@ The software version must be `1.0.1+0`. The device also shows the new version in
 
 ### 6. Deactivate the release when testing
 
-While a release is deployed, it is offered to every device in the cohort that runs an older version. When you test repeatedly and reflash older firmware, deactivate the release afterward so the device does not update again:
+While a release is deployed, it is offered to every device in the cohort that runs an older version.
 
 ```shell
 memfault --org-token $MEMFAULT_ORG_TOKEN --org $MEMFAULT_ORG --project $MEMFAULT_PROJECT \
     deploy-release --release-version 1.0.1+0 --cohort default --deactivate
 ```
-
-## Run the CI test locally
-
-The CI test automates the steps above. It builds the update, publishes and deploys it, runs `fota poll`, checks the new version, and cleans up the release. To run it against your own DK, point the hardware and cloud variables in [`.github/test/tests.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/.github/test/tests.yml) at your board, then run the following commands:
-
-```shell
-export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load ppp-application-fota-nrf93m1)"
-PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_fota/ -c tests/on_target/tests/pytest.ini -v
-```
-
-See [CI and contribution](ci-and-contribution.md) for the required environment variables.
-
-## Troubleshooting
-
-| Symptom | Fix |
-|---------|-----|
-| `upload-ota-payload` is rejected for the hardware version | The hardware version is bound to another software type in the project. Use the `--hardware-version` value from the [Release parameters](#release-parameters) table, which matches what the build reports. |
-| `fota poll` never finds the update | Check that the release is deployed to the `default` cohort, the device has not been moved to another cohort, and its version is higher than the version running on the device. |
-| The device updates again after reflashing old firmware | The release is still deployed. Deactivate it (step 6). |
-| The download fails to create a socket | `CONFIG_NET_SOCKETS_TLS_MAX_CONTEXTS` must be at least 2. See the [FOTA module](applications/ppp/modules/fota.md) configuration. |

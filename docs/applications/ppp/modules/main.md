@@ -14,10 +14,10 @@ The module subscribes to the channels of all enabled modules, plus its own priva
 | `cloud_chan` | Track the cloud connection state |
 | `fota_chan` | Coordinate firmware updates and the reboot that applies them |
 | `location_chan` | Forward Wi-Fi® scan results to the Cloud module |
-| `button_chan` | Start a synchronization or a Memfault post on a button press |
+| `button_chan` | Start a synchronization or a remote debugging data post on a button press |
 | `main_priv_chan` | Receive the periodic cloud synchronization trigger |
 
-The periodic synchronization runs on a dedicated workqueue rather than in the state machine. The delayed work only publishes `MAIN_PRIV_CLOUD_SYNCHRONIZATION` on the [private channel](../architecture.md#private-channels) `main_priv_chan` and reschedules itself, so that the work never touches the state machine directly, and the synchronization itself is performed in the `main()` thread like every other event.
+The periodic synchronization runs on a dedicated workqueue rather than in the state machine. The delayed work only publishes `MAIN_PRIV_CLOUD_SYNCHRONIZATION` on the [private channel](../../../architecture.md#private-channels) `main_priv_chan` and reschedules itself, so that the work never touches the state machine directly, and the synchronization itself is performed in the `main()` thread like every other event.
 
 ### State diagram
 
@@ -43,7 +43,7 @@ The following states are used by the module:
         - **STATE_SYNC_LOCATION:** Scanning for Wi-Fi access points and resolving location. Only present with the location overlay.
         - **STATE_SYNC_SHADOW:** Polling the device shadow.
         - **STATE_SYNC_FOTA:** Polling for a FOTA job. Its entry function cancels the periodic synchronization first, so a poll that turns into a download does not compete with device messages for the connection. Only present when the FOTA module is enabled.
-        - **STATE_SYNC_MEMFAULT:** Posting pending Memfault data.
+        - **STATE_SYNC_MEMFAULT:** Posting pending remote debugging data.
 
     - **STATE_FOTA:** A firmware download is in progress. Cloud synchronization is not scheduled in this state, so the download is not competing with device messages for the connection.
 
@@ -57,7 +57,7 @@ While the cloud connection is up, the module performs a synchronization every `C
 1. `LOCATION_SEARCH_TRIGGER`, when the application is built with the location overlay. Advances on `LOCATION_SEARCH_DONE`.
 1. `CLOUD_SHADOW_POLL_REQUEST`, to pick up any desired configuration from the device shadow. Advances on `CLOUD_SHADOW_POLLED`.
 1. `FOTA_POLL_REQUEST`, when the FOTA module is enabled. Advances on `FOTA_ABORTED`, or moves to `STATE_FOTA` on `FOTA_STARTING`.
-1. `CLOUD_MEMFAULT_POST_REQUEST`, to post any pending Memfault data. Advances on `CLOUD_MEMFAULT_POSTED`.
+1. `CLOUD_MEMFAULT_POST_REQUEST`, to post any pending remote debugging data. Advances on `CLOUD_MEMFAULT_POSTED`.
 
 Only `STATE_SYNC_IDLE` acts on the periodic trigger, so a synchronization already in progress is never restarted by the timer.
 
