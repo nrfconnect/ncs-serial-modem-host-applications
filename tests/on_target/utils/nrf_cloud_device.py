@@ -121,32 +121,31 @@ def delete_if_exists(device_id: str, expected_device_id: str) -> None:
 def delete_modem_if_exists(modem_uuid: str, expected_uuid: str) -> None:
     """Delete the configured DUT modem from the nRF Cloud fleet."""
     validated = assert_dut_modem_uuid(modem_uuid, expected_uuid)
-    if not device_exists(validated):
-        logger.info("DUT %s is not registered in nRF Cloud; nothing to delete", validated)
-        return
-
     logger.info("Deleting only the configured DUT %s from nRF Cloud", validated)
     status = _request("DELETE", _device_url(validated), api_key=_api_key())
-    if status not in {200, 202, 204}:
+    if status == 404:
+        logger.info("DUT %s is not registered in nRF Cloud; nothing to delete", validated)
+    elif status not in {200, 202, 204}:
         raise RuntimeError(f"Failed to delete device {validated}: HTTP {status}")
-    logger.info("DUT %s deleted", validated)
+    else:
+        logger.info("DUT %s deleted", validated)
 
 
 def unclaim_modem_if_claimed(modem_uuid: str, expected_uuid: str) -> None:
-    """Unclaim the configured DUT modem, so the next provisioning attempt is refused."""
-    validated = assert_dut_modem_uuid(modem_uuid, expected_uuid)
-    status = _request("GET", _claimed_device_url(validated), api_key=_api_key())
-    if status == 404:
-        logger.info("DUT %s is not claimed; nothing to unclaim", validated)
-        return
-    if status != 200:
-        raise RuntimeError(f"Unexpected status {status} checking claim of {validated}")
+    """Unclaim the configured DUT modem, so the next provisioning attempt is refused.
 
+    The delete is not preceded by a lookup: a 404 from a lookup cannot tell
+    "not claimed" from "not visible", and would skip the unclaim.
+    """
+    validated = assert_dut_modem_uuid(modem_uuid, expected_uuid)
     logger.info("Unclaiming only the configured DUT %s", validated)
     status = _request("DELETE", _claimed_device_url(validated), api_key=_api_key())
-    if status not in {200, 202, 204}:
+    if status == 404:
+        logger.info("DUT %s is not claimed; nothing to unclaim", validated)
+    elif status not in {200, 202, 204}:
         raise RuntimeError(f"Failed to unclaim device {validated}: HTTP {status}")
-    logger.info("DUT %s unclaimed", validated)
+    else:
+        logger.info("DUT %s unclaimed", validated)
 
 
 def claim_modem(attestation_token: str, modem_uuid: str, expected_uuid: str) -> None:
