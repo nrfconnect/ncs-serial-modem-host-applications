@@ -42,11 +42,11 @@ _CGSN_IMEI = re.compile(r"\+CGSN:\s*\"?(\d{15})\"?")
 _CONSOLE_IMEI = re.compile(r"IMEI:\s*(\d{15})")
 
 
-class _ShellCommandMissing(Exception):
+class ShellCommandMissing(Exception):
     """The running firmware does not have the `at` shell command."""
 
 
-def _send_at(
+def send_at(
     dut: types.SimpleNamespace, at_command: str, *, timeout: float
 ) -> str | None:
     """Run *at_command* through the host's `at` shell.
@@ -54,7 +54,10 @@ def _send_at(
     Returns the modem's response once it ends in `OK`, or None if the AT pipe is
     unavailable or no verdict arrives within *timeout*.
     """
-    shell_command = f'at "{at_command}"'
+    # The Zephyr shell drops double quotes from a double-quoted argument, so
+    # commands with quoted parameters (AT%REGJWT="<id>") go in single quotes.
+    quote = "'" if '"' in at_command else '"'
+    shell_command = f"at {quote}{at_command}{quote}"
     offset = len(dut.uart.snapshot_log())
 
     try:
@@ -73,7 +76,7 @@ def _send_at(
         if echo_index >= 0:
             response = tail[echo_index + len(at_command):]
             if SHELL_MISSING_RESPONSE in response:
-                raise _ShellCommandMissing(
+                raise ShellCommandMissing(
                     next(
                         line.strip()
                         for line in response.splitlines()
@@ -118,7 +121,7 @@ def _verify_captured_console(dut: types.SimpleNamespace, *, timeout: float) -> N
     different board entirely. That reads as a modem which acknowledges
     AT#XLOG=1 and then never logs, so compare identities rather than guess.
     """
-    response = _send_at(dut, QUERY_IMEI_AT_COMMAND, timeout=timeout)
+    response = send_at(dut, QUERY_IMEI_AT_COMMAND, timeout=timeout)
     if response is None:
         return
 
@@ -148,7 +151,7 @@ def _log_reported_state(dut: types.SimpleNamespace, *, timeout: float) -> None:
     holding only boot output: state 0 means the enable did not stick, while
     state 1 means the backend is on and the console path is where to look next.
     """
-    response = _send_at(dut, QUERY_LOGS_AT_COMMAND, timeout=timeout)
+    response = send_at(dut, QUERY_LOGS_AT_COMMAND, timeout=timeout)
     if response is None:
         logger.info("Serial Modem did not answer %s", QUERY_LOGS_AT_COMMAND)
         return
@@ -194,8 +197,8 @@ def enable_modem_application_logs(
 
     for attempt in range(1, attempts + 1):
         try:
-            confirmed = _send_at(dut, ENABLE_LOGS_AT_COMMAND, timeout=timeout) is not None
-        except _ShellCommandMissing as exc:
+            confirmed = send_at(dut, ENABLE_LOGS_AT_COMMAND, timeout=timeout) is not None
+        except ShellCommandMissing as exc:
             logger.warning(
                 "Host firmware has no `at` shell command (%s); it predates the "
                 "app modem-AT shell, so Serial Modem logs stay at boot output only",

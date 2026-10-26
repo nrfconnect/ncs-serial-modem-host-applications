@@ -209,10 +209,11 @@ def provision_dut(request: pytest.FixtureRequest, test_config: dict) -> types.Si
 def at_provision_dut(
     request: pytest.FixtureRequest, test_config: dict
 ) -> types.SimpleNamespace:
-    """Prepare an AT host DUT whose Serial Modem onboards itself to nRF Cloud.
+    """Prepare an AT host DUT whose modem is the nRF Cloud client.
 
     The modem UUID is the nRF Cloud device ID. It is deleted and unclaimed before
-    flashing, so the application finds an unclaimed device on its first attempt.
+    flashing, so the modem starts out unknown to nRF Cloud and the test onboards it
+    from scratch (AT#XNRFPROV on the Serial Modem, AT%REGJWT on the nRF93M1).
     """
     expected_uuid = load_expected_modem_uuid(test_config)
     delete_modem_if_exists(expected_uuid, expected_uuid)

@@ -82,6 +82,25 @@ tests:
     nrf_cloud:
       api_key_var: NRF_CLOUD_API_KEY
 
+  # AT host application on the nRF93M1 DK: the on-board modem is the nRF Cloud
+  # client, so the test onboards the modem UUID (device_id_var) with the
+  # registration JWT from AT%REGJWT. Runs on the same DK as ppp-provision-nrf93m1.
+  - id: 93m1_at-provision-nrf93m1
+    enabled: true
+    type: provision
+    pytest_dir: tests/on_target/tests/test_at_regjwt_provision/
+    app: 93m1_at
+    board: nrf93m1dk/nrf54l15/cpuapp/ns
+    board_type: nrf93m1
+    hardware:
+      segger_sn_var: CI_NRF93M1_PROVISION_SEGGER_SN
+      serial_port_var: CI_NRF93M1_PROVISION_SERIAL_PORT
+      # uart20 is VCOM0 on the nRF93M1 DK; VCOM1 carries the modem UART.
+      console_vcom: 0
+      device_id_var: CI_NRF93M1_PROVISION_MODEM_UUID
+    nrf_cloud:
+      api_key_var: NRF_CLOUD_API_KEY
+
   - id: ppp-provision-location-nrf54lm20b-nrf91
     enabled: true
     type: provision
