@@ -170,7 +170,15 @@ def upload_ota_payload(
         metadata["software_type"],
         software_version,
     )
-    _run_memfault_cli(command)
+    result = _run_memfault_cli(command)
+    # Memfault never replaces an existing payload, so the DUT would download the
+    # earlier build instead of this one.
+    if "was already uploaded" in f"{result.stdout}\n{result.stderr}":
+        raise RuntimeError(
+            f"Memfault release {software_version} already has an OTA payload for "
+            f"hardware version {metadata['hardware_version']}; the DUT would get "
+            "that earlier build instead of this one. Use a new software version."
+        )
 
 
 def _cohort_url(env: dict[str, str], cohort: str | None = None) -> str:

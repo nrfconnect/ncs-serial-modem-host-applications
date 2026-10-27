@@ -7,7 +7,11 @@ import time
 
 import pytest
 
-from utils.app_version import write_app_version
+from utils.app_version import (
+    memfault_software_version,
+    unique_memfault_software_version,
+    write_app_version,
+)
 from utils.flash_tools import (
     elf_image_path,
     signed_image_path,
@@ -167,9 +171,22 @@ def test_application_fota_via_cloud_sync(
             hardware_version=baseline_metadata["hardware_version"],
         )
 
-        logger.info("Build update firmware %s", update_semver)
+        update_software_version = unique_memfault_software_version(
+            update_semver, test_config["board_type"]
+        )
+        logger.info("Build update firmware %s (%s)", update_semver, update_software_version)
         write_app_version(dut.app_dir, update_semver)
-        west_build(dut.app_dir, dut.board)
+        # Only the Memfault version gets the run suffix; MCUboot keeps the plain
+        # MAJOR.MINOR.PATCH+TWEAK form imgtool accepts.
+        west_build(
+            dut.app_dir,
+            dut.board,
+            cmake_args=[
+                f'-D{app_name}_CONFIG_MEMFAULT_NCS_FW_VERSION="{update_software_version}"',
+                f'-D{app_name}_CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION='
+                f'"{memfault_software_version(update_semver)}"',
+            ],
+        )
         update_binary = signed_image_path(dut.app_dir, app_name)
         update_metadata = read_build_metadata(dut.app_dir, app_name)
         update_version = update_metadata["software_version"]
