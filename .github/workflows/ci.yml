@@ -34,7 +34,7 @@ jobs:
         uses: PaulHatch/semantic-version@v6.0.2
         with:
           tag_prefix: v
-          major_pattern: BREAKING CHANGE
+          major_pattern: "/^[a-z]+(\\(.+\\))?!:|BREAKING CHANGE/"
           minor_pattern: feat
           ignore_commits_pattern: "/^(chore|docs|style|refactor|perf|test|build|ci)(\\(.+\\))?:/"
 
