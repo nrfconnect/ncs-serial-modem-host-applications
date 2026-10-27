@@ -38,4 +38,4 @@ When you come back later, start the toolchain shell again (step 2.4) and go to `
 
 ---
 
-**Previous:** [Step 1: Choose your application](index.md) | **Next:** step 3 in your application guide, [PPP on an nRF54 DK](ppp-nrf54.md), [PPP on the nRF93M1 DK](ppp-nrf93m1.md), or [nRF93M1 AT](93m1-at.md)
+**Previous:** [Step 1: Choose your application](index.md) | **Next:** step 3 in your application guide, [PPP on an nRF54 DK](ppp-nrf54.md), [PPP on the nRF93M1 DK](ppp-nrf93m1.md), [nRF93M1 AT](93m1-at.md), or [nRF91 AT on an nRF54LM20B DK](91m1-at.md)
