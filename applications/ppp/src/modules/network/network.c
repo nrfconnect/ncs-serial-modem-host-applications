@@ -14,6 +14,7 @@
 
 #include "app_common.h"
 #include "network.h"
+#include "modules/modem_power/modem_power.h"
 
 LOG_MODULE_REGISTER(network, CONFIG_APP_NETWORK_LOG_LEVEL);
 
@@ -140,6 +141,10 @@ static enum smf_state_result state_disconnected_run(void *obj)
 static void state_connected_entry(void *obj)
 {
 	ARG_UNUSED(obj);
+
+#if IS_ENABLED(CONFIG_APP_MODEM_POWER)
+	modem_power_saving_configure();
+#endif
 
 	LOG_DBG("Network module connected");
 }

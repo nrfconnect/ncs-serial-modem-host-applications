@@ -15,4 +15,10 @@ modem: modem {
 	mdm-dtr-gpios = <&gpio1 11 GPIO_ACTIVE_LOW>;
 	zephyr,pm-device-runtime-auto;
 	autostarts;
+	/* The Serial Modem powers down its UART when DTR is deasserted and asserts RI when
+	 * it has data for the host. Close the host UART after 2 s without traffic.
+	 */
+	cmux-enable-runtime-power-save;
+	cmux-close-pipe-on-power-save;
+	cmux-idle-timeout-ms = <2000>;
 };
