@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import os
 import re
+import time
 from pathlib import Path
 
 _SEMVER = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
@@ -32,6 +33,24 @@ def memfault_software_version(semver: str) -> str:
     if not _SEMVER.match(semver):
         raise ValueError(f"Invalid semver: {semver!r} (expected MAJOR.MINOR.PATCH)")
     return f"{semver}+0"
+
+
+def unique_memfault_software_version(semver: str, board_type: str) -> str:
+    """Memfault version for a FOTA update build, unique to this test run.
+
+    Memfault keeps the first OTA payload uploaded for a release and hardware
+    version and only reports later uploads as "already uploaded". Reusing
+    1.0.1+0 across runs therefore serves the DUT whatever build claimed the
+    release first, possibly from another branch or NCS revision. A run-specific
+    build metadata suffix gives every run its own release.
+    """
+    run_id = os.environ.get("GITHUB_RUN_ID", "").strip()
+    if run_id:
+        attempt = os.environ.get("GITHUB_RUN_ATTEMPT", "1").strip() or "1"
+        token = f"ci.{run_id}.{attempt}"
+    else:
+        token = f"local.{time.strftime('%Y%m%d%H%M%S', time.gmtime())}"
+    return f"{memfault_software_version(semver)}.{token}.{board_type}"
 
 
 def parse_memfault_software_version(software_version: str) -> str:
