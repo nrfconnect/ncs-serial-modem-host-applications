@@ -35,7 +35,7 @@ from utils.helpers import (
     load_expected_modem_uuid,
     load_test_config,
 )
-from utils.nrf_cloud_device import delete_modem_if_exists, unclaim_modem_if_claimed
+from utils.nrf_cloud_device import delete_modem_if_exists
 from utils.logger import get_logger
 from utils.provisioning_config import flash_recover_enabled, nrf_cloud_cleanup_enabled
 from utils.serial_port import resolve_modem_serial_port, resolve_serial_port
@@ -211,13 +211,12 @@ def at_provision_dut(
 ) -> types.SimpleNamespace:
     """Prepare an AT host DUT whose modem is the nRF Cloud client.
 
-    The modem UUID is the nRF Cloud device ID. It is deleted and unclaimed before
-    flashing, so the modem starts out unknown to nRF Cloud and the test onboards it
-    from scratch (AT#XNRFPROV on the Serial Modem, AT%REGJWT on the nRF93M1).
+    The modem UUID is the nRF Cloud device ID. It is deleted, which also unclaims it,
+    before flashing, so the modem starts out unknown to nRF Cloud and the test onboards
+    it from scratch (AT#XNRFPROV on the Serial Modem, AT%REGJWT on the nRF93M1).
     """
     expected_uuid = load_expected_modem_uuid(test_config)
     delete_modem_if_exists(expected_uuid, expected_uuid)
-    unclaim_modem_if_claimed(expected_uuid, expected_uuid)
 
     dut = _prepare_baseline_firmware(test_config, recover=True)
     dut.expected_uuid = expected_uuid

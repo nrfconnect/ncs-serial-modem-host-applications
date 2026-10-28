@@ -14,7 +14,7 @@ import pytest
 from utils.helpers import MODEM_UUID_LOG_RE, assert_dut_modem_uuid
 from utils.logger import get_logger
 from utils.modem_logs import send_at
-from utils.nrf_cloud_device import device_exists, fetch_tenant_id, onboard_modem_with_jwt
+from utils.nrf_cloud_device import device_exists, onboard_modem_with_jwt
 
 logger = get_logger()
 
@@ -64,9 +64,9 @@ def _wait_for_unauthorized(uart, modem_uuid: str) -> None:
         if LOCATION_FIX_RE.search(captured):
             pytest.fail(
                 f"DUT {modem_uuid} got a location fix before onboarding. It is still "
-                "onboarded in an nRF Cloud account other than the one NRF_CLOUD_API_KEY "
-                "belongs to, so the test cannot remove it. Delete the device in that "
-                "account (Devices > Delete Device) and rerun."
+                "onboarded in an nRF Cloud project other than MEMFAULT_PROJECT, so the "
+                "test cannot remove it. Delete the device in that project "
+                "(Devices > Delete Device) and rerun."
             )
         time.sleep(1)
     raise TimeoutError(
@@ -74,18 +74,16 @@ def _wait_for_unauthorized(uart, modem_uuid: str) -> None:
     )
 
 
-def _org_credentials(test_config: dict) -> dict[str, str]:
-    """Return the organization, project and auth token that onboarding posts with."""
-    nrf_cloud = test_config.get("nrf_cloud", {})
-    names = {
-        "org": nrf_cloud.get("org_var", "MEMFAULT_ORG"),
-        "project": nrf_cloud.get("project_var", "MEMFAULT_PROJECT"),
-        "org_token": nrf_cloud.get("org_token_var", "MEMFAULT_ORG_TOKEN"),
-    }
-    missing = [name for name in names.values() if not os.environ.get(name)]
-    if missing:
-        raise RuntimeError(f"nRF Cloud organization variables must be set: {', '.join(missing)}")
-    return {key: os.environ[name] for key, name in names.items()}
+def _tenant_id(test_config: dict) -> str:
+    """Return the nRF Cloud tenant ID, the identifier a registration JWT binds to.
+
+    The Organization Auth Token cannot read it from nRF Cloud, so CI provides it.
+    """
+    name = test_config.get("nrf_cloud", {}).get("tenant_id_var", "NRF_CLOUD_TENANT_ID")
+    tenant_id = os.environ.get(name)
+    if not tenant_id:
+        raise RuntimeError(f"{name} must be set to the nRF Cloud tenant ID")
+    return tenant_id
 
 
 def _registration_jwt(dut, tenant_id: str) -> str:
@@ -137,7 +135,7 @@ def _wait_for_location_fix(uart) -> str:
 def test_at_regjwt_provision(at_provision_dut, test_config: dict) -> None:
     """Onboard the removed DUT modem with a registration JWT and verify a cloud round trip."""
     dut = at_provision_dut
-    org_credentials = _org_credentials(test_config)
+    tenant_id = _tenant_id(test_config)
 
     logger.info("Wait for LTE and the modem UUID")
     dut.uart.wait_for_substring(NETWORK_CONNECTED_LOG, timeout=NETWORK_CONNECT_TIMEOUT)
@@ -147,14 +145,13 @@ def test_at_regjwt_provision(at_provision_dut, test_config: dict) -> None:
     logger.info("Check that nRF Cloud refuses the modem before onboarding")
     _wait_for_unauthorized(dut.uart, modem_uuid)
 
-    tenant_id = fetch_tenant_id()
     registration_jwt = _registration_jwt(dut, tenant_id)
     claims = _jwt_claims(registration_jwt)
     subject = str(claims.get("sub", "")).lower()
     assert subject == dut.expected_uuid, f"JWT sub {subject!r} is not the DUT"
     assert claims.get("id") == tenant_id, f"JWT id {claims.get('id')!r} is not the tenant ID"
 
-    onboard_modem_with_jwt(registration_jwt, modem_uuid, dut.expected_uuid, **org_credentials)
+    onboard_modem_with_jwt(registration_jwt, modem_uuid, dut.expected_uuid)
 
     deadline = time.monotonic() + DEVICE_LISTED_TIMEOUT
     while not device_exists(dut.expected_uuid):

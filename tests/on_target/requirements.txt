@@ -3,4 +3,4 @@ pytest-html
 pyserial
 pyyaml
 nrfcloud-utils
-memfault-cli
+memfault-cli>=1.12.0

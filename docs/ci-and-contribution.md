@@ -131,6 +131,8 @@ Example for the test rig (DUT 2):
 
 Both runners need Docker and USB access to their DKs (`--privileged -v /dev:/dev` in the test workflow containers). Set the GitHub repository variables for each rig on the same repo (`CI_NRF54L15_PROVISION_*` and `CI_NRF54L15_PROVISION_SERIAL_MODEM_*` for DUT 1, `CI_NRF54L15_*` and `CI_NRF54L15_SERIAL_MODEM_*` for DUT 2, `CI_NRF54LM20B_PROVISION_*` and `CI_NRF54LM20B_PROVISION_SERIAL_MODEM_*` for DUT 3, `CI_NRF93M1_PROVISION_*` for DUT 4, `CI_NRF93M1_*` for DUT 5). The provisioning runner needs access to DUT 1, DUT 3 and DUT 4, and the test runner to DUT 2 and DUT 5; tests select their board by SEGGER serial number, so the DKs can share one runner host.
 
+The tests onboard, look up and delete devices in the linked nRF Cloud project with a Memfault Organization Auth Token, as in the [nRF Cloud device onboarding quickstart](https://docs.nrfcloud.com/docs/best-practices/device-onboarding-quickstart): the `MEMFAULT_ORG_TOKEN` secret and the `MEMFAULT_ORG` and `MEMFAULT_PROJECT` variables. Deleting a device also releases its claim. `93m1_at-provision-nrf93m1` also needs the `NRF_CLOUD_TENANT_ID` variable, the tenant that `AT%REGJWT` binds the registration JWT to. For a local run, export the same names.
+
 On-target tests for the nRF54 hosts flash the newest upstream Serial Modem release that ships the external-MCU zip on the nRF9151 DK before programming the host.
 
 The test DUT must be provisioned once (manually or by running the provisioning flow locally against it). CI flashes baseline firmware without recovery, so TF-M credentials persist. FOTA and coredump do not remove the device from nRF Cloud after each run.
