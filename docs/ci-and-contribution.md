@@ -26,6 +26,7 @@ A nightly schedule on `main` runs the [Build, Test, and Release workflow](https:
 1. Build all applications and upload firmware artifacts.
 1. Run on-target hardware tests against the prebuilt firmware and locked Serial Modem tag.
 1. Create a GitHub Release when commits since the last tag warrant a version bump (`feat`, `fix`, or `BREAKING CHANGE`).
+1. After a release, open and merge a `chore` pull request that sets the application `VERSION` files to the released version.
 
 You can trigger the full pipeline manually from the Actions tab (`workflow_dispatch`). Individual workflows (`Build`, `Test`, `Release`) remain independently triggerable.
 
@@ -44,7 +45,7 @@ The version is derived from conventional commit prefixes in merged commits:
 | `BREAKING CHANGE` or `type!:` | Major |
 | `chore:`, `docs:`, `ci:`, and so on | No release |
 
-Firmware built for a release embeds that version through each application's [`VERSION`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/VERSION) file. The CI build step overwrites `VERSION` from the resolved semver before compiling (without committing the change). The Memfault SDK reports it to nRF Cloud through nRF Connect SDK (`CONFIG_MEMFAULT_NCS_FW_VERSION_STATIC` defaults to `APP_VERSION_TWEAK_STRING`). The `VERSION` files checked into the repository are for local development only.
+Firmware built for a release embeds that version through each application's [`VERSION`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/VERSION) file. The CI build step overwrites `VERSION` from the resolved semver before compiling (without committing the change). The Memfault SDK reports it to nRF Cloud through nRF Connect SDK (`CONFIG_MEMFAULT_NCS_FW_VERSION_STATIC` defaults to `APP_VERSION_TWEAK_STRING`). The `VERSION` files checked into the repository track the latest release: after each release, the Release workflow opens a `chore: applications: set VERSION to X.Y.Z` pull request and merges it. The tagged commit precedes that sync commit, which is why the build still overwrites the files. Do not bump them by hand. If the merge is blocked, the workflow logs a warning and leaves the pull request open for a maintainer.
 
 FOTA hardware tests on `main` use the same release semver as the baseline: CI passes `FIRMWARE_VERSION` to the Test workflow, flashes the Build artifact's `merged.hex` without rebuilding, then builds and deploys a patch-bumped update image (for example, `1.2.3` → `1.2.4`) for OTA verification. Local runs fall back to `baseline_version` in [`.github/test/tests.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/.github/test/tests.yml) and flash with `west flash --recover`.
 
