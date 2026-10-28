@@ -52,9 +52,9 @@ def _wait_for_not_claimed_token(uart, modem_uuid: str) -> str:
         if PROVISIONING_DONE_LOG in captured:
             pytest.fail(
                 f"DUT {modem_uuid} finished provisioning without a claim from this test. "
-                "It is still claimed by an nRF Cloud account other than the one "
-                "NRF_CLOUD_API_KEY belongs to, so the test cannot unclaim it. Delete the "
-                "device in that account (Devices > Delete Device) and rerun."
+                "It is still claimed by an nRF Cloud project other than MEMFAULT_PROJECT, "
+                "so the test cannot unclaim it. Delete the device in that project "
+                "(Devices > Delete Device) and rerun."
             )
         time.sleep(1)
     raise TimeoutError(

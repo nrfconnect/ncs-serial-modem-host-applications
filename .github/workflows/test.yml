@@ -41,7 +41,8 @@
 # - Two self-hosted Linux runners with USB access to their DK rig (container: --privileged -v /dev:/dev)
 # - SEGGER J-Link is installed in the job container (see run-hardware-test action)
 # - Self-signed CA certificate and private key stored in GitHub secrets
-# - nRF Cloud API key with permission to onboard/delete devices
+# - Memfault Organization Auth Token for the linked nRF Cloud project, used to
+#   onboard and delete devices (https://docs.nrfcloud.com/docs/best-practices/device-onboarding-quickstart)
 #
 # GitHub variables (DUT 1 — provisioning):
 #   CI_NRF54L15_PROVISION_SEGGER_SN
@@ -77,12 +78,15 @@
 #   CI_NRF93M1_SERIAL_PORT  (optional)
 #
 # GitHub secrets:
-#   NRF_CLOUD_API_KEY, NRF_CLOUD_CA_CERT, NRF_CLOUD_CA_KEY, MEMFAULT_ORG_TOKEN
+#   NRF_CLOUD_CA_CERT, NRF_CLOUD_CA_KEY, MEMFAULT_ORG_TOKEN
 #
 # GitHub variables (Memfault, linked nRF Cloud project):
 #   MEMFAULT_ORG, MEMFAULT_PROJECT
 #   MEMFAULT_COHORT (optional fallback; tests define dedicated cohorts in tests.yml)
 #   MEMFAULT_FLEET_SAMPLING_CONFIGURATION (optional fleet sampling config ID for dev mode)
+#
+# GitHub variables (nRF Cloud):
+#   NRF_CLOUD_TENANT_ID (tenant that AT%REGJWT binds the nRF93M1 registration JWT to)
 
 name: Test
 
@@ -201,7 +205,6 @@ jobs:
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
       SERIAL_MODEM_RELEASE: ${{ inputs.serial_modem_release }}
-      NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
       NRF_CLOUD_CA_CERT: ${{ secrets.NRF_CLOUD_CA_CERT }}
       NRF_CLOUD_CA_KEY: ${{ secrets.NRF_CLOUD_CA_KEY }}
       CI_NRF54L15_PROVISION_SEGGER_SN: ${{ vars.CI_NRF54L15_PROVISION_SEGGER_SN }}
@@ -241,7 +244,6 @@ jobs:
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
       SERIAL_MODEM_RELEASE: ${{ inputs.serial_modem_release }}
-      NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
       NRF_CLOUD_CA_CERT: ${{ secrets.NRF_CLOUD_CA_CERT }}
       NRF_CLOUD_CA_KEY: ${{ secrets.NRF_CLOUD_CA_KEY }}
       CI_NRF54LM20B_PROVISION_SEGGER_SN: ${{ vars.CI_NRF54LM20B_PROVISION_SEGGER_SN }}
@@ -281,12 +283,14 @@ jobs:
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
       SERIAL_MODEM_RELEASE: ${{ inputs.serial_modem_release }}
-      NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
       CI_NRF54LM20B_PROVISION_SEGGER_SN: ${{ vars.CI_NRF54LM20B_PROVISION_SEGGER_SN }}
       CI_NRF54LM20B_PROVISION_SERIAL_MODEM_SEGGER_SN: ${{ vars.CI_NRF54LM20B_PROVISION_SERIAL_MODEM_SEGGER_SN }}
       CI_NRF54LM20B_PROVISION_SERIAL_PORT: ${{ vars.CI_NRF54LM20B_PROVISION_SERIAL_PORT }}
       CI_NRF54LM20B_PROVISION_SERIAL_MODEM_SERIAL_PORT: ${{ vars.CI_NRF54LM20B_PROVISION_SERIAL_MODEM_SERIAL_PORT }}
       CI_NRF54LM20B_PROVISION_MODEM_UUID: ${{ vars.CI_NRF54LM20B_PROVISION_MODEM_UUID }}
+      MEMFAULT_ORG_TOKEN: ${{ secrets.MEMFAULT_ORG_TOKEN }}
+      MEMFAULT_ORG: ${{ vars.MEMFAULT_ORG }}
+      MEMFAULT_PROJECT: ${{ vars.MEMFAULT_PROJECT }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -313,10 +317,10 @@ jobs:
     env:
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
-      NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
       CI_NRF93M1_PROVISION_SEGGER_SN: ${{ vars.CI_NRF93M1_PROVISION_SEGGER_SN }}
       CI_NRF93M1_PROVISION_SERIAL_PORT: ${{ vars.CI_NRF93M1_PROVISION_SERIAL_PORT }}
       CI_NRF93M1_PROVISION_MODEM_UUID: ${{ vars.CI_NRF93M1_PROVISION_MODEM_UUID }}
+      NRF_CLOUD_TENANT_ID: ${{ vars.NRF_CLOUD_TENANT_ID }}
       MEMFAULT_ORG_TOKEN: ${{ secrets.MEMFAULT_ORG_TOKEN }}
       MEMFAULT_ORG: ${{ vars.MEMFAULT_ORG }}
       MEMFAULT_PROJECT: ${{ vars.MEMFAULT_PROJECT }}
@@ -347,7 +351,6 @@ jobs:
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
       SERIAL_MODEM_RELEASE: ${{ inputs.serial_modem_release }}
-      NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
       NRF_CLOUD_CA_CERT: ${{ secrets.NRF_CLOUD_CA_CERT }}
       NRF_CLOUD_CA_KEY: ${{ secrets.NRF_CLOUD_CA_KEY }}
       CI_NRF54LM20B_PROVISION_SEGGER_SN: ${{ vars.CI_NRF54LM20B_PROVISION_SEGGER_SN }}
@@ -386,7 +389,6 @@ jobs:
     env:
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
-      NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
       NRF_CLOUD_CA_CERT: ${{ secrets.NRF_CLOUD_CA_CERT }}
       NRF_CLOUD_CA_KEY: ${{ secrets.NRF_CLOUD_CA_KEY }}
       CI_NRF93M1_PROVISION_SEGGER_SN: ${{ vars.CI_NRF93M1_PROVISION_SEGGER_SN }}
@@ -424,7 +426,6 @@ jobs:
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
       SERIAL_MODEM_RELEASE: ${{ inputs.serial_modem_release }}
-      NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
       NRF_CLOUD_CA_CERT: ${{ secrets.NRF_CLOUD_CA_CERT }}
       NRF_CLOUD_CA_KEY: ${{ secrets.NRF_CLOUD_CA_KEY }}
       CI_NRF54L15_SEGGER_SN: ${{ vars.CI_NRF54L15_SEGGER_SN }}
@@ -464,7 +465,6 @@ jobs:
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
       SERIAL_MODEM_RELEASE: ${{ inputs.serial_modem_release }}
-      NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
       NRF_CLOUD_CA_CERT: ${{ secrets.NRF_CLOUD_CA_CERT }}
       NRF_CLOUD_CA_KEY: ${{ secrets.NRF_CLOUD_CA_KEY }}
       CI_NRF54L15_SEGGER_SN: ${{ vars.CI_NRF54L15_SEGGER_SN }}
@@ -504,7 +504,6 @@ jobs:
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
       SERIAL_MODEM_RELEASE: ${{ inputs.serial_modem_release }}
-      NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
       NRF_CLOUD_CA_CERT: ${{ secrets.NRF_CLOUD_CA_CERT }}
       NRF_CLOUD_CA_KEY: ${{ secrets.NRF_CLOUD_CA_KEY }}
       CI_NRF54LM20B_PROVISION_SEGGER_SN: ${{ vars.CI_NRF54LM20B_PROVISION_SEGGER_SN }}
@@ -543,7 +542,6 @@ jobs:
     env:
       CI_USE_PREBUILT_FIRMWARE: ${{ inputs.use_prebuilt_firmware && '1' || '0' }}
       FIRMWARE_VERSION: ${{ inputs.firmware_version }}
-      NRF_CLOUD_API_KEY: ${{ secrets.NRF_CLOUD_API_KEY }}
       NRF_CLOUD_CA_CERT: ${{ secrets.NRF_CLOUD_CA_CERT }}
       NRF_CLOUD_CA_KEY: ${{ secrets.NRF_CLOUD_CA_KEY }}
       CI_NRF93M1_SEGGER_SN: ${{ vars.CI_NRF93M1_SEGGER_SN }}

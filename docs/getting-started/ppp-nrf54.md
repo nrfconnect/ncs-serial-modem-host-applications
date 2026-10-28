@@ -154,14 +154,14 @@ Each Board Configurator switch connects or disconnects a group of DK pins from t
 
 ## Step 5: Connect to nRF Cloud
 
-The host connects to nRF Cloud with its own certificate and private key. You create a certificate authority (CA) once, use it to install credentials on the device, and register the device in your nRF Cloud account.
+The host connects to nRF Cloud with its own certificate and private key. You create a certificate authority (CA) once, use it to install credentials on the device, and register the device in your nRF Cloud project.
 
 Run the following commands from a normal terminal, not the toolchain shell. Keep the host console port free, because the credential installer uses it. Close the serial terminal on that port first.
 
 1. Install the nRF Cloud command-line tools (once per computer):
 
     ```shell
-    pip3 install nrfcloud-utils
+    pip3 install nrfcloud-utils "memfault-cli>=1.12.0"
     ```
 
 1. Create a self-signed CA certificate (once, reuse it for all your devices). Replace `US` with your two-letter country code:
@@ -192,11 +192,14 @@ Run the following commands from a normal terminal, not the toolchain shell. Keep
 
     The command also saves the device certificate and private key as PEM files in the current directory. Delete the device private key file afterwards.
 
-1. Register the device in your nRF Cloud account. Get an API key from your [nRF Cloud user account](https://nrfcloud.nordicsemi.com/):
+1. Register the device in your nRF Cloud project, as described in the [device onboarding quickstart](https://docs.nrfcloud.com/docs/best-practices/device-onboarding-quickstart). In the [nRF Cloud dashboard](https://nrfcloud.nordicsemi.com/), create an Organization Auth Token under **Admin** > **Organization Auth Tokens**, and copy the organization and project slugs from **Project Settings** > **General**. Then run:
 
     ```shell
-    nrf_cloud_onboard --api-key <your_api_key> --csv onboard.csv
+    nrfcloud --org-token <org_auth_token> --org <org_slug> --project <project_slug> \
+      device create --csv onboard.csv
     ```
+
+    The command prints `<device_id>: OK` when nRF Cloud has created the device.
 
 1. Open the serial terminal on the host console again.
 

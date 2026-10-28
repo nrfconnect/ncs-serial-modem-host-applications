@@ -16,7 +16,6 @@ tests:
       serial_port_var: CI_NRF54L15_PROVISION_SERIAL_MODEM_SERIAL_PORT
       console_vcom: 1
     nrf_cloud:
-      api_key_var: NRF_CLOUD_API_KEY
       ca_cert_var: NRF_CLOUD_CA_CERT
       ca_key_var: NRF_CLOUD_CA_KEY
     memfault:
@@ -47,7 +46,6 @@ tests:
       serial_port_var: CI_NRF54LM20B_PROVISION_SERIAL_MODEM_SERIAL_PORT
       console_vcom: 1
     nrf_cloud:
-      api_key_var: NRF_CLOUD_API_KEY
       ca_cert_var: NRF_CLOUD_CA_CERT
       ca_key_var: NRF_CLOUD_CA_KEY
     memfault:
@@ -79,8 +77,6 @@ tests:
       segger_sn_var: CI_NRF54LM20B_PROVISION_SERIAL_MODEM_SEGGER_SN
       serial_port_var: CI_NRF54LM20B_PROVISION_SERIAL_MODEM_SERIAL_PORT
       console_vcom: 1
-    nrf_cloud:
-      api_key_var: NRF_CLOUD_API_KEY
 
   # AT host application on the nRF93M1 DK: the on-board modem is the nRF Cloud
   # client, so the test onboards the modem UUID (device_id_var) with the
@@ -99,12 +95,9 @@ tests:
       console_vcom: 0
       device_id_var: CI_NRF93M1_PROVISION_MODEM_UUID
     nrf_cloud:
-      api_key_var: NRF_CLOUD_API_KEY
-      # Onboarding goes through the linked project's bulk endpoint, which takes
-      # the organization auth token rather than the legacy API key.
-      org_token_var: MEMFAULT_ORG_TOKEN
-      org_var: MEMFAULT_ORG
-      project_var: MEMFAULT_PROJECT
+      # AT%REGJWT binds the JWT to this tenant. The organization auth token
+      # cannot read it from nRF Cloud, so CI provides it.
+      tenant_id_var: NRF_CLOUD_TENANT_ID
 
   - id: ppp-provision-location-nrf54lm20b-nrf91
     enabled: true
@@ -130,7 +123,6 @@ tests:
       serial_port_var: CI_NRF54LM20B_PROVISION_SERIAL_MODEM_SERIAL_PORT
       console_vcom: 1
     nrf_cloud:
-      api_key_var: NRF_CLOUD_API_KEY
       ca_cert_var: NRF_CLOUD_CA_CERT
       ca_key_var: NRF_CLOUD_CA_KEY
     memfault:
@@ -160,7 +152,6 @@ tests:
       console_vcom: 0
       device_id_var: CI_NRF93M1_PROVISION_DEVICE_ID
     nrf_cloud:
-      api_key_var: NRF_CLOUD_API_KEY
       ca_cert_var: NRF_CLOUD_CA_CERT
       ca_key_var: NRF_CLOUD_CA_KEY
     memfault:
@@ -188,7 +179,6 @@ tests:
       console_vcom: 0
       device_id_var: CI_NRF93M1_DEVICE_ID
     nrf_cloud:
-      api_key_var: NRF_CLOUD_API_KEY
       ca_cert_var: NRF_CLOUD_CA_CERT
       ca_key_var: NRF_CLOUD_CA_KEY
     memfault:
@@ -219,7 +209,6 @@ tests:
       serial_port_var: CI_NRF54L15_SERIAL_MODEM_SERIAL_PORT
       console_vcom: 1
     nrf_cloud:
-      api_key_var: NRF_CLOUD_API_KEY
       ca_cert_var: NRF_CLOUD_CA_CERT
       ca_key_var: NRF_CLOUD_CA_KEY
     memfault:
@@ -250,7 +239,6 @@ tests:
       serial_port_var: CI_NRF54L15_SERIAL_MODEM_SERIAL_PORT
       console_vcom: 1
     nrf_cloud:
-      api_key_var: NRF_CLOUD_API_KEY
       ca_cert_var: NRF_CLOUD_CA_CERT
       ca_key_var: NRF_CLOUD_CA_KEY
     memfault:
@@ -281,7 +269,6 @@ tests:
       serial_port_var: CI_NRF54LM20B_PROVISION_SERIAL_MODEM_SERIAL_PORT
       console_vcom: 1
     nrf_cloud:
-      api_key_var: NRF_CLOUD_API_KEY
       ca_cert_var: NRF_CLOUD_CA_CERT
       ca_key_var: NRF_CLOUD_CA_KEY
     memfault:

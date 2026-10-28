@@ -57,14 +57,14 @@ The host and the modem are on the same DK, so there is no wiring. This guide onl
 
 ## Step 5: Connect to nRF Cloud
 
-The host connects to nRF Cloud with its own certificate and private key. You create a certificate authority (CA) once, use it to install credentials on the device, and register the device in your nRF Cloud account.
+The host connects to nRF Cloud with its own certificate and private key. You create a certificate authority (CA) once, use it to install credentials on the device, and register the device in your nRF Cloud project.
 
 Run the following commands from a normal terminal, not the toolchain shell. The credential installer uses the console port, so close the serial terminal on VCOM0 first.
 
 1. Install the nRF Cloud command-line tools (once per computer):
 
     ```shell
-    pip3 install nrfcloud-utils
+    pip3 install nrfcloud-utils "memfault-cli>=1.12.0"
     ```
 
 1. Create a self-signed CA certificate (once, reuse it for all your devices). Replace `US` with your two-letter country code:
@@ -88,11 +88,14 @@ Run the following commands from a normal terminal, not the toolchain shell. The 
 
     On success, it saves an onboarding file named `onboard.csv`. The command also saves the device certificate and private key as PEM files in the current directory. Delete the device private key file afterwards.
 
-1. Register the device in your nRF Cloud account. Get an API key from your [nRF Cloud user account](https://nrfcloud.nordicsemi.com/):
+1. Register the device in your nRF Cloud project, as described in the [device onboarding quickstart](https://docs.nrfcloud.com/docs/best-practices/device-onboarding-quickstart). In the [nRF Cloud dashboard](https://nrfcloud.nordicsemi.com/), create an Organization Auth Token under **Admin** > **Organization Auth Tokens**, and copy the organization and project slugs from **Project Settings** > **General**. Then run:
 
     ```shell
-    nrf_cloud_onboard --api-key <your_api_key> --csv onboard.csv
+    nrfcloud --org-token <org_auth_token> --org <org_slug> --project <project_slug> \
+      device create --csv onboard.csv
     ```
+
+    The command prints `<device_id>: OK` when nRF Cloud has created the device.
 
 1. Open the serial terminal on VCOM0 again.
 
@@ -109,7 +112,7 @@ If the CA certificate or private key is missing, each attempt logs what is missi
 <wrn> cloud:   - CA cert (run device_credentials_installer --coap)
 ```
 
-If the connection is refused, check that you onboarded the host **Device ID** from the boot log, not the modem UUID, and re-run `nrf_cloud_onboard`.
+If the connection is refused, check that you onboarded the host **Device ID** from the boot log, not the modem UUID, and re-run `nrfcloud device create`.
 
 ## Step 6: Verify
 
