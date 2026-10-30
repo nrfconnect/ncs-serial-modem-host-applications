@@ -34,6 +34,10 @@
 #include "modules/buttons/buttons.h"
 #endif /* CONFIG_APP_BUTTONS */
 
+#if defined(CONFIG_APP_LED)
+#include "modules/led/led.h"
+#endif /* CONFIG_APP_LED */
+
 LOG_MODULE_REGISTER(main, CONFIG_APP_MAIN_LOG_LEVEL);
 
 BUILD_ASSERT(CONFIG_APP_MAIN_WATCHDOG_TIMEOUT_SECONDS >
@@ -82,6 +86,41 @@ CHANNEL_LIST(ADD_OBSERVERS)
 /** Demo cloud payload template */
 #define DEMO_CLOUD_PAYLOAD_FMT \
 	"{\"appId\":\"SMHA\",\"messageType\":\"DATA\",\"data\":\"hello\",\"timestamp\":%lld}"
+
+#if defined(CONFIG_APP_LED)
+/** Slow red blink while the cloud is not connected. */
+static const struct led_msg led_pattern_disconnected = {
+	.type = LED_RGB_SET,
+	.red = 255,
+	.duration_on_msec = 250,
+	.duration_off_msec = 5000,
+	.repetitions = -1,
+};
+
+/** Solid green while a cloud synchronization is transmitting data. */
+static const struct led_msg led_pattern_sync = {
+	.type = LED_RGB_SET,
+	.green = 255,
+	.repetitions = -1,
+};
+
+/** Short green pulse every minute between synchronizations, to show the device is alive. */
+static const struct led_msg led_pattern_idle = {
+	.type = LED_RGB_SET,
+	.green = 255,
+	.duration_on_msec = 50,
+	.duration_off_msec = 60000,
+	.repetitions = -1,
+};
+
+/** Solid purple while a FOTA download is in progress. */
+static const struct led_msg led_pattern_fota = {
+	.type = LED_RGB_SET,
+	.red = 255,
+	.blue = 255,
+	.repetitions = -1,
+};
+#endif /* CONFIG_APP_LED */
 
 /** Application SMF states. */
 enum main_app_state {
@@ -475,6 +514,19 @@ static void battery_sample_handler(struct k_work *work)
 }
 #endif /* CONFIG_APP_BATTERY */
 
+#if defined(CONFIG_APP_LED)
+static void led_pattern_set(const struct led_msg *pattern)
+{
+	int err;
+
+	err = zbus_chan_pub(&led_chan, pattern, PUB_TIMEOUT);
+	if (err) {
+		LOG_ERR("zbus_chan_pub led_chan, error: %d", err);
+		FATAL_ERROR();
+	}
+}
+#endif /* CONFIG_APP_LED */
+
 #if defined(CONFIG_APP_FOTA)
 static void fota_running_state_restore(struct main_state *state_object)
 {
@@ -564,6 +616,10 @@ static void state_cloud_disconnected_entry(void *obj)
 	LOG_INF("state_cloud_disconnected_entry");
 
 	state_object->cloud_history = STATE_CLOUD_DISCONNECTED;
+
+#if defined(CONFIG_APP_LED)
+	led_pattern_set(&led_pattern_disconnected);
+#endif /* CONFIG_APP_LED */
 }
 
 static void state_cloud_disconnected_exit(void *obj)
@@ -651,6 +707,10 @@ static void state_sync_idle_entry(void *obj)
 	struct main_state *state_object = obj;
 
 	cloud_sync_schedule(state_object);
+
+#if defined(CONFIG_APP_LED)
+	led_pattern_set(&led_pattern_idle);
+#endif /* CONFIG_APP_LED */
 }
 
 static enum smf_state_result state_sync_idle_run(void *obj)
@@ -697,6 +757,10 @@ static void state_sync_demo_entry(void *obj)
 	ARG_UNUSED(obj);
 
 	LOG_INF("state_sync_demo_entry");
+
+#if defined(CONFIG_APP_LED)
+	led_pattern_set(&led_pattern_sync);
+#endif /* CONFIG_APP_LED */
 
 	demo_cloud_message_send();
 }
@@ -847,6 +911,10 @@ static void state_fota_entry(void *obj)
 
 	LOG_INF("state_fota_entry");
 	cloud_sync_cancel(state_object);
+
+#if defined(CONFIG_APP_LED)
+	led_pattern_set(&led_pattern_fota);
+#endif /* CONFIG_APP_LED */
 }
 
 static enum smf_state_result state_fota_run(void *obj)

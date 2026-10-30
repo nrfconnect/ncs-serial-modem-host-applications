@@ -17,6 +17,8 @@ The module subscribes to the channels of all enabled modules, plus its own priva
 | `button_chan` | Start a synchronization or a remote debugging data post on a button press |
 | `main_priv_chan` | Receive the periodic cloud synchronization trigger |
 
+The module also publishes LED patterns on `led_chan` from the entry functions of `STATE_CLOUD_DISCONNECTED`, `STATE_SYNC_DEMO`, `STATE_SYNC_IDLE`, and `STATE_FOTA`. See [LED indication](../application-behavior.md#led-indication).
+
 The periodic synchronization runs on a dedicated workqueue rather than in the state machine. The delayed work only publishes `MAIN_PRIV_CLOUD_SYNCHRONIZATION` on the [private channel](../../../architecture.md#private-channels) `main_priv_chan` and reschedules itself, so that the work never touches the state machine directly, and the synchronization itself is performed in the `main()` thread like every other event.
 
 ### State diagram
