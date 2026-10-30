@@ -54,7 +54,7 @@ The console also offers these shell commands:
 
 ## Remote debugging
 
-The Memfault SDK is configured for software type `smha-91m1` on the nRF54 hosts and `smha-93m1` on the nRF93M1 DK, and uploads through nRF Cloud CoAP (`CONFIG_MEMFAULT_USE_NRF_CLOUD_COAP`). The SDK collects heartbeat metrics on its internal timer. On the nRF93M1 DK it also uploads data periodically (`CONFIG_MEMFAULT_PERIODIC_UPLOAD`). On every board, the cloud module posts pending data on every cloud synchronization, when main asks for it with `CLOUD_MEMFAULT_POST_REQUEST`. Coredumps are RAM-backed. See [Remote debugging with nRF Cloud](remote-debugging.md) for nRF Cloud setup.
+The Memfault SDK is configured for software type `smha-91m1` on the nRF54 hosts and `smha-93m1` on the nRF93M1 DK, and uploads through nRF Cloud CoAP (`CONFIG_MEMFAULT_USE_NRF_CLOUD_COAP`). The SDK collects heartbeat metrics on its internal timer and uploads data every hour (`CONFIG_MEMFAULT_PERIODIC_UPLOAD`). The cloud module also posts pending data on every cloud synchronization, when main asks for it with `CLOUD_MEMFAULT_POST_REQUEST`. Coredumps are RAM-backed (32 KB) and carry the Memfault log buffer. See [Remote debugging with nRF Cloud](remote-debugging.md) for nRF Cloud setup.
 
 ## Configuration
 

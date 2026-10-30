@@ -5,11 +5,11 @@
  *
  * SRAM layout (cpuapp_sram, 256 KiB):
  * |
- * +-- 0x0000_0000 sram0_s                     (  48 KiB) TF-M secure
- * +-- 0x0000_c000 sram0_ns                    ( 208 KiB) Zephyr/app non-secure
+ * +-- 0x0000_0000 sram0_s                     (  32 KiB) TF-M secure
+ * +-- 0x0000_8000 sram0_ns                    ( 224 KiB) Zephyr/app non-secure
  *
  * RRAM and external flash layout: see nrf54l15_cpuapp_mcuboot_partitions.dtsi.
- * Memory-optimized SFN TF-M sizing (see board conf).
+ * Memory-optimized SFN TF-M sizing (see prj.conf).
  */
 
 /delete-node/ &slot0_s_partition;
@@ -27,14 +27,14 @@
 	sram0_s: image_s@0 {
 		#address-cells = <1>;
 		#size-cells = <1>;
-		reg = <0x0 0xC000>;
-		ranges = <0x0 0x0 0xC000>;
+		reg = <0x0 DT_SIZE_K(32)>;
+		ranges = <0x0 0x0 DT_SIZE_K(32)>;
 	};
 
-	sram0_ns: image_ns@c000 {
+	sram0_ns: image_ns@8000 {
 		#address-cells = <1>;
 		#size-cells = <1>;
-		reg = <0xC000 0x34000>;
-		ranges = <0x0 0xC000 0x34000>;
+		reg = <0x8000 DT_SIZE_K(224)>;
+		ranges = <0x0 0x8000 DT_SIZE_K(224)>;
 	};
 };
