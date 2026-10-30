@@ -10,10 +10,8 @@ from utils.logger import get_logger
 from utils.memfault_ota import (
     latest_device_coredump,
     read_build_metadata,
-    upload_mcu_symbols,
     wait_for_new_device_coredump,
 )
-from utils.flash_tools import elf_image_path
 from utils.modem_logs import enable_modem_application_logs
 from utils.shell import send_shell_command, send_shell_command_until
 from utils.uart import Uart
@@ -75,8 +73,8 @@ def test_memfault_coredump_upload_via_cloud_sync(
 ) -> None:
     """Verify Memfault coredump upload for both a BusFault and a software watchdog.
 
-    Both phases run against the same flashed firmware so the uploaded symbols (one file
-    per software version) match every coredump's GNU build ID.
+    Both phases run against the same flashed firmware, whose symbols the coredump_dut
+    fixture uploads, so every coredump's GNU build ID resolves.
     """
     dut = coredump_dut
     session = cloud_dut_session(dut)
@@ -85,14 +83,6 @@ def test_memfault_coredump_upload_via_cloud_sync(
 
     session.ensure_provisioned(
         hardware_version=build_metadata["hardware_version"],
-    )
-
-    logger.info("Upload MCU symbols for baseline firmware")
-    upload_mcu_symbols(
-        env=session.memfault_env,
-        elf=elf_image_path(dut.app_dir, app_name),
-        metadata=build_metadata,
-        software_version=build_metadata["software_version"],
     )
 
     logger.info("Trigger a fault and verify coredump upload")
@@ -134,7 +124,7 @@ def test_memfault_coredump_upload_via_cloud_sync(
     )
 
     # --- Software watchdog phase -------------------------------------------------
-    # Reuse the same firmware and uploaded symbols: suspend the watchdog-monitored
+    # Reuse the same firmware: suspend the watchdog-monitored
     # main thread so it stops feeding its task watchdog, then confirm the resulting
     # coredump is tagged "Software Watchdog".
     logger.info("Trip the task watchdog and verify software-watchdog coredump upload")
