@@ -9,7 +9,7 @@
  * +-- 0x0000_c000 sram0_ns                    ( 460 KiB) Zephyr/app non-secure
  *
  * RRAM and external flash layout: see nrf54lm20_cpuapp_mcuboot_partitions.dtsi.
- * Memory-optimized SFN TF-M sizing (see board conf).
+ * Memory-optimized SFN TF-M sizing (see prj.conf).
  */
 
 /delete-node/ &slot0_s_partition;

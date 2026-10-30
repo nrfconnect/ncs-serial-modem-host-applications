@@ -26,9 +26,8 @@ All boards build the same modules from the same source. Board-specific behavior 
 | Location | Wi-Fi scan on the host through the Location library and the nRF7002-EB II. Only built with the location overlay | Cell and Wi-Fi measurements from the modem over AT commands. Always built |
 | Battery | Not included | nPM1300 fuel gauge sampling |
 | nRF Cloud software type | `smha-91m1` | `smha-93m1` |
-| Remote debugging periodic upload | Off. Data is posted on every cloud synchronization | On, every hour, and on every cloud synchronization |
 
-The remaining configuration differences of the nRF93M1 DK are listed in [`boards/nrf93m1dk_nrf54l15_cpuapp_ns.conf`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/boards/nrf93m1dk_nrf54l15_cpuapp_ns.conf).
+The rest of the configuration is shared in [`prj.conf`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/prj.conf). The board files only hold the UART, flash, battery and Memfault identity settings.
 
 ## Modules
 
