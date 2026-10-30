@@ -21,13 +21,14 @@ from utils.serial_modem_firmware import (
     serial_modem_console_baudrate,
 )
 from utils.flash_tools import (
+    elf_image_path,
     flash_baseline_firmware,
     nrfutil_reset,
     should_use_prebuilt_firmware,
     west_build,
 )
 from utils.dut_lifecycle import CloudDutSession
-from utils.memfault_ota import read_build_metadata
+from utils.memfault_ota import load_memfault_env, read_build_metadata, upload_mcu_symbols
 from utils.helpers import (
     MODEM_SERIAL_LOG,
     REPO_ROOT,
@@ -150,6 +151,14 @@ def _prepare_baseline_firmware(
             "Step 2/4 - Flash baseline firmware without recover (preserves credentials)"
         )
     flash_baseline_firmware(app_dir, app_name, segger_sn, recover=recover)
+
+    if uses_memfault:
+        # Any test can crash the DUT, so every flashed build gets its symbols.
+        logger.info("Upload MCU symbols for the baseline firmware")
+        upload_mcu_symbols(
+            env=load_memfault_env(test_config),
+            elf=elf_image_path(app_dir, app_name),
+        )
 
     logger.info("Step 3/4 - Start serial capture and reset device")
     time.sleep(2)

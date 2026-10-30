@@ -189,39 +189,19 @@ def _cohort_url(env: dict[str, str], cohort: str | None = None) -> str:
     )
 
 
-def upload_mcu_symbols(
-    *,
-    env: dict[str, str],
-    elf: Path,
-    metadata: dict[str, str],
-    software_version: str,
-) -> None:
+def upload_mcu_symbols(*, env: dict[str, str], elf: Path) -> None:
+    """Upload the ELF so Memfault can symbolicate coredumps from this build.
+
+    The symbol file is keyed by its GNU Build Id only. Linking it to a software
+    version as well makes Memfault drop it ("was already uploaded") whenever that
+    version already has a symbol file, which happens on every CI build of the
+    pinned baseline version.
+    """
     if not elf.is_file():
         raise FileNotFoundError(f"MCU symbols ELF not found: {elf}")
 
-    command = [
-        *_memfault_cli_base(env),
-        "upload-mcu-symbols",
-        # Memfault matches coredumps to symbols by Build Id, but the default
-        # --check-uploaded skips the upload when a symbol file already exists for
-        # this (software-type, software-version). CI pins the version (e.g.
-        # 1.0.0), so a symbol file from an earlier build of the same version
-        # keeps the slot and this build's Build Id is never registered, leaving
-        # its coredumps unsymbolicated. Force the upload so the current build's
-        # Build Id always lands.
-        "--no-check-uploaded",
-        "--software-type",
-        metadata["software_type"],
-        "--software-version",
-        software_version,
-        str(elf),
-    ]
-    logger.info(
-        "Uploading MCU symbols %s (type=%s, version=%s)",
-        elf,
-        metadata["software_type"],
-        software_version,
-    )
+    command = [*_memfault_cli_base(env), "upload-mcu-symbols", str(elf)]
+    logger.info("Uploading MCU symbols %s", elf)
     _run_memfault_cli(command)
 
 

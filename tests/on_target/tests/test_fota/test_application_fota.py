@@ -195,8 +195,6 @@ def test_application_fota_via_cloud_sync(
         upload_mcu_symbols(
             env=session.memfault_env,
             elf=elf_image_path(dut.app_dir, app_name),
-            metadata=update_metadata,
-            software_version=update_version,
         )
         upload_ota_payload(
             env=session.memfault_env,
