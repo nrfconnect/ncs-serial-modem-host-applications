@@ -2,7 +2,7 @@
 
 The Network module owns the data connection to the nRF91M1 Serial Modem. It brings the PPP link up and down through Zephyr's [connection manager](https://docs.nordicsemi.com/bundle/ncs-latest/page/zephyr/connectivity/networking/conn_mgr/main.html) and reports connectivity to the rest of the application so that no other module needs to know how the link is established.
 
-By default the module connects on startup and keeps the connection for the lifetime of the application. The connection can also be controlled from the application or from the shell, see [Configurations](#configurations) and [Shell commands](#shell-commands).
+By default, the module connects on startup and keeps the connection for the lifetime of the application. The connection can also be controlled from the application or from the shell. See [Configuration](#configuration) and [Shell commands](#shell-commands).
 
 ## Architecture
 
@@ -58,7 +58,7 @@ uart:~$ network connect
 uart:~$ network disconnect
 ```
 
-## Configurations
+## Configuration
 
 Check and configure the following Kconfig options:
 

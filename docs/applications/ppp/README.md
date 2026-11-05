@@ -1,6 +1,6 @@
 # PPP Host Application
 
-The [PPP Host Application](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/) runs on an nRF54L15 DK or nRF54LM20B DK wired to an nRF9151 DK running the Serial Modem firmware, and on the nRF93M1 DK with its on-board nRF93M1 modem. Cellular data goes through the modem over PPP, and the host connects to nRF Cloud over **CoAP/DTLS** itself. The host stores its nRF Cloud credentials with the TLS credentials shell in TF-M Protected Storage.
+The [PPP Host Application](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/) runs on an nRF54L15 DK or nRF54LM20B DK wired to an nRF9151 DK running the Serial Modem firmware, and on the nRF93M1 DK with its on-board nRF93M1 modem. Cellular data goes through the modem over the PPP, and the host connects to nRF Cloud itself, using the CoAP secured with DTLS. The host stores its nRF Cloud credentials with the TLS credentials shell in TF-M Protected Storage.
 
 > [!TIP]
 > New here? Follow the getting-started guide for your hardware to set up the hardware, build, flash, and connect to nRF Cloud: [nRF54 DK with an nRF9151 DK](../../getting-started/ppp-nrf54.md) or [nRF93M1 DK](../../getting-started/ppp-nrf93m1.md). This page is the reference for the application.
@@ -27,7 +27,7 @@ All boards build the same modules from the same source. Board-specific behavior 
 | Battery | Not included | nPM1300 fuel gauge sampling |
 | nRF Cloud software type | `smha-91m1` | `smha-93m1` |
 
-The rest of the configuration is shared in [`prj.conf`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/prj.conf). The board files only hold the UART, flash, battery and Memfault identity settings.
+The rest of the configuration is shared in [`prj.conf`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/prj.conf). The board files only hold the UART, flash, battery, and Memfault identity settings.
 
 ## Modules
 
@@ -36,7 +36,7 @@ The application follows the shared [Architecture](../../architecture.md). It con
 - **[Main module](modules/main.md)**: Implements the business logic and controls the overall application behavior. Uniquely, it is not in the `modules` folder.
 - **[Network module](modules/network.md)**: Brings the PPP link to the modem up and down, and tracks connectivity status.
 - **[Cloud module](modules/cloud.md)**: Handles communication with nRF Cloud using CoAP.
-- **[FOTA module](modules/fota.md)**: Manages firmware over-the-air updates of the host application.
+- **[FOTA module](modules/fota.md)**: Manages firmware over-the-air (FOTA) updates of the host application.
 - **[Location module](modules/location.md)**: Collects Wi-Fi and cell measurements for the nRF Cloud location service, with one backend per board type.
 - **Battery module**: Samples the nPM1300 fuel gauge. Only built on the nRF93M1 DK.
 - **Buttons module**: Publishes DK button presses, and their `button` shell equivalents, on `button_chan`. It has no state machine or thread of its own. See [Buttons and shell commands](application-behavior.md#buttons-and-shell-commands).
@@ -63,7 +63,7 @@ The application reports crashes and device health metrics to nRF Cloud through t
 
 See [Remote debugging with nRF Cloud](remote-debugging.md) for how to view device data in nRF Cloud, upload `zephyr.elf`, and verify data collection.
 
-### Reaching Serial Modem AT commands
+## Reaching Serial Modem AT commands
 
 `CONFIG_APP_MODEM_AT_SHELL` exposes the modem's AT interface over the host shell using the CMUX user pipe, for modem commands that have no host-side equivalent:
 
@@ -73,7 +73,7 @@ OK
 ```
 
 > [!NOTE]
-> The pipe only exists once the modem has attached, CMUX runtime power save closes it again when idle (the command then answers `modem is not ready`, so retry), and any host reboot resets the modem and turns logging back off.
+> The pipe only exists once the modem has attached. CMUX runtime power save closes it again when idle, and the command then answers `modem is not ready`, so retry it. Any host reboot resets the modem and turns logging back off.
 
 Module documentation:
 

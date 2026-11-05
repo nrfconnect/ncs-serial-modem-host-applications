@@ -2,7 +2,7 @@
 
 All the host applications in this repository share one modular, event-driven architecture, the same one used by the [Asset Tracker Template](https://github.com/nrfconnect/Asset-Tracker-Template). The modules interact through messages that are processed as events by the modules' state machines.
 
-The architecture is implemented using [Zephyr bus (zbus)](https://docs.nordicsemi.com/bundle/ncs-latest/page/zephyr/services/zbus/index.html) for inter-module communication and the [State Machine Framework](https://docs.nordicsemi.com/bundle/ncs-latest/page/zephyr/services/smf/index.html) (SMF) for managing module behavior.
+The architecture is implemented using [Zephyr bus (zbus)](https://docs.nordicsemi.com/bundle/ncs-latest/page/zephyr/services/zbus/index.html) for inter-module communication and the [State Machine Framework (SMF)](https://docs.nordicsemi.com/bundle/ncs-latest/page/zephyr/services/smf/index.html) for managing module behavior.
 
 This document describes the pattern that every application follows, with a focus on the zbus message passing and the modules' state machines. The code examples are taken from the [PPP Host Application](applications/ppp/README.md), and the nRF93M1 AT and nRF91 AT Host Applications implement the same pattern. Which modules each application has is listed in [Modules per application](#modules-per-application).
 
@@ -138,7 +138,7 @@ The wait is bounded rather than `K_FOREVER` so that the watchdog is fed even whe
 
 ### Watchdog timeouts
 
-Each module configures its own watchdog timeout and message processing budget with the `CONFIG_APP_<MODULE>_WATCHDOG_TIMEOUT_SECONDS` and `CONFIG_APP_<MODULE>_MSG_PROCESSING_TIMEOUT_SECONDS` options, sized after the longest operation the module performs while handling a message. The defaults, as watchdog timeout / processing budget, are:
+Each module configures its own watchdog timeout and message processing budget with the `CONFIG_APP_<MODULE>_WATCHDOG_TIMEOUT_SECONDS` and `CONFIG_APP_<MODULE>_MSG_PROCESSING_TIMEOUT_SECONDS` options, sized after the longest operation the module performs while handling a message. The following table lists the defaults, as watchdog timeout and processing budget:
 
 | Module | PPP | nRF93M1 AT | nRF91 AT |
 |--------|----:|-----------:|---------:|
@@ -149,7 +149,7 @@ Each module configures its own watchdog timeout and message processing budget wi
 | Location | 120 s / 100 s | 150 s / 130 s | 300 s / 290 s |
 | Battery | 60 s / 30 s | 30 s / 10 s | Not included |
 
-The PPP Host Application uses the same timeouts on every board. Modules whose handlers make blocking calls get long timeouts. In the PPP Host Application, the Cloud and FOTA handlers make blocking CoAP calls. In the Cloud module a connect attempt performs a DTLS handshake, and the shadow, message, location, and remote debugging requests are blocking CoAP exchanges. In the FOTA module the poll makes reliable CoAP calls to check for and report a job; the image download itself does not block, because the module uses the nRF Cloud FOTA poll library in non-blocking mode and drives the download from its callbacks. The AT host applications size their timeouts the same way, after the operations their own modules perform. In the nRF91 AT Host Application, each provisioning step and each location attempt waits for a Serial Modem result URC, which can take minutes.
+The PPP Host Application uses the same timeouts on every board. Modules whose handlers make blocking calls get long timeouts. In the PPP Host Application, the Cloud and FOTA handlers make blocking CoAP calls. In the Cloud module, a connect attempt performs a DTLS handshake, and the shadow, message, location, and remote debugging requests are blocking CoAP exchanges. In the FOTA module, the poll makes reliable CoAP calls to check for and report a job; the image download itself does not block, because the module uses the nRF Cloud FOTA poll library in non-blocking mode and drives the download from its callbacks. The AT host applications size their timeouts the same way, after the operations their own modules perform. In the nRF91 AT Host Application, each provisioning step and each location attempt waits for a Serial Modem result URC, which can take minutes.
 
 Modules that never block in their handlers only publish messages, drive the connection manager, or start asynchronous work, all of which return immediately while results arrive later as messages or callbacks. Their timeouts are short, sized only to catch a genuinely stuck thread rather than to cover a long operation. In the PPP Host Application, the Main module is such a module. Two others have longer budgets for one blocking case each:
 
@@ -239,7 +239,7 @@ struct cloud_msg {
 };
 ```
 
-In the above example, the Cloud module receiving a `CLOUD_LOCATION_REQUEST` message reads the scanned Wi-Fi access points from the `location_request` field of the message.
+In this example, the Cloud module receiving a `CLOUD_LOCATION_REQUEST` message reads the scanned Wi-Fi access points from the `location_request` field of the message.
 
 ### Sending messages
 
@@ -253,7 +253,7 @@ Messages are sent on a channel using `zbus_chan_pub()`. For example, to request 
 	err = zbus_chan_pub(&cloud_chan, &msg, PUB_TIMEOUT);
 ```
 
-Zbus copies the message, so the original message struct is no longer needed after calling `zbus_chan_pub()`. `PUB_TIMEOUT` is a common publish timeout defined in `lib/include/app_common.h`.
+The zbus library copies the message, so the original message struct is no longer needed after calling `zbus_chan_pub()`. `PUB_TIMEOUT` is a common publish timeout defined in `lib/include/app_common.h`.
 
 ### Receiving messages
 

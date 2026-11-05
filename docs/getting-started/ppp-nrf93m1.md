@@ -1,6 +1,6 @@
 # Get started with the PPP Host Application on the nRF93M1 DK
 
-This guide takes you from an [nRF93M1 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF93M1-DK) to a device that sends data to nRF Cloud. The [PPP Host Application](../applications/ppp/README.md) runs on the DK's nRF54L15 host. It reaches the internet through the on-board nRF93M1 modem over PPP, and connects to nRF Cloud over CoAP/DTLS itself.
+This guide takes you from an [nRF93M1 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF93M1-DK) to a device that sends data to nRF Cloud. The [PPP Host Application](../applications/ppp/README.md) runs on the DK's nRF54L15 host. It reaches the internet through the on-board nRF93M1 modem over PPP. It connects to nRF Cloud itself, using the CoAP secured with DTLS.
 
 ![This guide covers steps 3 to 6: Set up the hardware, Build and flash, Connect to nRF Cloud, and Verify](../images/getting-started-steps-3-6.svg)
 
@@ -8,7 +8,7 @@ Before you start, complete [Step 1: Choose your application](index.md#step-1-cho
 
 ## Step 3: Set up the hardware
 
-The host and the modem are on the same DK, so there is no wiring. This guide only flashes the nRF54L15 host. The nRF93M1 must run Serial Modem firmware with PPP and CMUX enabled, and keeps it.
+The host and the modem are on the same DK, so there is no wiring. This guide only flashes the nRF54L15 host. The nRF93M1 must run Serial Modem firmware with PPP and CMUX enabled, and it keeps that firmware.
 
 1. Connect the nRF93M1 DK to your computer over USB and turn it on.
 1. Run `nrfutil device list` and note the DK's serial number and its **VCOM0** port. VCOM0 is the host console (`uart20`). On macOS the port looks like `/dev/cu.usbmodem*`, on Linux like `/dev/ttyACM*`, and on Windows like `COM*`.
@@ -30,7 +30,7 @@ The host and the modem are on the same DK, so there is no wiring. This guide onl
         west flash --recover
         ```
 
-    - **Pre-built firmware:** Download the `ppp-nrf93m1-*` zip from the [latest release](https://github.com/nrfconnect/ncs-serial-modem-host-applications/releases), extract it, and flash `merged.hex`. See [Release artifacts](../release-artifacts.md) for what the zip contains.
+    - **Pre-built firmware:** Download the `ppp-nrf93m1-*` zip file from the [latest release](https://github.com/nrfconnect/ncs-serial-modem-host-applications/releases), extract it, and flash `merged.hex`. See [Release artifacts](../release-artifacts.md) for what the zip file contains.
 
         ```shell
         nrfutil device recover --serial-number <dk_serial_number>
@@ -126,8 +126,9 @@ When the cloud connects, the application runs its first **cloud synchronization*
 
 1. Log in to [nRF Cloud](https://nrfcloud.nordicsemi.com/) and go to **Fleet** > **Devices**. Click the device with your Device ID to open its page.
 1. On the **Overview** tab, check the following:
-    - **Location**: the map shows the latest location fix.
-    - **Last message**: the most recent device message, with `"data":"hello"` from the synchronization. Select **Inspect recent data** to see earlier messages.
+
+    - **Location**: The map shows the latest location fix.
+    - **Last message**: The most recent device message, with `"data":"hello"` from the synchronization. Select **Inspect recent data** to see earlier messages.
 
 Heartbeats and metrics appear in the linked nRF Cloud project.
 
