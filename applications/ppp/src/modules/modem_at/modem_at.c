@@ -137,10 +137,6 @@ int modem_at_run(const char *req, char *resp, size_t resp_size, uint32_t timeout
 	modem_chat_script_set_timeout(&at_ctx.script, timeout_s);
 
 	ret = modem_chat_run_script(&at_ctx.chat, &at_ctx.script);
-	if (ret == 0 && at_ctx.chat.script_result != MODEM_CHAT_SCRIPT_RESULT_SUCCESS) {
-		ret = -EIO;
-	}
-
 release:
 	at_ctx.collect_buf = NULL;
 	modem_at_user_pipe_release();
