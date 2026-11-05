@@ -6,10 +6,6 @@
 
 cmake_minimum_required(VERSION 3.20.0)
 
-# Bundled nrf91-sm driver (see drivers/nrf91-sm/).
-set(NRF91SM_DRIVER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/drivers/nrf91-sm)
-list(APPEND EXTRA_ZEPHYR_MODULES ${NRF91SM_DRIVER_DIR})
-
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project("Serial Modem Host - PPP")
 

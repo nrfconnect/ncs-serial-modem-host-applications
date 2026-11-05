@@ -8,8 +8,54 @@ manifest:
   remotes:
     - name: ncs
       url-base: https://github.com/nrfconnect
+    - name: jfischer-no
+      url-base: https://github.com/jfischer-no
 
   projects:
+    # Temporary: sdk-zephyr upmerge PR nrfconnect/sdk-zephyr#4732, which brings in the
+    # upstream nordic,nrf91-sm-v2 driver. Drop once the upmerge is in sdk-nrf. Must stay
+    # before nrf so it takes priority over the zephyr entry imported from sdk-nrf.
+    - name: zephyr
+      remote: jfischer-no
+      repo-path: sdk-zephyr
+      revision: e214bf0a1d99c2ba893c5907c9a12bf9a2ec089c
+      import:
+        name-allowlist:
+          - canopennode
+          - chre
+          - cmsis
+          - cmsis-dsp
+          - cmsis-nn
+          - cmsis_6
+          - dhara
+          - edtt
+          - fatfs
+          - hal_nordic
+          - hal_st
+          - hal_tdk
+          - hal_wurthelektronik
+          - liblc3
+          - libmetal
+          - libsbc
+          - littlefs
+          - loramac-node
+          - lvgl
+          - lz4
+          - mipi-sys-t
+          - mldsa-native
+          - nanopb
+          - net-tools
+          - nrf_hw_models
+          - open-amp
+          - percepio
+          - picolibc
+          - segger
+          - tf-m-tests
+          - tf-psa-crypto
+          - uoscore-uedhoc
+          - zcbor
+          - zscilib
+
     - name: nrf
       remote: ncs
       repo-path: sdk-nrf
