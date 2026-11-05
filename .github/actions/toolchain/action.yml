@@ -13,7 +13,7 @@ runs:
     - name: Find NCS revision
       shell: bash
       run: |
-        NCS_REV=$(awk '/name: nrf$/ {f=1} f && /revision:/ {print $2; exit}' serial-modem-host-applications/west.yml)
+        NCS_REV=$(grep "revision:" serial-modem-host-applications/west.yml | awk '{print $2}' | xargs)
         echo "NCS_REV=${NCS_REV}" >> $GITHUB_ENV
         echo "NCS_REV=${NCS_REV}"
     - uses: actions/checkout@v6
