@@ -37,12 +37,28 @@ config APP_LOCATION_AT_TIMEOUT_SECONDS
 	int "AT%NRFCLOUDLOCATION timeout (seconds)"
 	default 60
 
+config APP_LOCATION_DIAGNOSTICS
+	bool "Log RRC state around each fix"
+	help
+	  Logs the RRC state (AT+CSCON?) before each location request and after its result, to
+	  help explain why nRF Cloud fell back to single-cell. Adds a few seconds of waiting for
+	  the result to every sync, so leave it off in production.
+
+config APP_LOCATION_DIAGNOSTICS_WIFI_SCAN
+	bool "Log a Wi-Fi scan after each fix"
+	depends on APP_LOCATION_DIAGNOSTICS
+	help
+	  Runs AT%WIFISCAN after the result of each location request and logs the raw result.
+	  The scan runs on the modem between requests, so it can change what the next request sees.
+
 config APP_LOCATION_WATCHDOG_TIMEOUT_SECONDS
 	int "Watchdog timeout"
+	default 270 if APP_LOCATION_DIAGNOSTICS
 	default 150
 
 config APP_LOCATION_MSG_PROCESSING_TIMEOUT_SECONDS
 	int "Maximum message processing time"
+	default 250 if APP_LOCATION_DIAGNOSTICS
 	default 130
 	help
 	  modem_at_run() shares one AT pipe with other modules. This value must
