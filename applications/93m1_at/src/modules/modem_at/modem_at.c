@@ -254,13 +254,8 @@ int modem_at_run_coap(const char *req, char *resp, size_t resp_size, uint32_t ti
 	LOG_DBG("AT> %s (timeout %us)", req, timeout_s);
 
 	ret = modem_chat_run_script(&at_ctx.chat, &at_ctx.script);
-	if (ret == 0 && at_ctx.chat.script_result != MODEM_CHAT_SCRIPT_RESULT_SUCCESS) {
-		ret = -EIO;
-	}
-
 	if (ret) {
-		LOG_DBG("AT command failed, error: %d, script result: %d", ret,
-			at_ctx.chat.script_result);
+		LOG_DBG("AT command failed, error: %d", ret);
 	} else if (resp != NULL && resp_size > 0) {
 		LOG_DBG("AT< %s", resp);
 	} else {
