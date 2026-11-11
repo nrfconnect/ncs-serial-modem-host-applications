@@ -1,6 +1,6 @@
 # Get started with the PPP Host Application on an nRF54 DK
 
-This guide takes you from two development kits (DKs) to a device that sends data to nRF Cloud. An nRF54 Series DK runs the [PPP Host Application](../applications/ppp/README.md), and an [nRF9151 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF9151-DK) or [nRF9151 SMA DK](https://www.nordicsemi.com/Products/Development-hardware/nRF9151-SMA-DK) runs the Serial Modem firmware. The host reaches the internet through the modem over PPP and connects to nRF Cloud over CoAP/DTLS itself.
+This guide takes you from two development kits (DKs) to a device that sends data to nRF Cloud. An nRF54 Series DK runs the [PPP Host Application](../applications/ppp/README.md), and an [nRF9151 DK](https://www.nordicsemi.com/Products/Development-hardware/nRF9151-DK) or [nRF9151 SMA DK](https://www.nordicsemi.com/Products/Development-hardware/nRF9151-SMA-DK) runs the Serial Modem firmware. The host reaches the internet through the modem over PPP. It connects to nRF Cloud itself, using the CoAP secured with DTLS.
 
 ![This guide covers steps 3 to 6: Set up the hardware, Build and flash, Connect to nRF Cloud, and Verify](../images/getting-started-steps-3-6.svg)
 
@@ -14,12 +14,12 @@ You need the following:
 
 - An nRF9151 DK or nRF9151 SMA DK with a SIM card.
 - One host DK: nRF54L15 DK or nRF54LM20B DK.
-- An nRF7002-EB II, optional to get Wi-Fi location.
-- Eight jumper wires: four for UART, one each for DTR, RI and modem reset, and one for ground.
+- An nRF7002-EB II, which is optional and adds Wi-Fi® location.
+- Eight jumper wires: four for UART, one each for DTR, RI, and modem reset, and one for ground.
 - Two USB cables, one per DK.
 - [nRF Connect for Desktop](https://www.nordicsemi.com/Products/Development-tools/nRF-Connect-for-Desktop) with the [Board Configurator app](https://docs.nordicsemi.com/bundle/nrf-connect-board-configurator/page/index.html).
 
-Each Board Configurator switch connects or disconnects a group of DK pins from the interface MCU, which is the on-board debugger behind the USB virtual serial ports (VCOM0 and VCOM1). Pins that carry the link between the two DKs must be disconnected, otherwise the interface MCU drives them too.
+Each Board Configurator switch connects or disconnects a group of DK pins from the interface MCU, which is the on-board debugger behind the USB virtual serial ports (VCOM0 and VCOM1). Pins that carry the link between the two DKs must be disconnected. Otherwise, the interface MCU drives them too.
 
 ### 3.1 Configure the nRF9151 DK in Board Configurator
 
@@ -32,8 +32,8 @@ Each Board Configurator switch connects or disconnects a group of DK pins from t
 ### 3.2 Flash the Serial Modem firmware
 
 1. Download `serial_modem_<tag>_nrf9151dk_nrf91m1.zip` from the newest [ncs-serial-modem release](https://github.com/nrfconnect/ncs-serial-modem/releases) that ships it, or use the copy at the top level of your [release bundle](../release-artifacts.md#serial-modem-firmware-nrf9151-dk).
-1. Extract the zip.
-1. Flash the `.hex` on the nRF9151 DK. Replace `<modem_dk_serial_number>` with the serial number that `nrfutil device list` shows for the nRF9151 DK. `nrfutil device recover` erases the whole chip first:
+1. Extract the zip file.
+1. Flash the `.hex` file on the nRF9151 DK. Replace `<modem_dk_serial_number>` with the serial number that `nrfutil device list` shows for the nRF9151 DK. `nrfutil device recover` erases the whole chip first:
 
     ```shell
     nrfutil device recover --serial-number <modem_dk_serial_number>
@@ -73,7 +73,7 @@ Each Board Configurator switch connects or disconnects a group of DK pins from t
 
     **nRF54LM20B DK:**
 
-    | nRF54LM20B DK | nRF9151 / SMA DK | Signal |
+    | nRF54LM20B DK | nRF9151 or SMA DK | Signal |
     |---|---|---|
     | **P1.14** | **P0.26** | UART TX → RX |
     | **P1.15** | **P0.27** | UART RX ← TX |
@@ -126,7 +126,7 @@ Each Board Configurator switch connects or disconnects a group of DK pins from t
         west flash --recover
         ```
 
-    - **Pre-built firmware:** Download the zip for your host setup from the [latest release](https://github.com/nrfconnect/ncs-serial-modem-host-applications/releases): `ppp-nrf54l15-*` for the nRF54L15 DK, `ppp-nrf54lm20b-*` for the nRF54LM20B DK, or `ppp-nrf54lm20b-location-*` for the nRF54LM20B DK with the nRF7002-EB II. Extract it, and flash `merged.hex` on the host DK. See [Release artifacts](../release-artifacts.md) for what the zip contains.
+    - **Pre-built firmware:** Download the zip file for your host setup from the [latest release](https://github.com/nrfconnect/ncs-serial-modem-host-applications/releases): `ppp-nrf54l15-*` for the nRF54L15 DK, `ppp-nrf54lm20b-*` for the nRF54LM20B DK, or `ppp-nrf54lm20b-location-*` for the nRF54LM20B DK with the nRF7002-EB II. Extract it, and flash `merged.hex` on the host DK. See [Release artifacts](../release-artifacts.md) for what the zip file contains.
 
         ```shell
         nrfutil device recover --serial-number <host_dk_serial_number>
@@ -156,7 +156,7 @@ Each Board Configurator switch connects or disconnects a group of DK pins from t
 
 The host connects to nRF Cloud with its own certificate and private key. You create a certificate authority (CA) once, use it to install credentials on the device, and register the device in your nRF Cloud project.
 
-Run the following commands from a normal terminal, not the toolchain shell. Keep the host console port free, because the credential installer uses it. Close the serial terminal on that port first.
+Run the following commands from a normal terminal, not the toolchain shell. Keep the host console port free because the credential installer uses it. Close the serial terminal on that port first.
 
 1. Install the nRF Cloud command-line tools (once per computer):
 
@@ -216,8 +216,9 @@ When the cloud connects, the application runs its first **cloud synchronization*
 1. Wait for the first synchronization to complete in the host console, or press **Button 1** (**BUTTON0** on the DK) to start one right away. With no errors after `Cloud connected`, the device is sending data.
 1. Log in to [nRF Cloud](https://nrfcloud.nordicsemi.com/) and go to **Fleet** > **Devices**. Click the device with your Device ID to open its page.
 1. On the **Overview** tab, check the following:
-    - **Last message**: the most recent device message, with `"data":"hello"` from the synchronization. Select **Inspect recent data** to see earlier messages.
-    - **Location**: the map shows the latest location fix. This only applies to the Wi-Fi location build.
+
+    - **Last message**: The most recent device message, with `"data":"hello"` from the synchronization. Select **Inspect recent data** to see earlier messages.
+    - **Location**: The map shows the latest location fix. This only applies to the Wi-Fi location build.
 
 ## Next steps
 

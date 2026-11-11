@@ -1,6 +1,6 @@
 # Cloud module
 
-The Cloud module owns the nRF Cloud connection. It runs the CoAP/DTLS session from the host MCU using the [nRF Cloud CoAP](https://docs.nordicsemi.com/bundle/ncs-latest/page/nrf/libraries/networking/nrf_cloud_coap.html) library, sends device messages, polls the device shadow, and resolves Wi-Fi® based location requests. Cellular data passes through the Serial Modem over PPP, but the security session terminates on the host.
+The Cloud module owns the nRF Cloud connection. It runs the CoAP session over DTLS from the host MCU, using the [nRF Cloud CoAP](https://docs.nordicsemi.com/bundle/ncs-latest/page/nrf/libraries/networking/nrf_cloud_coap.html) library. It sends device messages, polls the device shadow, and resolves Wi-Fi® based location requests. Cellular data passes through the Serial Modem over PPP, but the security session terminates on the host.
 
 The module never decides on its own when to connect. It connects when the application requests it, and only reconnects on its own when a request shows that an established session has stopped working.
 
@@ -8,14 +8,14 @@ The module never decides on its own when to connect. It connects when the applic
 
 Connecting requires the following two things that are not available at boot:
 
-- Valid time, which is needed to sign the JWT used for CoAP authentication
+- Valid time, which is needed to sign the JWT used for CoAP authentication.
 - Installed nRF Cloud credentials.
 
-The module therefore retries. Entering `STATE_CONNECTING` publishes `CLOUD_PRIV_CONNECT_ATTEMPT` on the [private channel](../../../architecture.md#private-channels) `priv_cloud_chan`, and an attempt that finds no credentials with `nrf_cloud_credentials_check()`, finds no valid time, or fails in `nrf_cloud_coap_connect()`, schedules the next attempt `CONFIG_APP_CLOUD_CREDENTIAL_RETRY_SECONDS` later. Time is requested over NTP, and the date/time handler publishes an attempt of its own as soon as time arrives instead of waiting out the interval. See Connect to nRF Cloud in the getting-started guide for [an nRF54 DK](../../../getting-started/ppp-nrf54.md#step-5-connect-to-nrf-cloud) or [the nRF93M1 DK](../../../getting-started/ppp-nrf93m1.md#step-5-connect-to-nrf-cloud) for how to install credentials and onboard the device.
+The module therefore retries. Entering `STATE_CONNECTING` publishes `CLOUD_PRIV_CONNECT_ATTEMPT` on the [private channel](../../../architecture.md#private-channels) `priv_cloud_chan`, and an attempt that finds no credentials with `nrf_cloud_credentials_check()`, finds no valid time, or fails in `nrf_cloud_coap_connect()`, schedules the next attempt `CONFIG_APP_CLOUD_CREDENTIAL_RETRY_SECONDS` later. Time is requested over NTP, and the date and time handler publishes an attempt of its own as soon as time arrives instead of waiting out the interval. See Connect to nRF Cloud in the getting-started guide for [an nRF54 DK](../../../getting-started/ppp-nrf54.md#step-5-connect-to-nrf-cloud) or [the nRF93M1 DK](../../../getting-started/ppp-nrf93m1.md#step-5-connect-to-nrf-cloud) for how to install credentials and onboard the device.
 
 Because an attempt is a single message, the module is back to waiting for messages between attempts, where it feeds its watchdog and answers `CLOUD_DISCONNECT` like any other request. What makes a single attempt long is the DTLS handshake in `nrf_cloud_coap_connect()`, which is why the module has a dedicated thread and a generous message processing budget.
 
-A connected session can still stop working, for example when a CoAP request times out and the nRF Cloud CoAP library marks the session as needing a reconnect. Every later request would then fail. As in the Asset Tracker Template, the module enables `CONFIG_NRF_CLOUD_COAP_DISCONNECT_ON_FAILED_REQUEST` and treats any failed device message, shadow poll, or location request as a broken session. It publishes `CLOUD_PRIV_REQUEST_FAILED` to itself and returns to `STATE_CONNECTING`, which closes the session, publishes `CLOUD_DISCONNECTED` and starts connecting again. A location request that nRF Cloud answers with no location found is not a failure.
+A connected session can still stop working, for example when a CoAP request times out and the nRF Cloud CoAP library marks the session as needing a reconnect. Every later request would then fail. As in the Asset Tracker Template, the module enables `CONFIG_NRF_CLOUD_COAP_DISCONNECT_ON_FAILED_REQUEST` and treats any failed device message, shadow poll, or location request as a broken session. It publishes `CLOUD_PRIV_REQUEST_FAILED` to itself and returns to `STATE_CONNECTING`, which closes the session, publishes `CLOUD_DISCONNECTED`, and starts connecting again. A location request that nRF Cloud answers with no location found is not a failure.
 
 The module posts pending [remote debugging](../remote-debugging.md) data over the same CoAP session when the application asks for it with `CLOUD_MEMFAULT_POST_REQUEST`.
 
@@ -78,7 +78,7 @@ struct cloud_msg {
 };
 ```
 
-## Configurations
+## Configuration
 
 Check and configure the following Kconfig options:
 

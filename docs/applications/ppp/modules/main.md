@@ -41,7 +41,7 @@ The following states are used by the module:
     - **STATE_CLOUD_CONNECTED:** The cloud connection is up. The entry function schedules the periodic synchronization and transitions straight to `STATE_SYNC_DEMO`, so connecting always synchronizes once without waiting out a period. The exit function cancels the periodic synchronization. `STATE_SYNC_IDLE` is the declared initial substate, but the entry function overrides it.
 
         - **STATE_SYNC_IDLE:** Waiting for the next periodic synchronization trigger. Its entry function reschedules the timer.
-        - **STATE_SYNCING:** A synchronization is running. Its entry function sets the green blinking LED once, so the sync steps below do not touch the LED. `STATE_SYNC_DEMO` is its initial substate.
+        - **STATE_SYNCING:** A synchronization is running. Its entry function sets the green blinking LED once, so the individual sync steps do not touch the LED. `STATE_SYNC_DEMO` is its initial substate.
 
             - **STATE_SYNC_DEMO:** Sending the demo cloud payload.
             - **STATE_SYNC_LOCATION:** Scanning for Wi-Fi access points and resolving location. Only present with the location overlay.
@@ -80,7 +80,7 @@ Because a firmware download and the reboot that follows must not be interrupted 
 
 The Main module defines the private channel `main_priv_chan` and publishes requests on the other modules' channels.
 
-## Configurations
+## Configuration
 
 - **CONFIG_APP_MAIN_SYNC_INTERVAL_SECONDS**: Sets the interval between cloud synchronizations while the cloud connection is up.
 

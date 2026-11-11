@@ -1,6 +1,6 @@
 # FOTA module
 
-The FOTA module updates the host application firmware over the air. On request it polls nRF Cloud for a firmware update job using the [nRF Cloud FOTA poll](https://docs.nordicsemi.com/bundle/ncs-latest/page/nrf/libraries/networking/nrf_cloud_fota_poll.html) library, downloads the image through the nRF Cloud CoAP proxy into the inactive MCUboot slot, and reports the job status back to the application.
+The FOTA module updates the host application firmware over the air (FOTA). On request, it polls nRF Cloud for a firmware update job using the [nRF Cloud FOTA poll](https://docs.nordicsemi.com/bundle/ncs-latest/page/nrf/libraries/networking/nrf_cloud_fota_poll.html) library, downloads the image through the nRF Cloud CoAP proxy into the inactive MCUboot slot, and reports the job status back to the application.
 
 The module does not reboot the device itself. When an update is ready to be applied, it asks the application to reboot so that the [Main module](main.md) can decide when it is safe to do so.
 
@@ -69,7 +69,7 @@ uart:~$ fota poll
 uart:~$ fota cancel
 ```
 
-## Configurations
+## Configuration
 
 Check and configure the following Kconfig options:
 

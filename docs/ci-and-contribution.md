@@ -7,7 +7,7 @@ This document describes how the repository is organized and how it is built, tes
 | Path | Purpose |
 |------|---------|
 | [`west.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/west.yml) | West manifest, pins the nRF Connect SDK and Memfault SDK revisions |
-| [`zephyr/module.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/zephyr/module.yml) | Registers this repo as a Zephyr module |
+| [`zephyr/module.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/zephyr/module.yml) | Registers this repository as a Zephyr module |
 | [`lib/include/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/lib/include) | Shared headers (`app_common.h`) |
 | [`cmake/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/cmake) | Shared CMake helpers (`merged_hex.cmake`) |
 | [`applications/ppp/`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/applications/ppp) | PPP host application (nRF54 hosts with an nRF91M1, and the nRF93M1 DK) |
@@ -19,13 +19,13 @@ This document describes how the repository is organized and how it is built, tes
 
 ## Continuous integration
 
-A nightly schedule on `main` runs the [Build, Test, and Release workflow](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/.github/workflows/ci.yml) at 03:00 UTC (05:00 GMT+2 during CEST):
+A nightly schedule on `main` runs the [Build, Test, and Release workflow](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/.github/workflows/ci.yml) at 03:00 UTC (05:00 GMT+2 during CEST), which performs the following operations:
 
-1. Resolve the next semver from the commit history since the last tag.
-1. Resolve the newest upstream Serial Modem release that ships the external-MCU zip.
-1. Build all applications and upload firmware artifacts.
-1. Run on-target hardware tests against the prebuilt firmware and locked Serial Modem tag.
-1. Create a GitHub Release when commits since the last tag warrant a version bump (`feat`, `fix`, or `BREAKING CHANGE`).
+1. Resolving the next semantic version from the commit history since the last tag.
+1. Resolving the newest upstream Serial Modem release that ships the external-MCU zip file.
+1. Building all applications and uploading firmware artifacts.
+1. Running on-target hardware tests against the pre-built firmware and locked Serial Modem tag.
+1. Creating a GitHub Release when commits since the last tag warrant a version bump (`feat`, `fix`, or `BREAKING CHANGE`).
 
 You can trigger the full pipeline manually from the Actions tab (`workflow_dispatch`). Individual workflows (`Build`, `Test`, `Release`) remain independently triggerable.
 
@@ -33,7 +33,7 @@ Pull requests run build, compliance, SonarCloud, and Markdown link checks. Relea
 
 ## Releases
 
-Releases are tagged `vX.Y.Z` and publish one zip per CI build flavor (`{app}-{board_type}-v{version}.zip`). Each directory has a flat structure and contains the images you need, a generated `README.md` describing the content, and, for nRF91M1, the Serial Modem archive CI tested that night. See [Release artifacts](release-artifacts.md) for bundle names, file descriptions, and flashing instructions.
+Releases are tagged `vX.Y.Z` and publish one zip file per CI build flavor (`{app}-{board_type}-v{version}.zip`). Each zip file has a flat structure and contains the images you need, a generated `README.md` describing the content, and, for nRF91M1, the Serial Modem archive CI tested that night. See [Release artifacts](release-artifacts.md) for bundle names, file descriptions, and flashing instructions.
 
 The version is derived from conventional commit prefixes in merged commits:
 
@@ -44,17 +44,17 @@ The version is derived from conventional commit prefixes in merged commits:
 | `BREAKING CHANGE` or `type!:` | Major |
 | `chore:`, `docs:`, `ci:`, and so on | No release |
 
-Firmware built for a release embeds that version through each application's [`VERSION`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/VERSION) file. The CI build step overwrites `VERSION` from the resolved semver before compiling (without committing the change). The Memfault SDK reports it to nRF Cloud through nRF Connect SDK (`CONFIG_MEMFAULT_NCS_FW_VERSION_STATIC` defaults to `APP_VERSION_TWEAK_STRING`). The `VERSION` files checked into the repository are for local development only.
+Firmware built for a release embeds that version through each application's [`VERSION`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/VERSION) file. The CI build step overwrites `VERSION` from the resolved semantic version before compiling (without committing the change). The Memfault SDK reports it to nRF Cloud through nRF Connect SDK (`CONFIG_MEMFAULT_NCS_FW_VERSION_STATIC` defaults to `APP_VERSION_TWEAK_STRING`). The `VERSION` files checked into the repository are for local development only.
 
-FOTA hardware tests on `main` use the same release semver as the baseline: CI passes `FIRMWARE_VERSION` to the Test workflow, flashes the Build artifact's `merged.hex` without rebuilding, then builds and deploys a patch-bumped update image (for example, `1.2.3` → `1.2.4`) for OTA verification. Local runs fall back to `baseline_version` in [`.github/test/tests.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/.github/test/tests.yml) and flash with `west flash --recover`.
+FOTA hardware tests on `main` use the same release semantic version as the baseline: CI passes `FIRMWARE_VERSION` to the Test workflow, flashes the Build artifact's `merged.hex` without rebuilding, then builds and deploys a patch-bumped update image (for example, `1.2.3` to `1.2.4`) for OTA verification. Local runs fall back to `baseline_version` in [`.github/test/tests.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/.github/test/tests.yml) and flash with `west flash --recover`.
 
-Hardware tests use five rigs on two self-hosted runners (see [`.github/test/tests.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/.github/test/tests.yml)):
+Hardware tests use five rigs, each with its own device under test (DUT), on two self-hosted runners (see [`.github/test/tests.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/.github/test/tests.yml)):
 
 | CI job | Runner | DUT | Every CI run |
 |--------|--------|-----|--------------|
 | `ppp-provision-nrf54l15-nrf91` | `self-hosted-provisioning` | Provisioning (`CI_NRF54L15_PROVISION_*`) | Recover flash, full nRF Cloud onboard |
 | `ppp-provision-nrf54lm20b-nrf91` | `self-hosted-provisioning` | Location (`CI_NRF54LM20B_PROVISION_*`) | Recover flash, full nRF Cloud onboard (plain build) |
-| `ppp-provision-location-nrf54lm20b-nrf91` | `self-hosted-provisioning` | Location (`CI_NRF54LM20B_PROVISION_*`) | Recover flash, full onboard, then Wi-Fi location data |
+| `ppp-provision-location-nrf54lm20b-nrf91` | `self-hosted-provisioning` | Location (`CI_NRF54LM20B_PROVISION_*`) | Recover flash, full onboard, then Wi-Fi® location data |
 | `ppp-provision-nrf93m1` | `self-hosted-provisioning` | nRF93M1 DK (`CI_NRF93M1_PROVISION_*`) | Recover flash, full nRF Cloud onboard |
 | `91m1_at-provision-nrf54lm20b-nrf91` | `self-hosted-provisioning` | Location (`CI_NRF54LM20B_PROVISION_*`) | Recover flash, unclaim the nRF9151, then claim it and check that the Serial Modem onboards itself (`AT#XNRFPROV`) |
 | `93m1_at-provision-nrf93m1` | `self-hosted-provisioning` | nRF93M1 DK (`CI_NRF93M1_PROVISION_*`) | Recover flash, delete the nRF93M1 modem from nRF Cloud, then onboard it with its registration JWT (`AT%REGJWT`) and check for a location fix |
@@ -67,7 +67,7 @@ Provisioning runs in parallel with the first queued test job on the separate run
 
 Once the release is deployed, FOTA tests run `fota poll` on the DUT shell instead of waiting up to a full sync interval for the application to poll on its own. A poll that reports no update is retried, since nRF Cloud can take a while to offer a newly deployed release.
 
-DUT 3 is an nRF54LM20B DK with an [nRF7002-EB II](getting-started/ppp-nrf54.md#step-3-set-up-the-hardware) shield, wired to an nRF91 Serial Modem. Both lm20b tests use host console VCOM0 (UART30): `ppp-provision-nrf54lm20b-nrf91` flashes the plain `nrf54lm20b` build and runs `test_cloud_provision`; `ppp-provision-location-nrf54lm20b-nrf91` flashes the Wi-Fi location build and verifies Wi-Fi scan plus nRF Cloud ground-fix. Local run for plain provisioning:
+DUT 3 is an nRF54LM20B DK with an [nRF7002-EB II](getting-started/ppp-nrf54.md#step-3-set-up-the-hardware) shield, wired to an nRF91 Serial Modem. Both nRF54LM20B tests use host console VCOM0 (UART30): `ppp-provision-nrf54lm20b-nrf91` flashes the plain `nrf54lm20b` build and runs `test_cloud_provision`; `ppp-provision-location-nrf54lm20b-nrf91` flashes the Wi-Fi location build and verifies Wi-Fi scan plus nRF Cloud ground-fix. To run plain provisioning locally, use the following commands:
 
 ```shell
 export REPO_ROOT=$PWD
@@ -75,7 +75,7 @@ export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load ppp-pr
 PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_provision/ -c tests/on_target/tests/pytest.ini -v
 ```
 
-Local run for the location test:
+To run the location test locally, use the following commands:
 
 ```shell
 export REPO_ROOT=$PWD
@@ -83,7 +83,7 @@ export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load ppp-pr
 PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_location/ -c tests/on_target/tests/pytest.ini -v
 ```
 
-DUT 4 is an nRF93M1 DK running `ppp`, with the host console on UART20. The on-board nRF93M1 keeps the Serial Modem firmware it already has, so the test flashes only the host and captures no modem log. Local run:
+DUT 4 is an nRF93M1 DK running `ppp`, with the host console on UART20. The on-board nRF93M1 keeps the Serial Modem firmware it already has, so the test flashes only the host and captures no modem log. To run the test locally, use the following commands:
 
 ```shell
 export REPO_ROOT=$PWD
@@ -101,12 +101,12 @@ Register runners with dedicated labels only. GitHub adds the default `self-hoste
 |--------|--------|---------|
 | `*-build-A/B/C` | `self-hosted-build` | Firmware builds, compliance, SonarCloud |
 | `*-host` | `self-hosted-test` | Coredump and FOTA on DUT 2, FOTA on DUT 5 |
-| `*-prov` | `self-hosted-provisioning` | Provisioning on DUT 1, DUT 3 and DUT 4, FOTA on DUT 3 |
+| `*-prov` | `self-hosted-provisioning` | Provisioning on DUT 1, DUT 3, and DUT 4, FOTA on DUT 3 |
 
-Example registration for the provisioning rig:
+The following commands register the provisioning rig:
 
 ```shell
-# On the provisioning rig — use a new runner name, e.g. smha-provisioning
+# On the provisioning rig — use a new runner name, for example smha-provisioning
 mkdir actions-runner-provisioning && cd actions-runner-provisioning
 curl -o actions-runner-linux-x64-2.XXX.0.tar.gz -L https://github.com/actions/runner/releases/download/v2.XXX.0/actions-runner-linux-x64-2.XXX.0.tar.gz
 tar xzf ./actions-runner-linux-x64-*.tar.gz
@@ -115,35 +115,35 @@ tar xzf ./actions-runner-linux-x64-*.tar.gz
 sudo ./svc.sh install && sudo ./svc.sh start
 ```
 
-Example for a build runner:
+The following commands register a build runner:
 
 ```shell
 ./config.sh --url https://github.com/<org>/<repo> --token <registration-token> \
   --name smha-build-a --labels self-hosted-build,Linux,X64 --unattended
 ```
 
-Example for the test rig (DUT 2):
+The following commands register the test rig (DUT 2):
 
 ```shell
 ./config.sh --url https://github.com/<org>/<repo> --token <registration-token> \
   --name smha-test --labels self-hosted-test,Linux,X64 --unattended
 ```
 
-Both runners need Docker and USB access to their DKs (`--privileged -v /dev:/dev` in the test workflow containers). Set the GitHub repository variables for each rig on the same repo (`CI_NRF54L15_PROVISION_*` and `CI_NRF54L15_PROVISION_SERIAL_MODEM_*` for DUT 1, `CI_NRF54L15_*` and `CI_NRF54L15_SERIAL_MODEM_*` for DUT 2, `CI_NRF54LM20B_PROVISION_*` and `CI_NRF54LM20B_PROVISION_SERIAL_MODEM_*` for DUT 3, `CI_NRF93M1_PROVISION_*` for DUT 4, `CI_NRF93M1_*` for DUT 5). The provisioning runner needs access to DUT 1, DUT 3 and DUT 4, and the test runner to DUT 2 and DUT 5; tests select their board by SEGGER serial number, so the DKs can share one runner host.
+Both runners need Docker and USB access to their DKs (`--privileged -v /dev:/dev` in the test workflow containers). Set the GitHub repository variables for each rig in the same repository (`CI_NRF54L15_PROVISION_*` and `CI_NRF54L15_PROVISION_SERIAL_MODEM_*` for DUT 1, `CI_NRF54L15_*` and `CI_NRF54L15_SERIAL_MODEM_*` for DUT 2, `CI_NRF54LM20B_PROVISION_*` and `CI_NRF54LM20B_PROVISION_SERIAL_MODEM_*` for DUT 3, `CI_NRF93M1_PROVISION_*` for DUT 4, `CI_NRF93M1_*` for DUT 5). The provisioning runner needs access to DUT 1, DUT 3, and DUT 4, and the test runner to DUT 2 and DUT 5; tests select their board by SEGGER serial number, so the DKs can share one runner host.
 
-The tests onboard, look up and delete devices in the linked nRF Cloud project with a Memfault Organization Auth Token, as in the [nRF Cloud device onboarding quickstart](https://docs.nrfcloud.com/docs/best-practices/device-onboarding-quickstart): the `MEMFAULT_ORG_TOKEN` secret and the `MEMFAULT_ORG` and `MEMFAULT_PROJECT` variables. Deleting a device also releases its claim. `93m1_at-provision-nrf93m1` also needs the `NRF_CLOUD_TENANT_ID` variable, the tenant that `AT%REGJWT` binds the registration JWT to. For a local run, export the same names.
+The tests onboard, look up, and delete devices in the linked nRF Cloud project with a Memfault Organization Auth Token, as in the [nRF Cloud device onboarding quickstart](https://docs.nrfcloud.com/docs/best-practices/device-onboarding-quickstart): the `MEMFAULT_ORG_TOKEN` secret and the `MEMFAULT_ORG` and `MEMFAULT_PROJECT` variables. Deleting a device also releases its claim. `93m1_at-provision-nrf93m1` also needs the `NRF_CLOUD_TENANT_ID` variable, the tenant that `AT%REGJWT` binds the registration JWT to. For a local run, export the same names.
 
 On-target tests for the nRF54 hosts flash the newest upstream Serial Modem release that ships the external-MCU zip on the nRF9151 DK before programming the host.
 
 The test DUT must be provisioned once (manually or by running the provisioning flow locally against it). CI flashes baseline firmware without recovery, so TF-M credentials persist. FOTA and coredump do not remove the device from nRF Cloud after each run.
 
-For the first-time setup for the test DUT (`CI_NRF54L15_*`): follow [Connect to nRF Cloud](getting-started/ppp-nrf54.md#step-5-connect-to-nrf-cloud) in the nRF54 PPP getting-started guide on that board, or run the provisioning test locally with `TEST_JSON` from `ppp-provision-nrf54l15-nrf91` while pointing the `CI_NRF54L15_PROVISION_*` variables at the test board (once only). Register the device in the shared nRF Cloud cohort `ci-91m1-test-nrf54l15-nrf91` (used by both coredump and FOTA tests).
+For the first-time setup of the test DUT (`CI_NRF54L15_*`), follow [Connect to nRF Cloud](getting-started/ppp-nrf54.md#step-5-connect-to-nrf-cloud) in the nRF54 PPP getting-started guide on that board, or run the provisioning test locally with `TEST_JSON` from `ppp-provision-nrf54l15-nrf91` while pointing the `CI_NRF54L15_PROVISION_*` variables at the test board (once only). Register the device in the shared nRF Cloud cohort `ci-91m1-test-nrf54l15-nrf91` (used by both coredump and FOTA tests).
 
 The nRF54LM20B FOTA test reuses DUT 3 (`CI_NRF54LM20B_PROVISION_*`) on the provisioning runner. The device must reach cloud connect before CI; the test calls `ensure_provisioned()` on the first run if credentials are missing and assigns the DUT to the nRF Cloud cohort `ci-91m1-test-nrf54lm20b-nrf91` (separate from the provision cohort). When provision and FOTA run in the same CI batch, the FOTA test moves the device into the test cohort automatically.
 
-The nRF54LM20B build reports nRF Cloud hardware version `smha-nrf54lm20dk` instead of the NCS default board name (see [`boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.conf`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.conf)). The shared nRF Cloud project binds `nrf54lm20dk` to another software type, so OTA payloads for `smha-91m1` are rejected under that name. The nRF93M1 DK build reports `smha-nrf93m1dk` for the same reason (see [`boards/nrf93m1dk_nrf54l15_cpuapp_ns.conf`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/boards/nrf93m1dk_nrf54l15_cpuapp_ns.conf)): `nrf93m1dk` is bound to another software type, so OTA payloads for `smha-93m1` are rejected under that name. The nRF54L15 DK build reports `smha-nrf54l15dk` (see [`boards/nrf54l15dk_nrf54l15_cpuapp_ns.conf`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/boards/nrf54l15dk_nrf54l15_cpuapp_ns.conf)) so all boards follow the same naming.
+The nRF54LM20B build reports nRF Cloud hardware version `smha-nrf54lm20dk` instead of the nRF Connect SDK default board name (see [`boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.conf`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.conf)). The shared nRF Cloud project binds `nrf54lm20dk` to another software type, so OTA payloads for `smha-91m1` are rejected under that name. The nRF93M1 DK build reports `smha-nrf93m1dk` for the same reason (see [`boards/nrf93m1dk_nrf54l15_cpuapp_ns.conf`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/boards/nrf93m1dk_nrf54l15_cpuapp_ns.conf)): `nrf93m1dk` is bound to another software type, so OTA payloads for `smha-93m1` are rejected under that name. The nRF54L15 DK build reports `smha-nrf54l15dk` (see [`boards/nrf54l15dk_nrf54l15_cpuapp_ns.conf`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/boards/nrf54l15dk_nrf54l15_cpuapp_ns.conf)) so all boards follow the same naming.
 
-Coredump tests connect to nRF Cloud, trigger `mflt test busfault` over the shell, and verify a new bus fault coredump for the device appears in the nRF Cloud Traces REST API. "New" means newer than the device's newest coredump recorded before the fault, so the check does not depend on the device clock agreeing with the runner. A bus fault is used because TF-M traps HardFaults before the Memfault SDK's handler runs. Every test that flashes the PPP application uploads its `zephyr.elf` to Memfault, keyed by GNU build ID, so coredumps from any test are symbolicated. Local run:
+Coredump tests connect to nRF Cloud, trigger `mflt test busfault` over the shell, and verify a new bus fault coredump for the device appears in the nRF Cloud Traces REST API. "New" means newer than the device's newest coredump recorded before the fault, so the check does not depend on the device clock agreeing with the runner. A bus fault is used because TF-M traps HardFaults before the Memfault SDK's handler runs. Every test that flashes the PPP application uploads its `zephyr.elf` to Memfault, keyed by GNU build ID, so coredumps from any test are symbolicated. To run the coredump test locally, use the following commands:
 
 ```shell
 export REPO_ROOT=$PWD
@@ -151,7 +151,7 @@ export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load ppp-me
 PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_memfault/ -c tests/on_target/tests/pytest.ini -v
 ```
 
-Run coredump then FOTA locally (same order as CI):
+To run the coredump test and then the FOTA test locally, in the same order as CI, use the following commands:
 
 ```shell
 export REPO_ROOT=$PWD
@@ -161,7 +161,7 @@ export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load ppp-ap
 PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_fota/ -c tests/on_target/tests/pytest.ini -v
 ```
 
-Local run for nRF54LM20B FOTA (plain `nrf54lm20b` build, same DUT as provision tests):
+To run the nRF54LM20B FOTA test locally, against the plain `nrf54lm20b` build on the same DUT as the provision tests, use the following commands:
 
 ```shell
 export REPO_ROOT=$PWD
@@ -169,7 +169,7 @@ export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load ppp-ap
 PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_fota/ -c tests/on_target/tests/pytest.ini -v
 ```
 
-The nRF93M1 FOTA test runs on its own nRF93M1 DK (DUT 5, `CI_NRF93M1_*`, host console on VCOM0) in nRF Cloud cohort `ci-93m1-test-nrf93m1`. Like the nRF54LM20B FOTA test, it provisions the board through `ensure_provisioned()` on the first run. Local run:
+The nRF93M1 FOTA test runs on its own nRF93M1 DK (DUT 5, `CI_NRF93M1_*`, host console on VCOM0) in nRF Cloud cohort `ci-93m1-test-nrf93m1`. Like the nRF54LM20B FOTA test, it provisions the board through `ensure_provisioned()` on the first run. To run the test locally, use the following commands:
 
 ```shell
 export REPO_ROOT=$PWD
@@ -177,7 +177,7 @@ export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load ppp-ap
 PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_fota/ -c tests/on_target/tests/pytest.ini -v
 ```
 
-Set `NRF_CLOUD_*`, `MEMFAULT_*`, and the host plus Serial Modem `CI_NRF54L15_*` / `CI_NRF54L15_PROVISION_*` / `CI_NRF54LM20B_PROVISION_*` / `CI_NRF93M1_PROVISION_*` / `CI_NRF93M1_*` variables/secrets documented in [`.github/workflows/test.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/.github/workflows/test.yml).
+Set `NRF_CLOUD_*`, `MEMFAULT_*`, and the host plus Serial Modem `CI_NRF54L15_*`, `CI_NRF54L15_PROVISION_*`, `CI_NRF54LM20B_PROVISION_*`, `CI_NRF93M1_PROVISION_*`, and `CI_NRF93M1_*` variables and secrets documented in [`.github/workflows/test.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/.github/workflows/test.yml).
 
 ### Serial logs
 
@@ -192,11 +192,11 @@ When a test fails, the last 200 lines of both logs are also printed into the job
 
 #### Why the modem console needs `AT#XLOG=1`
 
-Serial Modem prints its bootloader and application banners over `uart1` and then suspends the log backend and the UART to avoid the roughly 700 uA overhead of keeping it active. Without further action the modem log therefore stops after about 0.65 s of uptime and contains nothing from the phase a test actually exercises.
+Serial Modem prints its bootloader and application banners over `uart1` and then suspends the log backend and the UART to avoid the roughly 700 µA overhead of keeping it active. Without further action the modem log therefore stops after about 0.65 s of uptime and contains nothing from the phase a test actually exercises.
 
 `AT#XLOG=1` resumes it, and the tests issue that command through the host's `modem at` shell once the host reports `Cloud connected`. That is all the released image needs: its default `INF` levels carry the PPP, PDN, and AT events triage relies on.
 
-Three further consequences worth knowing:
+This behavior has three further consequences:
 
 - The command needs the CMUX AT pipe, which only exists after the modem attaches and which CMUX runtime power save closes again after its idle timeout. `enable_modem_application_logs()` therefore retries and confirms the modem replied `OK`, warning if it never succeeds.
 - Anything that reboots the host also pulses modem nRESET, which resets the modem and turns logging back off, so the command is reissued after each reboot (for example, after a FOTA update is applied).
@@ -219,7 +219,7 @@ Identities are therefore compared rather than assumed. `AT+CGSN=1` gives the IME
 
 #### Serial Modem release
 
-The modem image is never built from source here. Nightly CI resolves the newest published [Serial Modem](https://github.com/nrfconnect/ncs-serial-modem/releases) release that ships the nRF91M1 bundle (`*_nrf9151dk_nrf91m1.zip`, including prereleases), locks that tag for the whole pipeline run, and passes it to every nRF91M1 hardware test and to the Release workflow. Tests download the archive, cache it under `build/serial-modem-firmware/<tag>/`, and flash the `.hex` from it. Release bundles copy the same archive unextracted into every nRF54 host `ppp` zip, so what ships is what CI tested that night.
+The modem image is never built from source here. Nightly CI resolves the newest published [Serial Modem](https://github.com/nrfconnect/ncs-serial-modem/releases) release that ships the nRF91M1 bundle (`*_nrf9151dk_nrf91m1.zip`, including prereleases), locks that tag for the whole pipeline run, and passes it to every nRF91M1 hardware test and to the Release workflow. Tests download the archive, cache it under `build/serial-modem-firmware/<tag>/`, and flash the `.hex` file from it. Release bundles copy the same archive unextracted into every nRF54 host `ppp` zip file, so what ships is what CI tested that night.
 
 The Serial Modem uses the nRF91M1 UART pinout. The bench is wired for it. See [Wire the DKs together](getting-started/ppp-nrf54.md#34-wire-the-dks-together).
 
@@ -229,7 +229,7 @@ Full LTE and IP-level modem traces (`AT#XTRACE=1`) are a further step still, and
 
 ## Documentation diagrams
 
-The diagrams in the application documentation are PlantUML sources kept next to their rendered SVGs in `docs/applications/*/diagrams/`, sharing the `style.puml` skin in the same folder. Edit the `.puml`, re-render, and commit both files:
+The diagrams in the application documentation are PlantUML sources kept next to their rendered SVGs in `docs/applications/*/diagrams/`, sharing the `style.puml` skin in the same folder. Edit the `.puml` file, re-render it, and commit both files:
 
 ```shell
 scripts/render_diagrams.py
@@ -246,13 +246,13 @@ A source that does not parse fails with the error and line number the server rep
 
 ## Commit messages
 
-We use a title format that combines [Conventional Commits](https://www.conventionalcommits.org/) semver types with [Zephyr-style](https://docs.zephyrproject.org/latest/contribute/guidelines.html#commit-guidelines) subsystem prefixes:
+This repository uses a title format that combines [Conventional Commits](https://www.conventionalcommits.org/) semantic version types with [Zephyr-style](https://docs.zephyrproject.org/latest/contribute/guidelines.html#commit-guidelines) subsystem prefixes:
 
 ```
 <type>[!]: <subsystem>: [<component>:] <description>
 ```
 
-Examples:
+The following examples show valid commit titles:
 
 ```
 feat: applications: ppp: improve FOTA and cloud sync support
@@ -262,6 +262,6 @@ ci: .github: workflows: add push orchestrator
 
 Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`.
 
-The commit body must include at least one line of description (max 72 characters per line) and a `Signed-off-by: Full Name <email>` footer. Use `BREAKING CHANGE:` in the body when the title includes `!`.
+The commit body must include at least one line of description (maximum 72 characters per line) and a `Signed-off-by: Full Name <email>` footer. Use `BREAKING CHANGE:` in the body when the title includes `!`.
 
-Pull requests enforce these rules via gitlint. All rules live in [`scripts/gitlint/commit_rules.py`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/scripts/gitlint/commit_rules.py) with configuration in [`.gitlint`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/.gitlint).
+Pull requests enforce these rules with gitlint. All rules live in [`scripts/gitlint/commit_rules.py`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/scripts/gitlint/commit_rules.py) with configuration in [`.gitlint`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/.gitlint).

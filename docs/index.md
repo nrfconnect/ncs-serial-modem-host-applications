@@ -1,6 +1,6 @@
 # Serial Modem Host Applications
 
-Host-side firmware for Nordic Smart Modem modules. The applications in this repository run on a host MCU, use a Serial Modem for cellular connectivity, and send data to nRF Cloud. They are built on the [nRF Connect SDK](https://www.nordicsemi.com/Products/Development-software/nRF-Connect-SDK) and share the modular **zbus and SMF** architecture of the [Asset Tracker Template](https://github.com/nrfconnect/Asset-Tracker-Template).
+Host-side firmware for Nordic Smart Modem modules. The applications in this repository run on a host MCU, use a Serial Modem for cellular connectivity, and send data to nRF Cloud. They are built on the [nRF Connect SDK](https://www.nordicsemi.com/Products/Development-software/nRF-Connect-SDK) and share the modular architecture of the [Asset Tracker Template](https://github.com/nrfconnect/Asset-Tracker-Template), which is based on Zephyr bus (zbus) and the State Machine Framework (SMF).
 
 ![The host MCU talks to the Serial Modem over UART, and the Serial Modem connects to nRF Cloud over LTE](images/host-serial-modem.svg)
 
@@ -8,7 +8,7 @@ Host-side firmware for Nordic Smart Modem modules. The applications in this repo
 
 | Your hardware | Application | What it does |
 |---------------|-------------|--------------|
-| nRF54L15 DK or nRF54LM20B DK, wired to an nRF9151 DK | [PPP Host Application](applications/ppp/README.md) | The host connects to nRF Cloud over its own IP stack, with the modem carrying IP over PPP. Includes FOTA, remote debugging, and optional Wi-Fi location. |
+| nRF54L15 DK or nRF54LM20B DK, wired to an nRF9151 DK | [PPP Host Application](applications/ppp/README.md) | The host connects to nRF Cloud over its own IP stack, with the modem carrying IP over PPP. Includes FOTA updates, remote debugging, and optional Wi-Fi® location. |
 | nRF93M1 DK | [PPP Host Application](applications/ppp/README.md) | The same application on the integrated nRF93M1 modem, with FOTA, remote debugging, cell and Wi-Fi location, and battery reporting. |
 | nRF93M1 DK | [nRF93M1 AT Host Application](applications/93m1_at/README.md) | A minimal host. The modem connects to nRF Cloud with its built-in client, and the host drives it with AT commands. |
 | nRF54LM20B DK, wired to an nRF9151 DK | [nRF91 AT Host Application](applications/91m1_at/README.md) | A minimal location tracker. The Serial Modem onboards itself to nRF Cloud and resolves cell or GNSS location, and the host drives it with AT commands. |

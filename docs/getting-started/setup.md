@@ -4,7 +4,7 @@ This page is step 2 of [Getting started](index.md). It sets up everything you ne
 
 ![Step 2 of 6: Set up the repository and toolchain](../images/getting-started-step-2.svg)
 
-1. Install nRF Util by following the instructions in the [nRF Util documentation](https://docs.nordicsemi.com/bundle/nrfutil/page/guides/installing.html), if you have not done so yet.
+1. Install nRF Util by following the instructions in the [nRF Util documentation](https://docs.nordicsemi.com/bundle/nrfutil/page/guides/installing.html) if you have not done so yet.
 
 1. Install the SDK manager and device commands:
 
@@ -38,4 +38,4 @@ When you come back later, start the toolchain shell again (step 2.4) and go to `
 
 ---
 
-**Previous:** [Step 1: Choose your application](index.md) | **Next:** step 3 in your application guide, [PPP on an nRF54 DK](ppp-nrf54.md), [PPP on the nRF93M1 DK](ppp-nrf93m1.md), [nRF93M1 AT](93m1-at.md), or [nRF91 AT on an nRF54LM20B DK](91m1-at.md)
+**Previous:** [Step 1: Choose your application](index.md) | **Next:** step 3 in your application guide, [PPP on an nRF54 DK](ppp-nrf54.md), [PPP on the nRF93M1 DK](ppp-nrf93m1.md), [nRF93M1 AT](93m1-at.md), or [nRF91 AT on an nRF54LM20B DK](91m1-at.md).

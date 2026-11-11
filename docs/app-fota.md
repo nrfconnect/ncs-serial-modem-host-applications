@@ -2,6 +2,8 @@
 
 This page describes how to update the host application firmware over the air (FOTA) on the [PPP Host Application](applications/ppp/README.md) from the command line. You publish the update to nRF Cloud with the [`memfault` CLI](https://docs.memfault.com/docs/ci/install-memfault-cli), and the device fetches it from nRF Cloud over its existing CoAP session.
 
+The following diagram shows the update flow:
+
 ```mermaid
 sequenceDiagram
     participant PC as Your computer
@@ -22,7 +24,7 @@ To follow this guide, you must meet the following requirements:
 
 - A device that is provisioned, onboarded to nRF Cloud, and logs `Cloud connected`. See the getting-started guide for [an nRF54 DK](getting-started/ppp-nrf54.md) or [the nRF93M1 DK](getting-started/ppp-nrf93m1.md).
 - The `memfault` CLI for nRF Cloud: `pip3 install memfault-cli`.
-- An organization auth token and the organization and project slugs. Login to nRF Cloud then go to **Admin** > **Organization Auth Tokens** to generate one.
+- An organization auth token and the organization and project slugs. Log in to nRF Cloud and go to **Admin** > **Organization Auth Tokens** to generate one.
 
 ## Release parameters
 
@@ -42,7 +44,7 @@ grep CONFIG_MEMFAULT_NCS_FW_VERSION= build/<app>/zephyr/.config
 
 ## Steps
 
-The examples use the nRF93M1 DK, updating from `1.0.0` to `1.0.1`. For the nRF54 host DKs, change the board and parameters from the table above.
+The examples use the nRF93M1 DK, updating from `1.0.0` to `1.0.1`. For the nRF54 host DKs, change the board and parameters as listed in [Release parameters](#release-parameters).
 
 ### 1. Build the update image
 
@@ -65,8 +67,8 @@ west build -p -b nrf93m1dk/nrf54l15/cpuapp/ns
 
 The build produces the following files:
 
-- `build/ppp/zephyr/zephyr.signed.bin` - The signed MCUboot image, which is the OTA payload.
-- `build/ppp/zephyr/zephyr.elf` - The symbol file, used to decode crash reports from the new image.
+- `build/ppp/zephyr/zephyr.signed.bin` – The signed MCUboot image, which is the OTA payload.
+- `build/ppp/zephyr/zephyr.elf` – The symbol file, used to decode crash reports from the new image.
 
 ### 2. Publish and deploy the release
 
@@ -123,6 +125,8 @@ nRF Cloud can take up to a minute to offer a newly deployed release. If the poll
 
 ### 4. Wait for the device to reboot
 
+The console logs the following:
+
 ```text
 <inf> main: FOTA successful, rebooting to apply the update
 ```
@@ -141,7 +145,7 @@ The software version must be `1.0.1+0`. The device also shows the new version in
 
 ### 6. Deactivate the release when testing
 
-While a release is deployed, it is offered to every device in the cohort that runs an older version.
+While a release is deployed, it is offered to every device in the cohort that runs an older version. To stop offering it, run the following command:
 
 ```shell
 memfault --org-token $MEMFAULT_ORG_TOKEN --org $MEMFAULT_ORG --project $MEMFAULT_PROJECT \

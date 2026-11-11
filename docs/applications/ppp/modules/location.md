@@ -2,7 +2,7 @@
 
 The Location module collects location measurements on request and publishes them for the application to resolve into a position. It has two backends, selected with the `APP_LOCATION_BACKEND` choice. Both publish the same messages:
 
-- **Location library** (`CONFIG_APP_LOCATION_BACKEND_LOCATION_LIB`, `location_lib.c`): Scans for nearby Wi-Fi® access points on the host through the [Location](https://docs.nordicsemi.com/bundle/ncs-latest/page/nrf/libraries/modem/location.html) library. It is used on the nRF54 host DKs. It is only built with the location overlay, which requires an nRF7002-EB2 shield for Wi-Fi scanning. See the [getting-started guide](../../../getting-started/ppp-nrf54.md) for wiring and build commands.
+- **Location library** (`CONFIG_APP_LOCATION_BACKEND_LOCATION_LIB`, `location_lib.c`): Scans for nearby Wi-Fi® access points on the host through the [Location](https://docs.nordicsemi.com/bundle/ncs-latest/page/nrf/libraries/modem/location.html) library. It is used on the nRF54 host DKs. It is only built with the location overlay, which requires an nRF7002-EB II shield for Wi-Fi scanning. See the [getting-started guide](../../../getting-started/ppp-nrf54.md) for wiring and build commands.
 - **Modem AT commands** (`CONFIG_APP_LOCATION_BACKEND_MODEM_AT`, `location_at.c`): Reads the serving cell (`%BCINFO`) and scans for Wi-Fi access points (`%WIFISCAN`) through the nRF93M1 over the shared AT pipe. It is the default on the nRF93M1 DK, where the module is enabled in the default build.
 
 ## Modem AT backend
@@ -102,13 +102,13 @@ struct location_msg {
 };
 ```
 
-## Configurations
+## Configuration
 
 Check and configure the following Kconfig options:
 
 - **CONFIG_APP_LOCATION**: Enables the Location module. Enabled by default when the Location library is enabled, which the location overlay does, and on the nRF93M1 DK.
 
-- **CONFIG_APP_LOCATION_BACKEND_LOCATION_LIB** / **CONFIG_APP_LOCATION_BACKEND_MODEM_AT**: Selects the backend. The modem AT backend is the default on the nRF93M1 DK, and the Location library backend everywhere else.
+- **CONFIG_APP_LOCATION_BACKEND_LOCATION_LIB** and **CONFIG_APP_LOCATION_BACKEND_MODEM_AT**: Select the backend. The modem AT backend is the default on the nRF93M1 DK, and the Location library backend everywhere else.
 
 - **CONFIG_APP_LOCATION_THREAD_STACK_SIZE**: Sets the stack size for the location module thread.
 

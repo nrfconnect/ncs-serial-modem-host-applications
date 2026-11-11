@@ -73,7 +73,6 @@ nav:
     - PPP Host Application:
       - Overview: applications/ppp/README.md
       - Application behavior: applications/ppp/application-behavior.md
-      - Hardware reference: applications/ppp/hardware-setup.md
       - Modules:
         - Main: applications/ppp/modules/main.md
         - Network: applications/ppp/modules/network.md

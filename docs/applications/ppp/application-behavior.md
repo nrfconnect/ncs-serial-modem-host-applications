@@ -4,16 +4,16 @@ This guide describes the general runtime behavior of the [PPP Host Application](
 
 ## Overview
 
-The application runs on the host MCU, an nRF54L15 or nRF54LM20B DK wired to an nRF9151 DK, or the nRF54L15 of the nRF93M1 DK, and treats the Serial Modem as a cellular data interface over PPP. Cloud connectivity uses host-native CoAP/DTLS to nRF Cloud. Credentials are stored in TF-M Protected Storage and used to sign JWTs for CoAP authentication.
+The application runs on the host MCU, an nRF54L15 or nRF54LM20B DK wired to an nRF9151 DK, or the nRF54L15 of the nRF93M1 DK, and treats the Serial Modem as a cellular data interface over the PPP. Cloud connectivity to nRF Cloud uses the CoAP secured with DTLS, terminated on the host. Credentials are stored in TF-M Protected Storage and used to sign JWTs that authenticate the CoAP session.
 
 Cooperating modules run as dedicated threads, each with its own SMF state machine, and communicate through zbus channels. See the [module overview](README.md#modules) for details about the modules and their interactions.
 
 ## Startup sequence
 
-1. **Boot** — MCUboot loads the application. On boards with a modem reset GPIO, `modem_reset.c` pulses the nRF91 reset line before the modules start. The nRF Cloud library logs the device ID (from the host HW ID), protocol, and security tag.
-1. **Network** - The network module connects on startup. When L4 connectivity is established it publishes `NETWORK_CONNECTED`.
-1. **Cloud** - On network up, the cloud module waits for valid time (NTP over PPP) and installed credentials, then calls `nrf_cloud_coap_connect()`. Missing credentials or time cause a retry every 10 seconds (`CONFIG_APP_CLOUD_CREDENTIAL_RETRY_SECONDS`).
-1. **Main** - When the cloud module publishes `CLOUD_CONNECTED`, main transitions to the cloud-connected state and runs the first cloud synchronization.
+1. **Boot** – MCUboot loads the application. On boards with a modem reset GPIO, `modem_reset.c` pulses the nRF91 reset line before the modules start. The nRF Cloud library logs the device ID (from the host hardware ID), protocol, and security tag.
+1. **Network** – The network module connects on startup. When L4 connectivity is established, it publishes `NETWORK_CONNECTED`.
+1. **Cloud** – On network up, the cloud module waits for valid time (NTP over PPP) and installed credentials, then calls `nrf_cloud_coap_connect()`. Missing credentials or time cause a retry every 10 seconds (`CONFIG_APP_CLOUD_CREDENTIAL_RETRY_SECONDS`).
+1. **Main** – When the cloud module publishes `CLOUD_CONNECTED`, main transitions to the cloud-connected state and runs the first cloud synchronization.
 
 ![Startup sequence from boot to the first cloud synchronization](diagrams/startup.svg)
 
@@ -29,7 +29,7 @@ While nRF Cloud is connected, main keeps a periodic timer on a dedicated workque
 
 ![One cloud synchronization cycle](diagrams/cloud-sync.svg)
 
-An initial synchronization runs immediately on cloud connect. The timer is cancelled when the cloud disconnects. A new periodic trigger is only acted on while main is idle between synchronizations.
+An initial synchronization runs immediately on cloud connect. The timer is canceled when the cloud disconnects. A new periodic trigger is only acted on while main is idle between synchronizations.
 
 During the location step, the location module scans for Wi-Fi access points, on the nRF93M1 DK together with the serving cell, and publishes the result as `LOCATION_SEARCH_WIFI_CELL_RESULT`, which main forwards to the cloud module. The cloud module resolves it into a position with an nRF Cloud CoAP ground-fix request and logs the position together with a Google Maps URL. Main does not advance past the location step until `LOCATION_SEARCH_DONE` is published.
 
@@ -46,10 +46,10 @@ The console also offers these shell commands:
 
 | Command | Action |
 | --- | --- |
-| `button 1` / `button 2` | Simulate a press of the matching button. |
-| `network connect` / `network disconnect` | Bring the cellular link up or down. |
-| `fota poll` / `fota cancel` | Check for a firmware update now, or cancel an ongoing download. |
-| `location search` / `location cancel` | Start a Wi-Fi location search now, or cancel an ongoing one. Only available with the location overlay. |
+| `button 1` or `button 2` | Simulate a press of the matching button. |
+| `network connect` or `network disconnect` | Bring the cellular link up or down. |
+| `fota poll` or `fota cancel` | Check for a firmware update now, or cancel an ongoing download. |
+| `location search` or `location cancel` | Start a Wi-Fi location search now, or cancel an ongoing one. Only available with the location overlay. |
 | `at "<command>"` | Send an AT command to the modem and print the response. |
 
 ## LED indication

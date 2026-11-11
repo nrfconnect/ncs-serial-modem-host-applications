@@ -1,33 +1,33 @@
 # Release artifacts
 
-This document describes the pre-built firmware published on each GitHub release. Each zip bundles one application and board-type combination built by CI from the matching NCS version pinned in [`west.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/west.yml).
+This document describes the pre-built firmware published on each GitHub release. Each zip file bundles one application and board-type combination built by CI from the matching nRF Connect SDK version pinned in [`west.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/west.yml).
 
 ## Downloading releases
 
-Pre-built firmware and release notes are published [here](https://github.com/nrfconnect/ncs-serial-modem-host-applications/releases).
+Pre-built firmware and release notes are published on the [releases page](https://github.com/nrfconnect/ncs-serial-modem-host-applications/releases).
 
-Download the zip that matches your application and hardware setup, extract it, and flash `merged.hex` with a J-Link debugger or `nrfutil device program`. See [Flashing a release](#flashing-a-release) below.
+Download the zip file that matches your application and hardware setup, extract it, and flash `merged.hex` with a J-Link debugger or `nrfutil device program`. See [Flashing a release](#flashing-a-release).
 
-Release version `vX.Y.Z` matches the semver embedded in the firmware (`X.Y.Z+0` in the device boot log).
+Release version `vX.Y.Z` matches the semantic version embedded in the firmware (`X.Y.Z+0` in the device boot log).
 
 ## Release bundles
 
-Each release contains one zip per CI build flavor:
+Each release contains one zip file per CI build flavor:
 
 | **Release zip** | **Application** | **Hardware** | **Description** |
 |-----------------|-----------------|--------------|-----------------|
 | `ppp-nrf54l15-v{VERSION}.zip` | [ppp](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/) | nRF54L15 DK + nRF9151 DK | Standard PPP host; nRF Cloud CoAP/DTLS on the host |
 | `ppp-nrf54lm20b-v{VERSION}.zip` | [ppp](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/) | nRF54LM20B DK + nRF9151 DK | Same feature set on nRF54LM20B |
-| `ppp-nrf54lm20b-location-v{VERSION}.zip` | [ppp](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/) | nRF54LM20B DK + nRF7002-EB2 + Serial Modem | Wi-Fi scan for cloud-assisted location |
+| `ppp-nrf54lm20b-location-v{VERSION}.zip` | [ppp](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/) | nRF54LM20B DK + nRF7002-EB II + Serial Modem | Wi-Fi® scan for cloud-assisted location |
 | `ppp-nrf93m1-v{VERSION}.zip` | [ppp](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/) | nRF93M1 DK | PPP host for the integrated nRF93M1 modem |
 | `93m1_at-nrf93m1-v{VERSION}.zip` | [93m1_at](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/93m1_at/) | nRF93M1 DK | AT host; modem terminates the cloud connection |
 | `91m1_at-nrf54lm20b-v{VERSION}.zip` | [91m1_at](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/91m1_at/) | nRF54LM20B DK + nRF9151 DK | AT host; Serial Modem onboards itself and terminates the cloud connection |
 
 Replace `{VERSION}` with the release tag without the `v` prefix (for example `1.2.3` for tag `v1.2.3`).
 
-The nRF54 host setups also require Serial Modem firmware on the nRF9151 or nRF9151 SMA DK. See [Serial Modem firmware (nRF9151 DK)](#serial-modem-firmware-nrf9151-dk) below.
+The nRF54 host setups also require Serial Modem firmware on the nRF9151 or nRF9151 SMA DK. See [Serial Modem firmware (nRF9151 DK)](#serial-modem-firmware-nrf9151-dk).
 
-## Inside each zip
+## Inside each zip file
 
 Everything sits at the top level, with no nested directories:
 
@@ -42,7 +42,7 @@ ppp-nrf54l15-v1.2.3/
 └── serial_modem_v{VERSION}_nrf9151dk_nrf91m1.zip              firmware for the companion nRF9151 / SMA DK
 ```
 
-`ppp-nrf93m1` bundles carry no modem archive, their board having an integrated modem, and the AT host bundles (`93m1_at`, `91m1_at`) have neither `zephyr.signed.bin` nor `dfu_application.zip`. File names are fixed so scripts and documentation stay valid after extraction.
+The `ppp-nrf93m1` bundles carry no modem archive, because their board has an integrated modem. The AT host bundles (`93m1_at` and `91m1_at`) contain neither `zephyr.signed.bin` nor `dfu_application.zip`. File names are fixed so scripts and documentation stay valid after extraction.
 
 ### Top-level files
 
@@ -58,7 +58,7 @@ ppp-nrf54l15-v1.2.3/
 
 ### Full sysbuild image
 
-Use `merged.hex` for first-time programming or when you need to replace the full flash contents, including the bootloader and secure partitions. The PPP host application (`ppp`) is built with sysbuild, TF-M, and MCUboot; the merged image reflects that layout.
+Use `merged.hex` for first-time programming or when you need to replace the full flash contents, including the bootloader and secure partitions. The PPP Host Application (`ppp`) is built with sysbuild, TF-M, and MCUboot. The merged image reflects that layout.
 
 After flashing, follow the getting-started guide for your application for hardware setup and cloud onboarding:
 
@@ -69,7 +69,7 @@ After flashing, follow the getting-started guide for your application for hardwa
 
 ### ELF file with debug symbols
 
-Upload `zephyr.elf` to nRF Cloud once per release build so coredumps decode correctly. The GNU build ID logged at boot must match the symbol file. See [Remote debugging with nRF Cloud](applications/ppp/remote-debugging.md) for the ppp flow.
+Upload `zephyr.elf` to nRF Cloud once per release build so coredumps decode correctly. The GNU build ID logged at boot must match the symbol file. See [Remote debugging with nRF Cloud](applications/ppp/remote-debugging.md) for the `ppp` flow.
 
 ### Kconfig snapshot
 
@@ -77,25 +77,25 @@ The `.config` file is useful when comparing behavior between releases or confirm
 
 ### MCUboot-signed application image
 
-The `zephyr.signed.bin` file is for signed application-only payload for over-the-air updates. CI FOTA tests build a patch-bumped copy locally; production OTA is typically managed through releases in your nRF Cloud project. Not produced for the AT host applications, which do not ship a signed update image in CI.
+The `zephyr.signed.bin` file is the signed, application-only payload for over-the-air (OTA) updates. CI FOTA tests build a patch-bumped copy locally; production OTA is typically managed through releases in your nRF Cloud project. This file is not produced for the AT host applications, which do not ship a signed update image in CI.
 
-### DFU package wrapping
+### DFU package
 
-The `dfu_application.zip` file is for the same signed image packaged with the manifest an nRF Cloud FOTA job expects, so a release can be deployed without rebuilding. Not produced for the AT host applications.
+The `dfu_application.zip` file contains the same signed image, packaged with the manifest that an nRF Cloud FOTA job expects, so you can deploy a release without rebuilding. This file is not produced for the AT host applications.
 
 ### Everything else from the build
 
-Only the files above ship. Per-domain MCUboot and TF-M output, `.map` and `.dts` files, and the partition metadata are not included. Build the same tag locally when you need them, as described in [Building locally instead](#building-locally-instead).
+Only the files listed in [Top-level files](#top-level-files) ship. Per-domain MCUboot and TF-M output, `.map` and `.dts` files, and the partition metadata are not included. Build the same tag locally when you need them, as described in [Building locally instead](#building-locally-instead).
 
 ## Serial Modem firmware (nRF9151 DK)
 
 The PPP Host Application on the nRF54L15 or nRF54LM20B DK needs a separate Serial Modem image on the wired nRF9151 or nRF9151 SMA DK, configured for PPP + CMUX on UART0 for an external host MCU. Every nRF54 host `ppp` bundle carries the upstream archive CI tested that night, so there is no separate asset to download, and on-target tests flash that same archive, so what ships beside the host build is what CI verified against it.
 
-The exact tag varies by SMHA release. Each bundle's `README.md` names the Serial Modem version and links to the upstream release page. Browse [Serial Modem releases](https://github.com/nrfconnect/ncs-serial-modem/releases) for the source, or use the zip already in your download.
+The exact tag varies by Serial Modem Host Applications release. Each bundle's `README.md` names the Serial Modem version and links to the upstream release page. Browse [Serial Modem releases](https://github.com/nrfconnect/ncs-serial-modem/releases) for the source, or use the zip file already in your download.
 
 Besides the full-flash `.hex`, the archive holds the ELF with debug symbols, a Kconfig snapshot, the signed application and MCUboot slot images, DFU packages for programming without a debugger, and a devicetree snapshot.
 
-Extract it, flash the `.hex` on the Serial Modem DK first, then flash the host bundle's `merged.hex` on the host DK:
+Extract it, flash the `.hex` file on the Serial Modem DK first, then flash the host bundle's `merged.hex` on the host DK:
 
 ```shell
 unzip serial_modem_v<tag>_nrf9151dk_nrf91m1.zip
@@ -112,15 +112,15 @@ See [Set up the hardware](getting-started/ppp-nrf54.md#step-3-set-up-the-hardwar
 
 ## Flashing a release
 
-Extract the zip, then flash `merged.hex` from the extracted directory.
+Extract the zip file, then flash `merged.hex` from the extracted directory.
 
-**West** (from an initialized nRF Connect SDK workspace with the SEGGER J-Link connected):
+To flash with west from an initialized nRF Connect SDK workspace with the SEGGER J-Link connected, run the following command:
 
 ```shell
 west flash --hex-file merged.hex --recover
 ```
 
-**nrfutil**, replacing `<serial_number>` with the serial number that `nrfutil device list` shows for the DK:
+To flash with nRF Util, run the following commands, replacing `<serial_number>` with the serial number that `nrfutil device list` shows for the DK:
 
 ```shell
 nrfutil device recover --serial-number <serial_number>
@@ -130,7 +130,7 @@ nrfutil device reset --serial-number <serial_number>
 
 Recover on the first flash or when TF-M or credential storage must be reset. For routine re-flash during development, skip `--recover` and `nrfutil device recover` if you want to keep TF-M Protected Storage credentials.
 
-For the nRF54 host two-board setups, extract the bundled Serial Modem archive and flash its `.hex` on the nRF9151 DK before programming the host `merged.hex`.
+For the nRF54 host two-board setups, extract the bundled Serial Modem archive and flash its `.hex` file on the nRF9151 DK before programming the host `merged.hex`.
 
 ### Console port after flashing
 
@@ -146,7 +146,7 @@ See the [getting-started guide](getting-started/index.md#step-1-choose-your-appl
 
 ## Building locally instead
 
-Release zips are convenience binaries. To modify firmware or match an unreleased commit, set up a workspace as described in [Set up the repository and toolchain](getting-started/setup.md) and build from source:
+Release zip files are convenience binaries. To modify firmware or match an unreleased commit, set up a workspace as described in [Set up the repository and toolchain](getting-started/setup.md) and build from source:
 
 ```shell
 cd applications/<app>
@@ -158,5 +158,5 @@ Board identifiers match CI. Each application's [getting-started guide](getting-s
 
 ## Related documentation
 
-- [CI and contribution](ci-and-contribution.md) - How releases are versioned and published.
-- [PPP Host Application's remote debugging](applications/ppp/remote-debugging.md) - Symbol upload and coredump workflow.
+- [CI and contribution](ci-and-contribution.md) – How releases are versioned and published.
+- [PPP Host Application's remote debugging](applications/ppp/remote-debugging.md) – Symbol upload and coredump workflow.

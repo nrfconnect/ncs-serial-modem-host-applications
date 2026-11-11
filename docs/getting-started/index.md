@@ -26,8 +26,8 @@ This guide takes you from an unboxed development kit (DK) to a device that sends
 1. Choose how you get the firmware:
 
     - **Build from source:** You build the firmware yourself and can change it. Continue to [Step 2: Set up the repository and toolchain](setup.md).
-    - **Flash pre-built firmware:** You flash firmware from the [latest release](https://github.com/nrfconnect/ncs-serial-modem-host-applications/releases) to evaluate the application. Skip step 2 and go straight to step 3 in your application guide. In step 4, follow the pre-built firmware option. See [Release artifacts](../release-artifacts.md) for what each release zip contains.
+    - **Flash pre-built firmware:** You flash firmware from the [latest release](https://github.com/nrfconnect/ncs-serial-modem-host-applications/releases) to evaluate the application. Skip step 2 and go straight to step 3 in your application guide. In step 4, follow the pre-built firmware option. See [Release artifacts](../release-artifacts.md) for what each release zip file contains.
 
 ---
 
-**Next:** [Step 2: Set up the repository and toolchain](setup.md), or step 3 in your application guide if you flash pre-built firmware
+**Next:** [Step 2: Set up the repository and toolchain](setup.md), or step 3 in your application guide if you flash pre-built firmware.
