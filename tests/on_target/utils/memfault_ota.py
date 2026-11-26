@@ -1,6 +1,4 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
-"""Memfault REST/CLI helpers for on-target hardware tests."""
-
 from __future__ import annotations
 
 import json
@@ -22,7 +20,6 @@ logger = get_logger()
 API_HOST = "https://api.memfault.com/api/v0"
 CONFIG_RE = re.compile(r'^CONFIG_(?P<key>[A-Z0-9_]+)="(?P<value>.*)"$')
 
-# source_type of a Trace that carries a coredump.
 COREDUMP_SOURCE_TYPE = "coredump"
 
 
@@ -48,7 +45,6 @@ def _read_kconfig_values(config_path: Path, keys: set[str]) -> dict[str, str]:
 
 
 def read_build_metadata(app_dir: Path, app_name: str) -> dict[str, str]:
-    """Return Memfault OTA metadata from a completed west build."""
     config_path = app_dir / "build" / app_name / "zephyr" / ".config"
     values = _read_kconfig_values(
         config_path,
@@ -127,7 +123,6 @@ def _memfault_cli_base(env: dict[str, str]) -> list[str]:
 
 
 def _run_memfault_cli(command: list[str], *, check: bool = True) -> subprocess.CompletedProcess:
-    """Run the Memfault CLI, logging its output so CI shows what the upload did."""
     result = subprocess.run(command, capture_output=True, text=True)
     output = "\n".join(part.strip() for part in (result.stdout, result.stderr) if part.strip())
     if output:
@@ -192,10 +187,8 @@ def _cohort_url(env: dict[str, str], cohort: str | None = None) -> str:
 def upload_mcu_symbols(*, env: dict[str, str], elf: Path) -> None:
     """Upload the ELF so Memfault can symbolicate coredumps from this build.
 
-    The symbol file is keyed by its GNU Build Id only. Linking it to a software
-    version as well makes Memfault drop it ("was already uploaded") whenever that
-    version already has a symbol file, which happens on every CI build of the
-    pinned baseline version.
+    Keyed by GNU Build Id only: linked to a software version, Memfault drops it
+    whenever that version already has symbols, as every baseline CI build does.
     """
     if not elf.is_file():
         raise FileNotFoundError(f"MCU symbols ELF not found: {elf}")
@@ -696,9 +689,8 @@ def _get_memfault_device_payload(
 ) -> dict:
     """Return the Memfault device payload, creating the device when absent.
 
-    An existing device is moved to *hardware_version* when it reports another one.
-    Memfault only tracks the software version of a hardware version's primary
-    software type, so a stale binding hides the version the DUT reports.
+    An existing device is moved to *hardware_version* when bound to another one,
+    since a stale binding hides the software version the DUT reports.
     """
     status, payload = _memfault_json_request(
         env,

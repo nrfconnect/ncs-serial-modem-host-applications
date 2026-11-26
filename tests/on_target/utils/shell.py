@@ -1,6 +1,4 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
-"""Zephyr shell interaction over UART."""
-
 from __future__ import annotations
 
 import re
@@ -57,7 +55,6 @@ def wait_for_shell_prompt(
     timeout: float = 60.0,
     baudrate: int = 115200,
 ) -> None:
-    """Block until the Zephyr shell prompt appears on *serial_port*."""
     with serial.Serial(
         serial_port,
         baudrate=baudrate,
@@ -81,11 +78,7 @@ def send_shell_command(
     baudrate: int = 115200,
     wait_for_completion: bool = True,
 ) -> None:
-    """Send a Zephyr shell command.
-
-    When *wait_for_completion* is False, return after writing the command. Use
-    this for commands that crash or reboot the device (e.g. ``mflt test busfault``).
-    """
+    """Pass wait_for_completion=False for commands that crash or reboot the device."""
     with serial.Serial(
         serial_port,
         baudrate=baudrate,
@@ -119,12 +112,10 @@ def send_shell_command_until(
     timeout: float = 60.0,
     baudrate: int = 115200,
 ) -> str:
-    """Send a Zephyr shell command and read until *pattern* appears in its output.
+    """Return the ANSI-stripped output once regex *pattern* matches.
 
-    Returns the accumulated, ANSI-stripped output once *pattern* (a regex) matches.
-    Unlike waiting for the shell prompt, this tolerates asynchronous log lines that make
-    the shell reprint its prompt, so it is safe for parsing command output (e.g.
-    ``kernel thread list``) on a device with active logging.
+    Unlike waiting for the prompt, this tolerates log lines that make the shell
+    reprint its prompt mid-output.
     """
     regex = re.compile(pattern, re.MULTILINE)
     with serial.Serial(
@@ -138,7 +129,6 @@ def send_shell_command_until(
         if ser.in_waiting:
             ser.reset_input_buffer()
 
-        # Make sure the shell is up before issuing the command.
         _wait_for_prompt_in_buffer(ser, timeout=timeout)
 
         logger.info("Sending shell command on %s: %r", serial_port, command)

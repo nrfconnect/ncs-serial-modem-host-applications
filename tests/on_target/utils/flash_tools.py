@@ -91,7 +91,6 @@ def flash_firmware_hex(
     recover: bool = True,
     program_options: str = MERGED_HEX_PROGRAM_OPTIONS,
 ) -> None:
-    """Flash an Intel HEX image with nrfutil."""
     if not firmware_hex.is_file():
         raise FileNotFoundError(f"Firmware hex not found: {firmware_hex}")
 
@@ -117,7 +116,6 @@ def flash_firmware_hex(
 
 
 def flash_merged_hex(merged_hex: Path, serial: str, *, recover: bool = True) -> None:
-    """Flash a sysbuild merged.hex image with nrfutil."""
     flash_firmware_hex(merged_hex, serial, recover=recover)
 
 

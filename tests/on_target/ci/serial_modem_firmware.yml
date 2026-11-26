@@ -1,15 +1,8 @@
-# Serial Modem firmware settings for nRF54 host + nRF9151 DK setups.
+# CI locks the newest upstream release shipping this asset (prereleases included)
+# for the whole run. Override locally with SERIAL_MODEM_RELEASE.
 #
-# CI resolves the newest upstream release that ships the nrf91m1 bundle (including
-# prereleases) and locks that tag for the whole pipeline run. Tests flash it on
-# the nRF9151 DK; release bundles copy the same archive. Override locally with
-# SERIAL_MODEM_RELEASE when you need a specific tag.
-#
-# The host UART uses the nRF91M1 pinout on uart0 (P0.27/P0.26/P0.14/P0.15). See
-# docs/getting-started/ppp-nrf54.md for the wiring.
-#
-# Log capture reads zephyr,console = &uart1 (P0.28/P0.29 -> VCOM1). Re-check
-# console_baudrate when upstream changes the nrf91m1 overlay.
+# console_baudrate matches zephyr,console = &uart1 (VCOM1) in the upstream nrf91m1
+# overlay; re-check it when that overlay changes.
 
 upstream_repo: nrfconnect/ncs-serial-modem
 asset_suffix: _nrf9151dk_nrf91m1.zip

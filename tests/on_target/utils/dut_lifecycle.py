@@ -1,6 +1,4 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
-"""Shared nRF Cloud and Memfault provisioning/cleanup for on-target tests."""
-
 from __future__ import annotations
 
 import time
@@ -38,8 +36,6 @@ CLOUD_CONNECT_VERIFY_TIMEOUT = 60.0
 
 
 class CloudDutSession:
-    """Provision and clean up a DUT in nRF Cloud and Memfault."""
-
     def __init__(
         self,
         dut: types.SimpleNamespace,
@@ -62,7 +58,6 @@ class CloudDutSession:
         return self.device_id
 
     def _credentials_missing(self, *, timeout: float = CREDENTIAL_STATE_TIMEOUT) -> bool:
-        """Return True when the boot log shows missing nRF Cloud credentials."""
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             captured = self.dut.uart.snapshot_log()
@@ -82,7 +77,6 @@ class CloudDutSession:
         *,
         timeout: float = CLOUD_CONNECT_VERIFY_TIMEOUT,
     ) -> bool:
-        """Return True when the DUT reaches a connected nRF Cloud session."""
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             captured = self.dut.uart.snapshot_log()
@@ -141,7 +135,6 @@ class CloudDutSession:
         return self.device_id
 
     def remove_prior_registrations(self) -> None:
-        """Remove a stale nRF Cloud registration before provisioning."""
         if self.device_id is None:
             raise RuntimeError(
                 "device_id is not set; call wait_for_unprovisioned_boot() first"
@@ -166,7 +159,6 @@ class CloudDutSession:
         )
 
     def onboard_to_cloud(self) -> None:
-        """Install credentials on the DUT and register it in nRF Cloud."""
         if self.device_id is None:
             raise RuntimeError(
                 "device_id is not set; call wait_for_unprovisioned_boot() first"
@@ -189,7 +181,7 @@ class CloudDutSession:
             nrfutil_reset(self.dut.segger_sn)
 
     def cleanup_nrf_cloud(self) -> None:
-        """Remove the DUT from nRF Cloud. Safe to call from test teardown."""
+        """Logs rather than raises on failure, so it is safe in test teardown."""
         if self.device_id is None:
             return
 
@@ -202,7 +194,7 @@ class CloudDutSession:
             )
 
     def cleanup_memfault(self) -> None:
-        """Remove the DUT from Memfault after verification completes."""
+        """Logs rather than raises on failure."""
         if self.device_id is None:
             return
 

@@ -27,13 +27,11 @@ BOOT_BANNER_LOG = "Booting Serial Modem Host"
 FAULT_SHELL_COMMAND = "mflt test busfault"
 FAULT_REASON = "BusFault"
 
-# The main thread feeds its task watchdog every loop. Suspending it from the kernel shell
-# stops the feed and trips the watchdog, whose callback captures a Memfault coredump tagged
-# "Software Watchdog".
+# Suspending the main thread stops its task watchdog feed, and the watchdog callback
+# captures a coredump tagged "Software Watchdog".
 WATCHDOG_THREAD_NAME = "main"
 WATCHDOG_FAULT_REASON = "Software Watchdog"
-# `kernel thread list` prints each thread header as "%s%p %-10s", e.g. " 0x20002abc main".
-# Match a single "0x<addr> <name>" line; [ \t]+ keeps the match on one line.
+# `kernel thread list` prints thread headers as "%s%p %-10s"; [ \t]+ keeps the match on one line.
 THREAD_LINE_PATTERN = r"(0x[0-9a-fA-F]+)[ \t]+" + re.escape(WATCHDOG_THREAD_NAME) + r"\b"
 THREAD_LINE_RE = re.compile(THREAD_LINE_PATTERN, re.MULTILINE)
 
@@ -41,13 +39,11 @@ CLOUD_CONNECT_TIMEOUT = 120.0
 REBOOT_TIMEOUT = 60.0
 SHELL_COMMAND_TIMEOUT = 60.0
 MEMFAULT_TRACE_TIMEOUT = 300.0
-# The main watchdog timeout (CONFIG_APP_MAIN_WATCHDOG_TIMEOUT_SECONDS) is 30s; allow the
-# watchdog to trip and the device to reboot within a generous margin.
+# CONFIG_APP_MAIN_WATCHDOG_TIMEOUT_SECONDS (30 s) plus a generous margin for the reboot.
 WATCHDOG_TRIP_TIMEOUT = 180.0
 
 
 def _resolve_thread_id(serial_port: str) -> str:
-    """Return the kernel thread id (hex) of the watchdog-monitored main thread."""
     output = send_shell_command_until(
         serial_port,
         "kernel thread list",
@@ -71,11 +67,7 @@ def test_memfault_coredump_upload_via_cloud_sync(
     cloud_dut_session,
     test_config: dict,
 ) -> None:
-    """Verify Memfault coredump upload for both a BusFault and a software watchdog.
-
-    Both phases run against the same flashed firmware, whose symbols the coredump_dut
-    fixture uploads, so every coredump's GNU build ID resolves.
-    """
+    """Both phases share the flashed firmware, whose symbols coredump_dut uploads."""
     dut = coredump_dut
     session = cloud_dut_session(dut)
     app_name = test_config["app"]
@@ -98,8 +90,7 @@ def test_memfault_coredump_upload_via_cloud_sync(
             wait_for_completion=False,
         )
     finally:
-        # Capture restarts empty here, so every wait below refers to the
-        # post-crash boot.
+        # Capture restarts empty, so the waits below see only the post-crash boot.
         dut.uart = Uart(dut.serial_port, log_path=dut.serial_log)
 
     dut.uart.wait_for_substring(BOOT_BANNER_LOG, timeout=REBOOT_TIMEOUT)
@@ -123,17 +114,11 @@ def test_memfault_coredump_upload_via_cloud_sync(
         timeout=MEMFAULT_TRACE_TIMEOUT,
     )
 
-    # --- Software watchdog phase -------------------------------------------------
-    # Reuse the same firmware: suspend the watchdog-monitored
-    # main thread so it stops feeding its task watchdog, then confirm the resulting
-    # coredump is tagged "Software Watchdog".
     logger.info("Trip the task watchdog and verify software-watchdog coredump upload")
     watchdog_baseline = latest_device_coredump(session.memfault_env, session.device_id)
     dut.uart.stop()
     try:
         thread_id = _resolve_thread_id(dut.serial_port)
-        # Suspending the thread stops it feeding its watchdog; the watchdog trips ~120s
-        # later. The command need not be awaited, only delivered.
         send_shell_command(
             dut.serial_port,
             f"kernel thread suspend {thread_id}",
@@ -141,8 +126,7 @@ def test_memfault_coredump_upload_via_cloud_sync(
             wait_for_completion=False,
         )
     finally:
-        # Capture restarts empty here, so every wait below refers to the
-        # post-watchdog boot.
+        # Capture restarts empty, so the waits below see only the post-watchdog boot.
         dut.uart = Uart(dut.serial_port, log_path=dut.serial_log)
 
     dut.uart.wait_for_substring(BOOT_BANNER_LOG, timeout=WATCHDOG_TRIP_TIMEOUT)

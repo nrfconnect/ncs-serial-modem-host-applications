@@ -29,7 +29,6 @@ jobs:
       run:
         shell: bash
 
-    # Skip job if it was triggered by Renovate Bot
     if: ${{ !contains(github.actor, 'renovate') }}
 
     steps:
@@ -86,13 +85,11 @@ jobs:
         working-directory: serial-modem-host-applications
         shell: bash
         run: |
-          # Check for compliance.xml existence
           if [[ ! -s "compliance.xml" ]]; then
             echo "::error::compliance.xml file is missing or empty"
             exit 1
           fi
 
-          # Initialize exit code
           exit_code=0
 
           export ZEPHYR_BASE="../zephyr"
@@ -109,7 +106,6 @@ jobs:
             fi
           done
 
-          # Check if compliance test failed
           if [[ "$COMPLIANCE_FAILED" == "true" ]]; then
             echo "::error::Compliance tests failed. Please check the logs for details."
             exit_code=1

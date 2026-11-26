@@ -15,10 +15,8 @@ logger = get_logger()
 
 DEFAULT_UART_TIMEOUT = 60 * 30
 
-# The modem driver retries its init chat script indefinitely, so a dead UART
-# link to the Serial Modem never reaches the boot markers tests wait on. Fail on
-# the first retry rather than letting every wait run out its own timeout and
-# report the marker it never saw.
+# The modem driver retries its init chat script forever, so fail on the first
+# retry instead of letting every wait run out its timeout.
 MODEM_LINK_DOWN_LOG = "init_chat_script: timed out"
 
 
@@ -95,8 +93,7 @@ class Uart:
             except OSError as exc:
                 logger.warning("Could not assert DTR/RTS on %s: %s", self.port, exc)
 
-            # Only on the very first open: anything buffered later is capture
-            # data that a reopen must not throw away.
+            # Only on the first open: bytes buffered later are capture data.
             if self._open_count == 0 and ser.in_waiting:
                 logger.warning(
                     "Serial port %s had %d buffered bytes; discarding before capture",
@@ -116,9 +113,7 @@ class Uart:
             pending = ""
             while not self._stop.is_set() and not self._reopen.is_set():
                 try:
-                    # Drain whatever is buffered. One syscall per byte cannot
-                    # keep up with the modem console at 1 Mbaud once debug
-                    # logging is on, and the kernel buffer then overflows.
+                    # Per-byte reads can't keep up with the 1 Mbaud modem console.
                     data = ser.read(max(ser.in_waiting, 1))
                 except serial.SerialException as exc:
                     logger.error("Serial read failed on %s: %s", self.port, exc)
@@ -145,7 +140,6 @@ class Uart:
                 self._append_lines([tail])
 
     def raise_if_modem_link_down(self, captured: str | None = None) -> None:
-        """Raise if the host log shows the modem AT link never came up."""
         if captured is None:
             captured = self.snapshot_log()
         if MODEM_LINK_DOWN_LOG not in captured:
@@ -163,7 +157,6 @@ class Uart:
         timeout: float = 900.0,
         poll_interval: float = 1.0,
     ) -> str:
-        """Block until *needle* appears in the captured log."""
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             captured = self.snapshot_log()
@@ -206,11 +199,7 @@ class Uart:
         )
 
     def write_line(self, text: str, *, timeout: float = 30.0) -> None:
-        """Write *text* plus CRLF to the captured port, without pausing capture.
-
-        Lets a test drive the Zephyr shell while the log keeps streaming, so
-        waits that already matched earlier output stay valid.
-        """
+        """Write *text* plus CRLF to the captured port, without pausing capture."""
         if not self._serial_open.wait(timeout):
             raise TimeoutError(
                 f"Timed out after {timeout:.0f}s waiting for {self.port} to open"
@@ -224,12 +213,7 @@ class Uart:
         ser.flush()
 
     def reopen(self, *, timeout: float = 30.0) -> None:
-        """Close and reopen the port, keeping everything captured so far.
-
-        Lets a caller re-establish the connection after the target has held its
-        UART suspended for a long stretch, which not every debugger's
-        USB-serial bridge is guaranteed to forward across.
-        """
+        """Close and reopen the port, keeping everything captured so far."""
         if not self._serial_open.wait(timeout):
             raise TimeoutError(
                 f"Timed out after {timeout:.0f}s waiting for {self.port} to open"

@@ -1,6 +1,4 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
-"""Resolve the device serial console port."""
-
 from __future__ import annotations
 
 import json
@@ -90,8 +88,7 @@ def _select_console_port(ports: list, console_vcom: int | None) -> str | None:
     if len(typed_ports) == 1:
         return _port_path(typed_ports[0])
 
-    # No port advertised the requested vcom, so the choice below is a guess. Log
-    # what was on offer; picking the wrong VCOM yields a silent, empty capture.
+    # The wrong VCOM yields a silent, empty capture, so log what was on offer.
     logger.warning(
         "No port reported vcom=%s; choosing by highest vcom among %s",
         console_vcom,
@@ -308,11 +305,7 @@ def resolve_serial_port(test_config: dict) -> str:
 
 
 def resolve_modem_serial_port(test_config: dict) -> str | None:
-    """Resolve the Serial Modem console port, or None if it cannot be found.
-
-    Modem logs are diagnostic only, so every failure path warns and returns None
-    instead of failing a test that would otherwise pass.
-    """
+    """Return the Serial Modem console port, or None with a warning if not found."""
     serial_modem = test_config.get("serial_modem")
     if not serial_modem:
         return None

@@ -1,13 +1,10 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
-"""Cleanup of Zephyr console output captured over a serial port."""
-
 from __future__ import annotations
 
 import re
 
-# The shell colours its output and moves the cursor around, and it reprints its
-# prompt whenever a log line interrupts it, so a bare `OK` reaches the capture as
-# `\x1b[1;32muart:~$ \x1b[m\x1b[8D\x1b[JOK`.
+# The shell colours output, moves the cursor and reprints its prompt after log
+# lines, so a bare `OK` arrives as `\x1b[1;32muart:~$ \x1b[m\x1b[8D\x1b[JOK`.
 _ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
 _SHELL_PROMPT = re.compile(r"uart:~\$\s*")
 

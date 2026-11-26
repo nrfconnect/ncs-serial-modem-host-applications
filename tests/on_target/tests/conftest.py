@@ -89,9 +89,8 @@ def _flash_serial_modem_if_configured(
     logger.info("Step 0/4 - Flash Serial Modem firmware on nRF9151 DK (%s)", segger_sn)
     flash_serial_modem_firmware(segger_sn)
 
-    # Capture starts before the settle delay so the boot that programming
-    # triggers is recorded. Later boots come from the host pulsing modem
-    # nRESET, which not every rig has wired.
+    # Start capture before the settle delay to record the boot programming triggers;
+    # later boots need modem nRESET, which not every rig has wired.
     modem_capture = _start_modem_capture(test_config)
     time.sleep(2)
     return modem_capture
@@ -206,7 +205,6 @@ def test_config() -> dict:
 
 @pytest.fixture(scope="function")
 def provision_dut(request: pytest.FixtureRequest, test_config: dict) -> types.SimpleNamespace:
-    """Prepare the provisioning DUT with recover flash."""
     dut = _prepare_baseline_firmware(test_config, recover=True)
 
     yield dut
@@ -218,11 +216,8 @@ def provision_dut(request: pytest.FixtureRequest, test_config: dict) -> types.Si
 def at_provision_dut(
     request: pytest.FixtureRequest, test_config: dict
 ) -> types.SimpleNamespace:
-    """Prepare an AT host DUT whose modem is the nRF Cloud client.
-
-    The modem UUID is the nRF Cloud device ID. It is deleted, which also unclaims it,
-    before flashing, so the modem starts out unknown to nRF Cloud and the test onboards
-    it from scratch (AT#XNRFPROV on the Serial Modem, AT%REGJWT on the nRF93M1).
+    """The modem UUID is the nRF Cloud device ID. It is deleted, which also unclaims
+    it, before flashing so the test onboards the modem from scratch.
     """
     expected_uuid = load_expected_modem_uuid(test_config)
     delete_modem_if_exists(expected_uuid, expected_uuid)
@@ -237,7 +232,6 @@ def at_provision_dut(
 
 @pytest.fixture(scope="function")
 def fota_dut(request: pytest.FixtureRequest, test_config: dict) -> types.SimpleNamespace:
-    """Prepare device with baseline FOTA firmware for application FOTA test."""
     recover = flash_recover_enabled(test_config)
     dut = _prepare_baseline_firmware(test_config, recover=recover)
 
@@ -259,7 +253,6 @@ def fota_dut(request: pytest.FixtureRequest, test_config: dict) -> types.SimpleN
 
 @pytest.fixture(scope="function")
 def coredump_dut(request: pytest.FixtureRequest, test_config: dict) -> types.SimpleNamespace:
-    """Prepare device with baseline firmware for Memfault coredump test."""
     recover = flash_recover_enabled(test_config)
     dut = _prepare_baseline_firmware(test_config, recover=recover)
 

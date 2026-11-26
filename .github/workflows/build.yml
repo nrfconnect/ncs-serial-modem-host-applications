@@ -89,8 +89,7 @@ jobs:
       - name: Initialize West workspace
         uses: ./serial-modem-host-applications/.github/actions/west-init
 
-      # Must stay after west-init: it runs `git reset --hard HEAD` on the
-      # manifest, which would revert tracked VERSION files to the repo default.
+      # Must run after west-init, whose `git reset --hard HEAD` reverts the VERSION files.
       - name: Set application VERSION files
         if: inputs.firmware_version != ''
         working-directory: serial-modem-host-applications

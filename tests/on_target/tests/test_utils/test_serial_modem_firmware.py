@@ -28,11 +28,7 @@ STATIC_CONFIG = {
 
 
 def _release(tag: str, *, bundle: bool = True) -> dict:
-    """Build a fake upstream release payload for *tag*.
-
-    With *bundle* the release ships the nrf91m1 zip CI looks for; otherwise it
-    only ships a bare .hex, which resolution must skip.
-    """
+    """Without *bundle* the release ships only a bare .hex, which resolution must skip."""
     ext = "zip" if bundle else "hex"
     name = f"serial_modem_{tag}_nrf9151dk_nrf91m1.{ext}"
     return {
@@ -47,8 +43,7 @@ def _release(tag: str, *, bundle: bool = True) -> dict:
     }
 
 
-# Fake, version-neutral fixtures: only the presence of the nrf91m1 zip and the
-# list order matter to the resolver, not the tag values.
+# Only the presence of the nrf91m1 zip and the list order matter, not the tag values.
 NEWEST_RELEASE = _release("v9.9.9")
 OLDER_RELEASE = _release("v9.9.8")
 HEX_ONLY_RELEASE = _release("v9.9.7", bundle=False)

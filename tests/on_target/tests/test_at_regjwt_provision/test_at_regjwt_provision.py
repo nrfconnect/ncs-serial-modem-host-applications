@@ -51,10 +51,8 @@ def _wait_for_log_match(uart, pattern: re.Pattern, *, timeout: float) -> str:
 
 
 def _wait_for_unauthorized(uart, modem_uuid: str) -> None:
-    """Wait for nRF Cloud to refuse the boot sync, which shows the modem is not onboarded.
-
-    A location fix instead means the modem is still onboarded in another account,
-    which the delete cannot reach, so fail at once rather than waiting out the timeout.
+    """A location fix instead of a refusal means the modem is onboarded in another
+    account the delete cannot reach, which fails at once.
     """
     deadline = time.monotonic() + UNAUTHORIZED_TIMEOUT
     while time.monotonic() < deadline:
@@ -75,10 +73,7 @@ def _wait_for_unauthorized(uart, modem_uuid: str) -> None:
 
 
 def _tenant_id(test_config: dict) -> str:
-    """Return the nRF Cloud tenant ID, the identifier a registration JWT binds to.
-
-    The Organization Auth Token cannot read it from nRF Cloud, so CI provides it.
-    """
+    """The Organization Auth Token cannot read the tenant ID from nRF Cloud, so CI provides it."""
     name = test_config.get("nrf_cloud", {}).get("tenant_id_var", "NRF_CLOUD_TENANT_ID")
     tenant_id = os.environ.get(name)
     if not tenant_id:
@@ -107,7 +102,6 @@ def _jwt_claims(token: str) -> dict:
 
 
 def _wait_for_location_fix(uart) -> str:
-    """Start syncs until one returns a location fix, which needs an authorized modem."""
     deadline = time.monotonic() + LOCATION_TIMEOUT
     while time.monotonic() < deadline:
         offset = len(uart.snapshot_log())
@@ -133,7 +127,6 @@ def _wait_for_location_fix(uart) -> str:
 
 @pytest.mark.slow
 def test_at_regjwt_provision(at_provision_dut, test_config: dict) -> None:
-    """Onboard the removed DUT modem with a registration JWT and verify a cloud round trip."""
     dut = at_provision_dut
     tenant_id = _tenant_id(test_config)
 

@@ -1,48 +1,5 @@
-# On-target hardware tests on self-hosted runners.
-#
-# Triggers:
-# - workflow_call: invoked by ci.yml (prebuilt firmware) or manually from other workflows
-# - workflow_dispatch: pick branch and test (all or one id from .github/test/tests.yml)
-#
-# When adding tests, update workflow_dispatch options below and .github/test/tests.yml.
-#
-# Hardware layout (ppp on nRF54 hosts + nRF91 Serial Modem):
-# - DUT 1 (provision, nRF54L15): provisioning test every CI (recover flash, full onboard)
-# - DUT 2 (test, nRF54L15): coredump and FOTA as separate catalog entries on the same rig;
-#   stays provisioned
-# - DUT 3 (provision + location + FOTA, nRF54LM20 DK + nRF7002-EB2): plain-build cloud
-#   provisioning, Wi-Fi location verification, and FOTA OTA (recover flash for provision
-#   tests; preprovisioned for FOTA). The 91m1_at provisioning test also runs on DUT 3: the
-#   Serial Modem onboards itself with AT#XNRFPROV, so the test unclaims, deletes and
-#   re-claims the nRF9151 modem UUID instead of the host device ID
-#
-# Hardware layout (ppp on the nRF93M1 DK, modem on the DK):
-# - DUT 4 (provision, nRF93M1 DK): provisioning test every CI (recover flash, full onboard);
-#   the on-board nRF93M1 keeps its own firmware, so nothing is flashed on the modem side.
-#   The 93m1_at provisioning test also runs on DUT 4: the modem is the nRF Cloud client, so
-#   the test deletes the nRF93M1 modem UUID and onboards it again with AT%REGJWT
-# - DUT 5 (test, nRF93M1 DK): FOTA; stays provisioned
-#
-# Runners (dedicated labels; do not rely on the default self-hosted label):
-# - self-hosted-build: firmware builds, compliance, SonarCloud (build-A/B/C)
-# - self-hosted-test: plan, coredump, and FOTA on DUT 2, plus FOTA on DUT 5 (one runner,
-#   one job at a time)
-# - self-hosted-provisioning: provisioning tests on DUT 1, DUT 3 and DUT 4, plus FOTA on DUT 3
-#
-# CI scheduling:
-# - provision, provision-nrf54lm20b, provision-location, provision-nrf93m1,
-#   91m1_at-provision-nrf54lm20b, 93m1_at-provision-nrf93m1, and FOTA-nrf54lm20b start
-#   after plan on self-hosted-provisioning (DUT 1, DUT 3 and DUT 4), queued one at a time
-#   on that runner
-# - coredump, FOTA, and FOTA-nrf93m1 start after plan on self-hosted-test (DUT 2 and DUT 5)
-# - they share one test runner, so GitHub queues them one at a time
-#
-# Prerequisites:
-# - Two self-hosted Linux runners with USB access to their DK rig (container: --privileged -v /dev:/dev)
-# - SEGGER J-Link is installed in the job container (see run-hardware-test action)
-# - Self-signed CA certificate and private key stored in GitHub secrets
-# - Memfault Organization Auth Token for the linked nRF Cloud project, used to
-#   onboard and delete devices (https://docs.nrfcloud.com/docs/best-practices/device-onboarding-quickstart)
+# When adding a test, add its id to the workflow_dispatch options below and to
+# .github/test/tests.yml. Rigs, runners and setup: docs/ci-and-contribution.md.
 #
 # GitHub variables (DUT 1 — provisioning):
 #   CI_NRF54L15_PROVISION_SEGGER_SN

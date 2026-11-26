@@ -42,7 +42,6 @@ FOTA_REBOOT_LOG = "FOTA successful, rebooting to apply the update"
 FOTA_NO_UPDATE_LOG = "No FOTA update available"
 FOTA_POLL_COMMAND = "fota poll"
 
-# Serial-log waits (seconds). Cloud connect and first FOTA poll are usually well under a minute.
 CLOUD_CONNECT_TIMEOUT = 120.0
 FOTA_START_TIMEOUT = 60.0
 # nRF Cloud can still report no update right after the propagation delay, so a
@@ -66,11 +65,7 @@ FOTA_DIAGNOSTIC_MARKERS = (
 
 
 def _log_fota_timeout_diagnostics(uart: Uart, needle: str) -> None:
-    """Log FOTA-specific serial-log hints when a wait times out.
-
-    Host and modem log tails are printed for every failing test by the
-    pytest_runtest_makereport hook in conftest.
-    """
+    """Log tails are printed by the pytest_runtest_makereport hook in conftest."""
     logger.error("Timed out waiting for serial log line containing %r", needle)
     captured = uart.snapshot_log()
     for marker in FOTA_DIAGNOSTIC_MARKERS:
@@ -79,7 +74,6 @@ def _log_fota_timeout_diagnostics(uart: Uart, needle: str) -> None:
 
 
 def _assert_no_fota_redownload(uart: Uart) -> None:
-    """Fail if a second FOTA download starts after the post-update reboot."""
     captured = uart.snapshot_log()
     reboot_index = captured.find(FOTA_REBOOT_LOG)
     if reboot_index < 0:
@@ -111,10 +105,8 @@ def _wait_for_fota_log_after_cloud_connect(
 
 
 def _poll_until_fota_download_starts(uart: Uart) -> None:
-    """Ask the DUT to poll for FOTA over the shell until the download starts.
-
-    The applications only poll on their own once per sync interval, which is far
-    longer than the test should wait.
+    """The applications poll on their own only once per sync interval, far longer
+    than the test should wait.
     """
     for attempt in range(1, FOTA_POLL_ATTEMPTS + 1):
         offset = len(uart.snapshot_log())
@@ -151,7 +143,6 @@ def test_application_fota_via_cloud_sync(
     cloud_dut_session,
     test_config: dict,
 ) -> None:
-    """Deploy a Memfault OTA release on the DUT and verify automatic FOTA."""
     dut = fota_dut
     session = cloud_dut_session(dut)
     app_name = test_config["app"]

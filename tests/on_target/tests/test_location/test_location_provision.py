@@ -14,9 +14,7 @@ logger = get_logger()
 CLOUD_CONNECTED_LOG = "Cloud connected"
 CLOUD_CONNECT_TIMEOUT = 120.0
 
-# A location search runs on every cloud synchronization
-# (CONFIG_APP_MAIN_SYNC_INTERVAL_SECONDS), including one immediately on connect,
-# so allow for the Wi-Fi scan and the ground-fix round trip.
+# A location search runs on connect, so allow for the Wi-Fi scan and ground-fix round trip.
 LOCATION_TIMEOUT = 180.0
 
 
@@ -26,7 +24,6 @@ def test_location_wifi_data_after_provisioning(
     cloud_dut_session,
     test_config: dict,
 ) -> None:
-    """Provision the Wi-Fi location DUT and verify it sends Wi-Fi data to nRF Cloud."""
     dut = provision_dut
     session = cloud_dut_session(dut)
     app_name = test_config["app"]

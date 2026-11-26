@@ -22,10 +22,8 @@ twister-out*
 .cursor
 .claude
 
-# CI output
+# check_compliance.py output
 compliance.xml
-
-# from check_compliance.py
 BinaryFiles.txt
 BoardYml.txt
 Checkpatch.txt

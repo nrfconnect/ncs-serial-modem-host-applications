@@ -48,8 +48,7 @@ jobs:
           VERSION: ${{ inputs.version }}
           SERIAL_MODEM_RELEASE: ${{ inputs.serial_modem_release }}
           REPO_ROOT: ${{ github.workspace }}
-          # Each bundle README resolves the release in its own process, so
-          # these lookups do not share the in-process cache.
+          # Each bundle README resolves the release in its own process, with no shared cache.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -eu
@@ -65,11 +64,8 @@ jobs:
             fi
           }
 
-          # Fetched once, before any bundle is zipped. Ships as published
-          # upstream rather than extracted, so the archive people download
-          # here is the one the Serial Modem release page serves.
-          # The path goes through a file because the download logs to stdout,
-          # which would end up inside a command substitution.
+          # Shipped as published upstream, not extracted. The path goes through a
+          # file because the download logs to stdout.
           pip install --quiet pyyaml
           PYTHONPATH=tests/on_target python3 -c "
           from pathlib import Path
@@ -84,19 +80,14 @@ jobs:
           for artifact_dir in firmware/firmware-*; do
             [ -d "$artifact_dir" ] || continue
 
-            # Application names never contain a hyphen, so the first hyphen
-            # splits app from board type. Board types may contain hyphens
-            # themselves, e.g. nrf54lm20b-location.
+            # App names never contain a hyphen; board types may (nrf54lm20b-location).
             rest="${artifact_dir#firmware/firmware-}"
             app="${rest%%-*}"
             board_type="${rest#*-}"
             root="$artifact_dir"
             zephyr="${root}/${app}/zephyr"
 
-            # An application build always has <app>/zephyr in its artifact.
-            # Anything else carries a name this loop cannot parse, and zipping
-            # it would ship a bogus asset: v0.5.0 gained a serial-modem-dbg zip
-            # that way, from a test-only artifact then named firmware-*.
+            # Artifacts without <app>/zephyr are not application builds.
             if [ ! -d "$zephyr" ]; then
               echo "::warning title=Not an application build, skipping::${artifact_dir}"
               continue
@@ -109,16 +100,12 @@ jobs:
             copy_release_file "${root}/merged.hex" "${bundle_dir}/merged.hex"
             copy_release_file "${zephyr}/zephyr.elf" "${bundle_dir}/zephyr.elf"
             copy_release_file "${zephyr}/.config" "${bundle_dir}/.config"
-            # The AT applications ship neither an update payload nor the signed
-            # image it is built from.
             if [ "$app" != "93m1_at" ] && [ "$app" != "91m1_at" ]; then
               copy_release_file "${zephyr}/zephyr.signed.bin" "${bundle_dir}/zephyr.signed.bin"
               copy_release_file "${root}/dfu_application.zip" "${bundle_dir}/dfu_application.zip"
             fi
 
-            # Only the nRF54 hosts pair with a Serial Modem DK. The nRF93M1 DK
-            # has an integrated modem, so the modem archive does not belong in
-            # its bundle.
+            # The nRF93M1 DK has an integrated modem, so only nRF54 bundles get the modem archive.
             case "$board_type" in
             nrf54*)
               cp "$modem_zip" "${bundle_dir}/"

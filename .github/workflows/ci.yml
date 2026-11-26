@@ -1,15 +1,10 @@
-# Nightly build, test, and release orchestrator.
-#
-# Flow: resolve semver + Serial Modem tag → build firmware → hardware test (prebuilt) → release on bump.
-#
-# SonarCloud and Markdown link checks run on pull requests only.
-# Individual workflows remain independently triggerable via workflow_dispatch.
+# SonarCloud and Markdown link checks run on pull requests only, not here.
 
 name: Build, Test, and Release
 
 on:
   schedule:
-    - cron: "0 3 * * *"  # 03:00 UTC = 05:00 GMT+2 (CEST)
+    - cron: "0 3 * * *"
   workflow_dispatch:
 
 permissions:

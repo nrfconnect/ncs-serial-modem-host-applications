@@ -1,6 +1,4 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
-"""Zephyr application VERSION file helpers."""
-
 from __future__ import annotations
 
 import os
@@ -12,7 +10,6 @@ _SEMVER = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
 
 
 def write_app_version(app_dir: Path, semver: str) -> None:
-    """Write a Zephyr VERSION file for one application."""
     match = _SEMVER.match(semver)
     if not match:
         raise ValueError(f"Invalid semver: {semver!r} (expected MAJOR.MINOR.PATCH)")
@@ -38,11 +35,8 @@ def memfault_software_version(semver: str) -> str:
 def unique_memfault_software_version(semver: str, board_type: str) -> str:
     """Memfault version for a FOTA update build, unique to this test run.
 
-    Memfault keeps the first OTA payload uploaded for a release and hardware
-    version and only reports later uploads as "already uploaded". Reusing
-    1.0.1+0 across runs therefore serves the DUT whatever build claimed the
-    release first, possibly from another branch or NCS revision. A run-specific
-    build metadata suffix gives every run its own release.
+    Memfault keeps the first OTA payload uploaded for a release, so a version
+    reused across runs would serve the DUT whichever build claimed it first.
     """
     run_id = os.environ.get("GITHUB_RUN_ID", "").strip()
     if run_id:
@@ -65,7 +59,6 @@ def parse_memfault_software_version(software_version: str) -> str:
 
 
 def bump_patch(semver: str) -> str:
-    """Return the semver with the patch component incremented by one."""
     match = _SEMVER.match(semver)
     if not match:
         raise ValueError(f"Invalid semver: {semver!r} (expected MAJOR.MINOR.PATCH)")
@@ -79,7 +72,6 @@ def resolve_baseline_version(
     test_config: dict,
     prebuilt_metadata: dict[str, str] | None = None,
 ) -> str:
-    """Return the baseline semver for a hardware test."""
     memfault = test_config.get("memfault", {})
     firmware_version_env = os.environ.get("FIRMWARE_VERSION", "").strip()
 

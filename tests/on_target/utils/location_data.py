@@ -1,10 +1,5 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
-"""Verify Wi-Fi location data reaching nRF Cloud, read from the DUT serial log.
-
-The DUT sends a Wi-Fi scan to nRF Cloud and requests the resolved position back
-(``do_reply = true``). The cloud module logs the coordinates and a Google Maps
-URL, both of which are parsed here.
-"""
+"""The DUT requests its resolved position back (``do_reply = true``) and logs it."""
 
 from __future__ import annotations
 
@@ -15,8 +10,6 @@ from utils.logger import get_logger
 
 logger = get_logger()
 
-# Logged by the cloud module when it hands a Wi-Fi scan to nRF Cloud, and when
-# nRF Cloud resolves the scan into a position and returns it to the device.
 LOCATION_REQUEST_LOG = "Ground-fix requested"
 LOCATION_RESULT_LOG = "Google maps URL:"
 LOCATION_NOT_FOUND_LOG = "location coordinates not found"
@@ -38,7 +31,6 @@ def parse_access_point_count(line: str) -> int:
 
 
 def parse_resolved_location(line: str) -> dict:
-    """Extract the coordinates and Google Maps URL from the firmware log line."""
     match = MAPS_URL_RE.search(line)
     if not match:
         raise ValueError(
@@ -64,11 +56,7 @@ def wait_for_wifi_location_sent(
     after: str,
     timeout: float = 180.0,
 ) -> int:
-    """Wait for the DUT to hand a Wi-Fi scan to nRF Cloud and return the AP count.
-
-    The scan must appear after the *after* marker, so only location data sent by
-    the current boot counts.
-    """
+    """Return the access point count of the first Wi-Fi scan logged after *after*."""
     request_line = uart.wait_for_substring_after(
         LOCATION_REQUEST_LOG,
         after=after,
@@ -86,10 +74,9 @@ def wait_for_resolved_location(
     timeout: float = 180.0,
     poll_interval: float = 1.0,
 ) -> dict:
-    """Wait for nRF Cloud to resolve the Wi-Fi scan and return it to the device.
+    """Return the location (lat, lon, maps_url) logged after *after*.
 
-    Returns the parsed coordinates and the Google Maps URL that the firmware
-    logged. Only a result reported after the *after* marker counts.
+    Raises TimeoutError on timeout or when nRF Cloud cannot resolve the scan.
     """
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:

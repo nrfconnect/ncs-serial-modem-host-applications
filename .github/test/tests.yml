@@ -59,8 +59,7 @@ tests:
     provisioning:
       cleanup: false
 
-  # AT host application: the Serial Modem onboards itself with AT#XNRFPROV, so the
-  # nRF Cloud device ID is the nRF9151 modem UUID (device_id_var), not the host ID.
+  # The Serial Modem onboards itself with AT#XNRFPROV, so device_id_var is the modem UUID.
   - id: 91m1_at-provision-nrf54lm20b-nrf91
     enabled: true
     type: provision
@@ -78,9 +77,8 @@ tests:
       serial_port_var: CI_NRF54LM20B_PROVISION_SERIAL_MODEM_SERIAL_PORT
       console_vcom: 1
 
-  # AT host application on the nRF93M1 DK: the on-board modem is the nRF Cloud
-  # client, so the test onboards the modem UUID (device_id_var) with the
-  # registration JWT from AT%REGJWT. Runs on the same DK as ppp-provision-nrf93m1.
+  # The on-board modem is the nRF Cloud client, onboarded by its UUID with the AT%REGJWT JWT.
+  # Runs on the same DK as ppp-provision-nrf93m1.
   - id: 93m1_at-provision-nrf93m1
     enabled: true
     type: provision
@@ -95,8 +93,7 @@ tests:
       console_vcom: 0
       device_id_var: CI_NRF93M1_PROVISION_MODEM_UUID
     nrf_cloud:
-      # AT%REGJWT binds the JWT to this tenant. The organization auth token
-      # cannot read it from nRF Cloud, so CI provides it.
+      # AT%REGJWT binds the JWT to this tenant, which the org auth token cannot read.
       tenant_id_var: NRF_CLOUD_TENANT_ID
 
   - id: ppp-provision-location-nrf54lm20b-nrf91
@@ -105,8 +102,7 @@ tests:
     pytest_dir: tests/on_target/tests/test_location/
     app: ppp
     board: nrf54lm20dk/nrf54lm20b/cpuapp/ns
-    # Distinct from the plain nrf54lm20b build so the Build workflow artifact
-    # downloaded in CI is the one with Wi-Fi location enabled.
+    # Separate from nrf54lm20b so CI downloads the Wi-Fi location build artifact.
     board_type: nrf54lm20b-location
     build:
       cmake_args:
@@ -143,8 +139,7 @@ tests:
     app: ppp
     board: nrf93m1dk/nrf54l15/cpuapp/ns
     board_type: nrf93m1
-    # The nRF93M1 modem is on the DK and runs its own firmware as-is, so there is
-    # no serial_modem section: nothing to flash and no modem console to capture.
+    # The nRF93M1 modem is on the DK and runs its own firmware, so no serial_modem section.
     hardware:
       segger_sn_var: CI_NRF93M1_PROVISION_SEGGER_SN
       serial_port_var: CI_NRF93M1_PROVISION_SERIAL_PORT

@@ -1,6 +1,4 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
-"""Provision nRF Cloud credentials using nrfcloud-utils."""
-
 from __future__ import annotations
 
 import subprocess

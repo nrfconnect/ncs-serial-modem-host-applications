@@ -107,7 +107,6 @@ def parse_device_id(serial_log: str) -> str:
 
 
 def wait_for_device_id(uart, *, timeout: float = 120.0, poll_interval: float = 1.0) -> str:
-    """Block until a device ID appears in the captured serial log."""
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         for source in (uart.snapshot_log(),):

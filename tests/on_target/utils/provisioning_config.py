@@ -1,6 +1,4 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
-"""Provisioning mode helpers for on-target hardware tests."""
-
 from __future__ import annotations
 
 

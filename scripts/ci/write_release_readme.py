@@ -11,9 +11,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 REPO_URL = "https://github.com/nrfconnect/ncs-serial-modem-host-applications"
 
-# Ordered as the table should read. Entries missing from a bundle are skipped,
-# which is how 93m1_at (no signed image, no DFU package) and the nRF93M1 DK
-# (integrated modem, so no modem zip) need no special casing here.
+# Entries missing from a bundle are skipped, so 93m1_at (no signed image or DFU
+# package) and the nRF93M1 DK (no modem zip) need no special casing.
 FILE_DESCRIPTIONS = (
     ("merged.hex", "Full flash image: bootloader, secure firmware, application. Flash this."),
     ("zephyr.elf", "Debug symbols. Upload to Memfault once per release so coredumps decode."),
@@ -31,7 +30,6 @@ CONSOLE_PORTS = {
 
 
 def _modem_config(board_type: str) -> dict | None:
-    """Resolved Serial Modem release, for the nRF54 host bundles that carry it."""
     if not board_type.startswith("nrf54"):
         return None
 

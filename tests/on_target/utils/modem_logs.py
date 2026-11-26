@@ -1,6 +1,4 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
-"""Enable Serial Modem application logs for the remainder of a test."""
-
 from __future__ import annotations
 
 import re
@@ -13,26 +11,20 @@ from utils.logger import get_logger
 logger = get_logger()
 
 ENABLE_LOGS_AT_COMMAND = "AT#XLOG=1"
-# Reports the mode the modem believes it is in. Worth recording because Serial
-# Modem answers OK without touching the backend when the mode asked for already
-# matches the one it recorded, so an OK alone does not pin down the state.
+# Serial Modem answers OK without acting when the mode already matches, so OK
+# alone does not prove the state.
 QUERY_LOGS_AT_COMMAND = "AT#XLOG?"
-# IMEI of the modem the host is actually attached to. Compared against the IMEI
-# the captured console printed at boot, because a rig wired to a different
-# nRF91 DK than the configured SEGGER SN looks exactly like a modem that
-# acknowledges AT#XLOG=1 and then logs nothing.
+# Compared with the boot console IMEI to catch a rig whose SEGGER SN points at a
+# different nRF91 DK than the one the host is wired to.
 QUERY_IMEI_AT_COMMAND = "AT+CGSN=1"
 
-# Responses from the app `at` shell when the CMUX AT pipe is not usable. CMUX
-# runtime power save closes the pipe after the idle timeout, so this is an
-# expected transient worth retrying.
+# CMUX power save closes the AT pipe after its idle timeout, so these are retried.
 PIPE_UNAVAILABLE_RESPONSES = (
     "modem is not ready",
     "AT pipe busy",
     "AT command failed",
 )
-# The running image predates the `at` shell command. Retrying cannot help; a
-# FOTA update payload built before that command was added behaves this way.
+# The running image predates the `at` shell command, so retrying cannot help.
 SHELL_MISSING_RESPONSE = "command not found"
 
 _OK_RESPONSE = re.compile(r"^OK\s*$", re.MULTILINE)
@@ -71,7 +63,6 @@ def send_at(
     response = ""
     while time.monotonic() < deadline:
         tail = strip_console_noise(dut.uart.snapshot_log()[offset:])
-        # Everything from the shell's echo onwards is the response to our command.
         echo_index = tail.rfind(at_command)
         if echo_index >= 0:
             response = tail[echo_index + len(at_command):]
@@ -100,12 +91,8 @@ def send_at(
 
 
 def _reopen_modem_capture(dut: types.SimpleNamespace) -> None:
-    """Reopen the modem console now that the modem should be driving it again.
-
-    The modem holds that UART suspended from init until this point, and a
-    debugger's USB-serial bridge is not guaranteed to keep forwarding across a
-    gap that long. A fresh open costs nothing and removes the question.
-    Best-effort: modem logs must not fail a test.
+    """Best-effort reopen: the USB-serial bridge may stop forwarding while the modem
+    holds its UART suspended.
     """
     try:
         dut.modem_uart.reopen()
@@ -114,13 +101,7 @@ def _reopen_modem_capture(dut: types.SimpleNamespace) -> None:
 
 
 def _verify_captured_console(dut: types.SimpleNamespace, *, timeout: float) -> None:
-    """Check the captured console belongs to the modem the host is attached to.
-
-    Several nRF91 DKs sit on a CI runner, so a rig whose configured SEGGER SN
-    points at the wrong one is programmed and captured while the host talks to a
-    different board entirely. That reads as a modem which acknowledges
-    AT#XLOG=1 and then never logs, so compare identities rather than guess.
-    """
+    """Log an error when the captured console is not the modem the host talks to."""
     response = send_at(dut, QUERY_IMEI_AT_COMMAND, timeout=timeout)
     if response is None:
         return
@@ -145,12 +126,7 @@ def _verify_captured_console(dut: types.SimpleNamespace, *, timeout: float) -> N
 
 
 def _log_reported_state(dut: types.SimpleNamespace, *, timeout: float) -> None:
-    """Record whether the modem itself considers logging active.
-
-    Purely diagnostic. It separates the two ways the modem log can come back
-    holding only boot output: state 0 means the enable did not stick, while
-    state 1 means the backend is on and the console path is where to look next.
-    """
+    """Diagnostic only: #XLOG 0 means the enable did not stick, 1 points at the console path."""
     response = send_at(dut, QUERY_LOGS_AT_COMMAND, timeout=timeout)
     if response is None:
         logger.info("Serial Modem did not answer %s", QUERY_LOGS_AT_COMMAND)
@@ -176,21 +152,11 @@ def enable_modem_application_logs(
     retry_delay: float = 3.0,
     timeout: float = 10.0,
 ) -> bool:
-    """Resume the Serial Modem log UART so the modem console keeps logging.
+    """Send ``AT#XLOG=1`` so the Serial Modem keeps logging after its boot output.
 
-    Serial Modem prints its boot output over VCOM1 and then suspends both the
-    log backend and the UART to avoid the power overhead, so the console stays
-    silent for the rest of the run until ``AT#XLOG=1`` is issued. The command
-    travels over the host's CMUX AT pipe, which only exists once the modem has
-    attached, so call this after the host reports a cloud connection.
-
-    Once the modem acknowledges, ``AT#XLOG?`` records the state it reports and
-    ``AT+CGSN=1`` checks that the console being captured belongs to that same
-    modem, so a silent console can be attributed rather than guessed at.
-
-    Returns True once the modem acknowledges. Modem logs are a diagnostic aid,
-    so failure is warned about rather than raised: it must not fail a test whose
-    functional assertions all pass.
+    The command goes over the CMUX AT pipe, so call this after the host reports a
+    cloud connection. Returns True once the modem acknowledges; failure is only
+    warned about, since modem logs must not fail a test.
     """
     if dut.modem_uart is None:
         return False
@@ -209,8 +175,7 @@ def enable_modem_application_logs(
         if confirmed:
             logger.info("Serial Modem application logs enabled (%s)", ENABLE_LOGS_AT_COMMAND)
             _reopen_modem_capture(dut)
-            # The app `at` shell runs each command synchronously and releases the
-            # CMUX AT pipe before returning, so follow-up queries are safe.
+            # The `at` shell releases the CMUX AT pipe before returning, so follow-ups are safe.
             _log_reported_state(dut, timeout=timeout)
             _verify_captured_console(dut, timeout=timeout)
             return True

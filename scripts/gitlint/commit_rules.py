@@ -1,9 +1,5 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
-"""Gitlint rules for this repository (single source of truth).
-
-Commit titles combine Conventional Commits semver types with Zephyr-style
-subsystem prefixes. See docs/ci-and-contribution.md.
-"""
+"""Gitlint rules: Conventional Commits types with Zephyr-style subsystem prefixes."""
 
 from __future__ import annotations
 
@@ -38,8 +34,6 @@ DEFAULT_TITLE_REGEX = (
 
 
 class TitleConventionalSemverZephyr(LineRule):
-    """Require `<type>[!]: <subsystem>: [<component>:] <description>`."""
-
     name = "title-conventional-semver-zephyr"
     id = "UC10"
     target = CommitMessageTitle
@@ -64,8 +58,6 @@ class TitleConventionalSemverZephyr(LineRule):
 
 
 class BreakingChangeFooter(CommitRule):
-    """Require a BREAKING CHANGE footer when the title uses the `!` marker."""
-
     name = "breaking-change-footer"
     id = "UC11"
 

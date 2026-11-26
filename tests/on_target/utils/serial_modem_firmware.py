@@ -1,6 +1,4 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
-"""Download and flash Serial Modem firmware for nRF54 host hardware tests."""
-
 from __future__ import annotations
 
 import json
@@ -29,9 +27,7 @@ NETWORK_BACKOFF_SECONDS = 5.0
 
 _T = TypeVar("_T")
 
-# A single test flashes the modem, reads the console baud rate, and may extract
-# the bundle, each of which needs the resolved release. Without this the same
-# lookup runs three or four times per test and burns the API quota.
+# Each test resolves the release several times, which would burn the API quota.
 _release_cache: dict[tuple[str, str, str | None], dict] = {}
 
 
@@ -137,11 +133,7 @@ def resolve_serial_modem_release(
     *,
     root: Path | None = None,
 ) -> dict:
-    """Resolve a Serial Modem release from GitHub.
-
-    When *tag* is set, fetch that release. Otherwise walk upstream releases
-    newest-first and return the first that ships the nrf91m1 bundle.
-    """
+    """Fetch release *tag*, or the newest upstream release that ships the asset."""
     static = load_serial_modem_static_config(root)
     repo = static["upstream_repo"]
     asset_suffix = _asset_suffix(static)
@@ -208,10 +200,7 @@ def serial_modem_cache_dir(config: dict, *, root: Path | None = None) -> Path:
 
 
 def download_serial_modem_bundle(*, root: Path | None = None) -> Path:
-    """Download the resolved Serial Modem release zip if needed, and return its path.
-
-    Releases ship this archive as it comes from upstream; tests extract it.
-    """
+    """Download the resolved Serial Modem release zip if needed, and return its path."""
     repo_root = root or REPO_ROOT
     config = load_serial_modem_firmware_config(repo_root)
     cache_dir = serial_modem_cache_dir(config, root=repo_root)
@@ -257,7 +246,6 @@ def ensure_serial_modem_firmware(*, root: Path | None = None) -> Path:
 
 
 def flash_serial_modem_firmware(segger_sn: str, *, root: Path | None = None) -> None:
-    """Program the resolved Serial Modem release on the nRF9151 / SMA DK."""
     config = load_serial_modem_firmware_config(root)
     hex_path = ensure_serial_modem_firmware(root=root)
     logger.info(

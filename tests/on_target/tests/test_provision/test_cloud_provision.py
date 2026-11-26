@@ -20,7 +20,6 @@ def test_cloud_provision(
     cloud_dut_session,
     test_config: dict,
 ) -> None:
-    """Recover flash, provision nRF Cloud + Memfault, and verify cloud connect."""
     dut = provision_dut
     session = cloud_dut_session(dut)
     app_name = test_config["app"]

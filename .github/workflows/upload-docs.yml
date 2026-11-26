@@ -1,9 +1,3 @@
-# Bundle the documentation and publish it to Fluid Topics.
-#
-# Combines bundling and upload in one workflow: one job zips the docs, the
-# publish jobs download that artifact and push it to the Fluid Topics dev and
-# prod sources. Publishing is skipped when the Fluid Topics secrets are absent.
-
 name: Upload documentation
 
 on:

@@ -1,9 +1,7 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
-"""nRF Cloud device management for on-target provisioning tests.
+"""nRF Cloud device management with an Organization Auth Token.
 
-Devices are created, looked up and deleted in the linked nRF Cloud project with
-an Organization Auth Token, following the nRF Cloud device onboarding quickstart:
-https://docs.nrfcloud.com/docs/best-practices/device-onboarding-quickstart
+See https://docs.nrfcloud.com/docs/best-practices/device-onboarding-quickstart
 """
 
 from __future__ import annotations
@@ -26,7 +24,6 @@ API_HOST = os.environ.get("NRF_CLOUD_API_HOST", "https://api.nrfcloud.com/v1")
 # The nrfcloud CLI reads these too, through its MEMFAULT_ environment prefix.
 ORG_ENV_VARS = ("MEMFAULT_ORG_TOKEN", "MEMFAULT_ORG", "MEMFAULT_PROJECT")
 
-# Statuses that say "try again later" rather than "this request is wrong".
 RETRY_STATUSES = frozenset({429, 500, 502, 503, 504})
 RETRY_STATUS_ATTEMPTS = 4
 RETRY_MAX_DELAY_SECONDS = 60.0
@@ -60,9 +57,7 @@ def _request(method: str, url: str) -> int:
     headers = {"Authorization": f"Bearer {_org_env()['MEMFAULT_ORG_TOKEN']}"}
     request = urllib.request.Request(url, method=method, headers=headers)
 
-    # A full suite run drives several DUTs through one nRF Cloud project, which
-    # throttles the combined traffic with 429. Back off and retry rather than
-    # failing a hardware test on another job's API calls.
+    # Several DUTs share one nRF Cloud project, which throttles their combined traffic.
     backoff = 5.0
     status = 0
     requested = 0.0
@@ -95,11 +90,7 @@ def _request(method: str, url: str) -> int:
 
 
 def _delete(device_id: str) -> None:
-    """Delete *device_id* from the project, which also releases its claim.
-
-    nRF Cloud documents 202 whether or not the device exists; 404 is taken to mean
-    the same.
-    """
+    """Also releases the claim. 404 is accepted like 202, which nRF Cloud returns either way."""
     logger.info("Deleting only the configured DUT %s from nRF Cloud", device_id)
     status = _request("DELETE", _device_url(device_id))
     if status not in {202, 204, 404}:
@@ -108,7 +99,6 @@ def _delete(device_id: str) -> None:
 
 
 def _device_create(csv_path: Path) -> None:
-    """Create the devices in *csv_path* with `nrfcloud device create`."""
     _org_env()
     command = ["nrfcloud", "device", "create", "--csv", str(csv_path)]
     result = subprocess.run(command, capture_output=True, text=True)
@@ -158,7 +148,6 @@ def claim_modem(attestation_token: str, modem_uuid: str, expected_uuid: str) -> 
 
 
 def onboard_modem_with_jwt(registration_jwt: str, modem_uuid: str, expected_uuid: str) -> None:
-    """Onboard the DUT modem with the registration JWT from AT%REGJWT."""
     validated = assert_dut_modem_uuid(modem_uuid, expected_uuid)
     logger.info("Onboarding DUT %s with its registration JWT", validated)
     _create_one(validated, "onboardingToken", registration_jwt)

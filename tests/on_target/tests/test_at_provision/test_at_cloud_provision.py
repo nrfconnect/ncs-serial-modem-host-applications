@@ -37,11 +37,8 @@ def _wait_for_log_match(uart, pattern: re.Pattern, *, timeout: float) -> str:
 
 
 def _wait_for_not_claimed_token(uart, modem_uuid: str) -> str:
-    """Return the attestation token the application logs for an unclaimed modem.
-
-    An unclaimed modem gets #XNRFPROV: -2 and logs its token. A modem that is
-    still claimed gets #XNRFPROV: 0 and the application logs "Provisioning done"
-    instead, so fail on that at once rather than waiting out the timeout.
+    """An unclaimed modem logs its attestation token (#XNRFPROV: -2); a claimed one
+    logs "Provisioning done" (#XNRFPROV: 0), which fails at once.
     """
     deadline = time.monotonic() + BOOT_TIMEOUT
     while time.monotonic() < deadline:
@@ -64,7 +61,6 @@ def _wait_for_not_claimed_token(uart, modem_uuid: str) -> str:
 
 @pytest.mark.slow
 def test_at_cloud_provision(at_provision_dut) -> None:
-    """Claim the unclaimed DUT modem and verify that it onboards and connects to nRF Cloud."""
     dut = at_provision_dut
 
     logger.info("Wait for the modem UUID and the not-claimed attestation token")

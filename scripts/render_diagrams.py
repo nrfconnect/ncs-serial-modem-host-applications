@@ -35,7 +35,6 @@ ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_"
 
 
 def resolve_includes(source: Path, depth: int = 0) -> str:
-    """Return a diagram source with its local ``!include`` files inlined."""
     if depth > MAX_INCLUDE_DEPTH:
         raise SystemExit(f"Too many nested includes in {source}")
 
@@ -102,7 +101,6 @@ def render(source: str, server: str) -> bytes:
 
 
 def main(argv: list[str] | None = None) -> None:
-    """Render the selected diagram sources, or every diagram by default."""
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument(
         "sources",
@@ -127,7 +125,6 @@ def main(argv: list[str] | None = None) -> None:
 
         resolved = resolve_includes(source)
         if "@startuml" not in resolved:
-            # An include-only source, such as the shared skin.
             continue
 
         svg = render(resolved, args.server)
