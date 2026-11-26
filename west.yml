@@ -13,5 +13,7 @@ manifest:
     - name: nrf
       remote: ncs
       repo-path: sdk-nrf
-      revision: v3.5.0-preview2
+      # Temporary: sdk-nrf PR nrfconnect/sdk-nrf#32444 (Upmerge Zephyr 11.2026), which brings in
+      # the upstream nordic,nrf91-sm-v2 driver. Go back to a release tag once it is in one.
+      revision: e42ef337d1a33b9f04631da2dcb8a0bf1b3fa019
       import: true
