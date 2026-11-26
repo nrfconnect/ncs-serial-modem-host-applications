@@ -18,8 +18,7 @@ extern "C" {
  * @brief Cloud module channel.
  *
  * Carries @ref CLOUD_BATTERY_SAMPLE and @ref CLOUD_OBSERVABILITY_UPLOAD to the module, and
- * @ref CLOUD_BATTERY_DONE and @ref CLOUD_OBSERVABILITY_DONE back to its observers. The module
- * also receives its own done messages and ignores them.
+ * @ref CLOUD_BATTERY_DONE and @ref CLOUD_OBSERVABILITY_DONE back to its observers.
  */
 ZBUS_CHAN_DECLARE(cloud_chan);
 
@@ -31,10 +30,8 @@ enum cloud_msg_type {
 	 */
 	CLOUD_BATTERY_SAMPLE = 0x1,
 	/**
-	 * Output: the module has finished handling a @ref CLOUD_BATTERY_SAMPLE.
-	 *
-	 * Published once per sample, whether the report was sent, rejected or unauthorized.
-	 * It does not carry the outcome, which is logged by the module.
+	 * Output: the module has finished handling a @ref CLOUD_BATTERY_SAMPLE, whether the
+	 * report was sent or not. The outcome is only logged.
 	 */
 	CLOUD_BATTERY_DONE,
 	/**
@@ -42,15 +39,13 @@ enum cloud_msg_type {
 	 * after triggering a heartbeat with `AT%NRFCLOUDOBSHEARTBEAT` when
 	 * CONFIG_APP_CLOUD_OBSERVABILITY_HEARTBEAT is set.
 	 *
-	 * The upload is what makes nRF Cloud list the device as seen, with its hardware and
-	 * software versions.
+	 * nRF Cloud lists the device as seen, with its hardware and software versions, only
+	 * after an upload.
 	 */
 	CLOUD_OBSERVABILITY_UPLOAD,
 	/**
-	 * Output: the module has finished handling a @ref CLOUD_OBSERVABILITY_UPLOAD.
-	 *
-	 * Published once per request, whether the upload succeeded, was rejected or was
-	 * unauthorized. It does not carry the outcome, which is logged by the module.
+	 * Output: the module has finished handling a @ref CLOUD_OBSERVABILITY_UPLOAD, whether
+	 * the upload succeeded or not. The outcome is only logged.
 	 */
 	CLOUD_OBSERVABILITY_DONE,
 };
@@ -58,7 +53,7 @@ enum cloud_msg_type {
 /** @brief Message published on @ref cloud_chan. */
 struct cloud_msg {
 	enum cloud_msg_type type;
-	/** State of charge in percent. Only used by @ref CLOUD_BATTERY_SAMPLE. */
+	/** State of charge in percent. Only set for @ref CLOUD_BATTERY_SAMPLE. */
 	int battery_percent;
 };
 

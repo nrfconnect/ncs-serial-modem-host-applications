@@ -3,8 +3,7 @@
  *
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  *
- * Shared Serial Modem child node for nRF54LM20B DK + nRF9151 DK wiring.
- * Control signals on P2 connector; UART instance is set by the board overlay.
+ * Serial Modem node, included in the modem UART node by the board overlay.
  */
 
 modem: modem {
@@ -15,8 +14,8 @@ modem: modem {
 	mdm-dtr-gpios = <&gpio1 11 GPIO_ACTIVE_LOW>;
 	zephyr,pm-device-runtime-auto;
 	autostarts;
-	/* The Serial Modem powers down its UART when DTR is deasserted and asserts RI when
-	 * it has data for the host. Close the host UART after 2 s without traffic.
+	/* The Serial Modem powers down its UART on DTR deassert and asserts RI when it has
+	 * data for the host. Close the host UART after 2 s without traffic.
 	 */
 	cmux-enable-runtime-power-save;
 	cmux-close-pipe-on-power-save;

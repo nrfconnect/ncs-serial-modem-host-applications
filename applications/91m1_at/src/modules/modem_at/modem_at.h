@@ -27,8 +27,8 @@ extern "C" {
  * @param timeout_s Seconds to wait before aborting.
  *
  * @retval 0        Modem replied OK.
- * @retval -EAGAIN  Timed out waiting for another command to finish.
- * @retval -EIO     Modem replied ERROR or timed out.
+ * @retval -EAGAIN  Modem replied ERROR, the command timed out, or timed out waiting
+ *                  for another command to finish.
  * @retval -EINVAL  Invalid request.
  */
 int modem_at_run(const char *req, char *resp, size_t resp_size, uint32_t timeout_s);

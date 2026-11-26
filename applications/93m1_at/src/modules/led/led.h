@@ -13,11 +13,13 @@
 extern "C" {
 #endif
 
+/** @brief Message types on @ref led_chan. */
 enum led_msg_type {
-	/* Input: set the RGB LED color and blink pattern. */
+	/** Input: set the RGB LED color and blink pattern, replacing the running one. */
 	LED_RGB_SET = 1,
 };
 
+/** @brief Message published on @ref led_chan. */
 struct led_msg {
 	enum led_msg_type type;
 
@@ -26,7 +28,7 @@ struct led_msg {
 	uint8_t green;
 	uint8_t blue;
 
-	/** Duration of the RGB on/off cycle. A zero off duration keeps the LED on. */
+	/** On and off time of each blink cycle. A zero off time keeps the LED on. */
 	uint32_t duration_on_msec;
 	uint32_t duration_off_msec;
 
@@ -34,6 +36,7 @@ struct led_msg {
 	int repetitions;
 };
 
+/** @brief LED module channel. Carries @ref LED_RGB_SET to the module. */
 ZBUS_CHAN_DECLARE(led_chan);
 
 #ifdef __cplusplus

@@ -18,11 +18,9 @@ config APP_NETWORK_WATCHDOG_TIMEOUT_SECONDS
 	int "Watchdog timeout"
 	default 120
 	help
-	  The connection manager calls in the module's handlers return immediately;
-	  connectivity results arrive later as net management events. The exception
-	  is bringing the interface down, where Zephyr's modem_cellular driver blocks
-	  the thread for up to 30 s while suspending the modem.
-	  The value must be greater than CONFIG_APP_NETWORK_MSG_PROCESSING_TIMEOUT_SECONDS.
+	  Bringing the interface down blocks for up to 30 s in the modem_cellular
+	  driver while it suspends the modem.
+	  Must be greater than CONFIG_APP_NETWORK_MSG_PROCESSING_TIMEOUT_SECONDS.
 
 config APP_NETWORK_MSG_PROCESSING_TIMEOUT_SECONDS
 	int "Maximum message processing time"

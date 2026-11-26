@@ -24,10 +24,8 @@ enum location_msg_type {
 	 */
 	LOCATION_FIX_REQUEST,
 	/**
-	 * Output: the module has finished handling a @ref LOCATION_FIX_REQUEST.
-	 *
-	 * Published once per request, whether the request was accepted, rejected or
-	 * unauthorized. It does not carry the outcome, which is logged by the module.
+	 * Output: the module has finished handling a @ref LOCATION_FIX_REQUEST, whether the
+	 * request was accepted or not. The outcome is only logged.
 	 */
 	LOCATION_FIX_DONE,
 };
@@ -41,7 +39,7 @@ struct location_msg {
  * @brief Location module channel.
  *
  * Carries @ref LOCATION_FIX_REQUEST to the module and @ref LOCATION_FIX_DONE back to its
- * observers. The module also receives its own @ref LOCATION_FIX_DONE and ignores it.
+ * observers.
  */
 ZBUS_CHAN_DECLARE(location_chan);
 

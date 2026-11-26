@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
 
-/* Note: the guard must not be LOCATION_H_, which is used by <modem/location.h>. */
+/* Not LOCATION_H_, which <modem/location.h> uses. */
 #ifndef APP_LOCATION_H_
 #define APP_LOCATION_H_
 
@@ -27,18 +27,16 @@ ZBUS_CHAN_DECLARE(location_chan);
 enum location_msg_type {
 	/* Output message types (published by the location module). */
 
-	/** A location search operation has been initiated and is now active. */
+	/** A location search has started. */
 	LOCATION_SEARCH_STARTED = 0x1,
 
-	/** A location search operation has completed successfully or due to timeout/error.
-	 *  This message indicates that the location module has returned to an inactive state
-	 *  and is ready to accept new location requests.
+	/** The location search has finished, with or without a result, and the module
+	 *  accepts new requests.
 	 */
 	LOCATION_SEARCH_DONE,
 
-	/** Cell and Wi-Fi scan data from a location search is available to be resolved
-	 *  into a position, for example by a cloud location service. The data is found in
-	 *  @ref location_msg::wifi_cell_result.
+	/** Measurements in @ref location_msg::wifi_cell_result are ready to be resolved
+	 *  into a position.
 	 */
 	LOCATION_SEARCH_WIFI_CELL_RESULT,
 
@@ -47,16 +45,14 @@ enum location_msg_type {
 
 	/* Input message types (handled by the location module). */
 
-	/** Request to initiate a location search operation. This scans the serving cell
-	 *  and Wi-Fi access points and publishes the result as
-	 *  @ref LOCATION_SEARCH_WIFI_CELL_RESULT.
+	/** Request to start a location search. Any measurements found are published as
+	 *  @ref LOCATION_SEARCH_WIFI_CELL_RESULT, followed by @ref LOCATION_SEARCH_DONE.
 	 */
 	LOCATION_SEARCH_TRIGGER,
 
-	/** Request to cancel an ongoing location search operation.
-	 *
-	 *  The scans run to completion before the next message is handled, so a search
-	 *  has always finished by the time this request is processed, and it is ignored.
+	/** Request to cancel an ongoing location search. @ref LOCATION_SEARCH_DONE follows
+	 *  if a search was active. The modem AT backend finishes a search before handling
+	 *  the next message, so it ignores this request.
 	 */
 	LOCATION_SEARCH_CANCEL,
 };

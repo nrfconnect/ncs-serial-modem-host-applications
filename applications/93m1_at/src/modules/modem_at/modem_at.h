@@ -17,9 +17,9 @@ extern "C" {
  * @brief Run an AT command synchronously on the shared user pipe (DLCI 3).
  *
  * Blocks until OK/ERROR or timeout. Response lines are newline-joined into
- * @p resp. URC-matched lines are routed to subscribers, not collected here.
- * Serialised internally, so the modem-at shell and application modules can
- * share the single user pipe.
+ * @p resp. Lines handled by a URC subscriber are not collected.
+ * Serialised internally, so the `at` shell and application modules can share
+ * the user pipe.
  *
  * @param req       AT command string (without trailing CR).
  * @param resp      Buffer for the response, or NULL to discard.
@@ -28,13 +28,14 @@ extern "C" {
  *
  * @retval 0        Modem replied OK.
  * @retval -EPERM   Pipe not ready (modem not attached yet).
- * @retval -EBUSY   Another command is already running.
- * @retval -EIO     Modem replied ERROR or timed out.
+ * @retval -EBUSY   Timed out waiting for another user of the pipe to release it.
+ * @retval -EAGAIN  Modem replied ERROR, the command timed out, or timed out waiting
+ *                  for another command to finish.
  * @retval -EINVAL  Invalid request.
  */
 int modem_at_run(const char *req, char *resp, size_t resp_size, uint32_t timeout_s);
 
-/** Build a CoAP code as reported in @c modem_at_run_coap(), e.g. COAP_CODE(4, 1) for 4.01. */
+/** Build a CoAP code as reported by modem_at_run_coap(), e.g. COAP_CODE(4, 1) for 4.01. */
 #define COAP_CODE(class, detail) ((uint16_t)((class) * 100 + (detail)))
 
 /** CoAP 4.01 Unauthorized, e.g. device not onboarded to nRF Cloud. */
@@ -42,7 +43,7 @@ int modem_at_run(const char *req, char *resp, size_t resp_size, uint32_t timeout
 
 /**
  * @brief Like modem_at_run(), but also reports the CoAP response code the modem
- *        received while the command ran, so callers can react to it.
+ *        received while the command ran.
  *
  * @param coap_code Set to the CoAP code (see COAP_CODE()), or 0 if no CoAP
  *                  response was received. May be NULL.
@@ -58,10 +59,13 @@ int modem_at_run_coap(const char *req, char *resp, size_t resp_size, uint32_t ti
 typedef void (*modem_at_urc_cb)(char **argv, uint16_t argc, void *user_data);
 
 /**
- * @brief Subscribe to a URC prefix (e.g. "+CEREG: ").
+ * @brief Subscribe to a URC prefix (e.g. "%NRFCLOUDLOCATION: ").
  *
- * @param prefix    Must match a prefix registered in unsol_matches.
- * @param cb        Invoked from the modem_chat receive context.
+ * Only the first subscriber of a prefix receives its URCs.
+ *
+ * @param prefix    Must match a prefix registered in the module.
+ * @param cb        Invoked from the modem receive context. Must not block or run
+ *                  AT commands.
  * @param user_data Passed back to @p cb.
  *
  * @retval 0        Subscribed.

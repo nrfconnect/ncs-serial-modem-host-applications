@@ -3,12 +3,6 @@
  *
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  *
- * SRAM layout (cpuapp_sram, 508 KiB usable):
- * |
- * +-- 0x0000_0000 sram0_s                     (  48 KiB) TF-M secure
- * +-- 0x0000_c000 sram0_ns                    ( 460 KiB) Zephyr/app non-secure
- *
- * RRAM and external flash layout: see nrf54lm20_cpuapp_mcuboot_partitions.dtsi.
  * Memory-optimized SFN TF-M sizing (see prj.conf).
  */
 

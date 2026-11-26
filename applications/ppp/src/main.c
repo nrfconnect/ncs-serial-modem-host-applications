@@ -42,7 +42,6 @@ BUILD_ASSERT(CONFIG_APP_MAIN_WATCHDOG_TIMEOUT_SECONDS >
 
 ZBUS_MSG_SUBSCRIBER_DEFINE(main_subscriber);
 
-/* Private channel message types for internal state management. */
 enum priv_main_msg_type {
 	MAIN_PRIV_CLOUD_SYNCHRONIZATION,
 };
@@ -59,9 +58,6 @@ ZBUS_CHAN_DEFINE(main_priv_chan,
 		 ZBUS_MSG_INIT(0)
 );
 
-/* Define the channels that the module subscribes to, their associated message types
- * and the subscriber that will receive the messages on the channel.
- */
 #define CHANNEL_LIST(X) \
 	X(network_chan, struct network_msg) \
 	X(cloud_chan, struct cloud_msg) \
@@ -70,21 +66,16 @@ ZBUS_CHAN_DEFINE(main_priv_chan,
 	IF_ENABLED(CONFIG_APP_BUTTONS, (X(button_chan, struct button_msg))) \
 	X(main_priv_chan, struct priv_main_msg)
 
-/* Calculate the maximum message size from the list of channels */
 #define MAX_MSG_SIZE		    MAX_MSG_SIZE_FROM_LIST(CHANNEL_LIST)
 
-/* Add main_subscriber as observer to all the channels in the list. */
 #define ADD_OBSERVERS(_chan, _type) ZBUS_CHAN_ADD_OBS(_chan, main_subscriber, 0);
 
-/* Expand to a call to ZBUS_CHAN_ADD_OBS for each channel in the list. */
 CHANNEL_LIST(ADD_OBSERVERS)
 
-/** Demo cloud payload template */
 #define DEMO_CLOUD_PAYLOAD_FMT \
 	"{\"appId\":\"SMHA\",\"messageType\":\"DATA\",\"data\":\"hello\",\"timestamp\":%lld}"
 
 #if defined(CONFIG_APP_LED)
-/** Slow red blink while the cloud is not connected. */
 static const struct led_msg led_pattern_disconnected = {
 	.type = LED_RGB_SET,
 	.red = 255,
@@ -93,7 +84,6 @@ static const struct led_msg led_pattern_disconnected = {
 	.repetitions = -1,
 };
 
-/** Fast green blink while a cloud synchronization is running. */
 static const struct led_msg led_pattern_sync = {
 	.type = LED_RGB_SET,
 	.green = 255,
@@ -102,7 +92,6 @@ static const struct led_msg led_pattern_sync = {
 	.repetitions = -1,
 };
 
-/** Short yellow pulse every 15 seconds between synchronizations, to show the device is alive. */
 static const struct led_msg led_pattern_idle = {
 	.type = LED_RGB_SET,
 	.red = 255,
@@ -112,7 +101,6 @@ static const struct led_msg led_pattern_idle = {
 	.repetitions = -1,
 };
 
-/** Short purple pulse every second while a FOTA download is in progress. */
 static const struct led_msg led_pattern_fota = {
 	.type = LED_RGB_SET,
 	.red = 255,
@@ -123,82 +111,41 @@ static const struct led_msg led_pattern_fota = {
 };
 #endif /* CONFIG_APP_LED */
 
-/** Application SMF states. */
 enum main_app_state {
-	/**
-	 * Top-level state.
-	 * The initial substate is @ref STATE_CLOUD_DISCONNECTED.
-	 */
 	STATE_RUNNING,
-		/**
-		 * Cloud is not connected. Periodic cloud synchronization is not
-		 * scheduled, and synchronization triggers are ignored.
-		 */
 		STATE_CLOUD_DISCONNECTED,
-		/**
-		 * Cloud is connected. Periodic synchronization is scheduled on the
-		 * dedicated cloud-sync workqueue.
-		 *
-		 * The initial substate is @ref STATE_SYNC_IDLE. Each synchronization
-		 * advances through the sync substates in order, waiting for each step
-		 * to complete before starting the next.
-		 */
 		STATE_CLOUD_CONNECTED,
-			/** Waiting for the next synchronization trigger. */
 			STATE_SYNC_IDLE,
-			/**
-			 * A synchronization is running. The initial substate is
-			 * @ref STATE_SYNC_DEMO.
-			 */
 			STATE_SYNCING,
-				/** Sending the demo cloud payload. */
 				STATE_SYNC_DEMO,
 #if defined(CONFIG_APP_LOCATION)
-				/** Collecting location measurements and resolving location. */
 				STATE_SYNC_LOCATION,
 #endif /* CONFIG_APP_LOCATION */
-				/** Polling the device shadow. */
 				STATE_SYNC_SHADOW,
 #if defined(CONFIG_APP_FOTA)
-				/** Polling for a FOTA job. */
 				STATE_SYNC_FOTA,
 #endif /* CONFIG_APP_FOTA */
-				/** Posting pending Memfault data. */
 				STATE_SYNC_MEMFAULT,
 #if defined(CONFIG_APP_FOTA)
-		/**
-		 * A FOTA download is in progress. Cloud state at entry is saved in
-		 * @ref main_state::cloud_history for restore on @ref FOTA_ABORTED.
-		 */
 		STATE_FOTA,
-	/**
-	 * FOTA completed; application cleanup runs before reboot.
-	 */
 	STATE_REBOOTING,
 #endif /* CONFIG_APP_FOTA */
 };
 
-/* State object for the main module.
- * Used to transfer data between state changes.
- */
 struct main_state {
 	struct smf_ctx ctx;
 	const struct zbus_channel *chan;
 	uint8_t msg_buf[MAX_MSG_SIZE];
 	struct k_work_delayable cloud_sync_dwork;
-	/** Cloud state to restore after @ref FOTA_ABORTED. */
 	enum main_app_state cloud_history;
 };
 
 static struct main_state main_state;
 static const struct smf_state states[];
 
-/** Cloud synchronization workqueue */
 static K_THREAD_STACK_DEFINE(cloud_sync_workq_stack,
 			     CONFIG_APP_MAIN_CLOUD_SYNC_WORKQ_STACK_SIZE);
 static struct k_work_q cloud_sync_workq;
-
-/** Forward declarations */
 
 static void state_running_entry(void *obj);
 static enum smf_state_result state_running_run(void *obj);
@@ -236,7 +183,6 @@ static enum smf_state_result state_fota_run(void *obj);
 static void state_rebooting_entry(void *obj);
 #endif /* CONFIG_APP_FOTA */
 
-/** SMF state table */
 static const struct smf_state states[] = {
 	[STATE_RUNNING] =
 		SMF_CREATE_STATE(state_running_entry,
@@ -314,8 +260,6 @@ static const struct smf_state states[] = {
 				 NULL, NULL, NULL, NULL),
 #endif /* CONFIG_APP_FOTA */
 };
-
-/** Convenience functions */
 
 static void demo_cloud_message_send(void)
 {
@@ -525,8 +469,6 @@ static void fota_running_state_restore(struct main_state *state_object)
 }
 #endif /* CONFIG_APP_FOTA */
 
-/** SMF state functions */
-
 static void state_running_entry(void *obj)
 {
 	ARG_UNUSED(obj);
@@ -644,7 +586,7 @@ static void state_cloud_connected_entry(void *obj)
 	state_object->cloud_history = STATE_CLOUD_CONNECTED;
 	cloud_sync_schedule(state_object);
 
-	/* Synchronize once immediately so connecting always syncs without waiting a period. */
+	/* Sync immediately on connect instead of waiting a full period. */
 	smf_set_state(SMF_CTX(state_object), &states[STATE_SYNC_DEMO]);
 }
 

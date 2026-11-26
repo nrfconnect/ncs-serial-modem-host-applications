@@ -30,7 +30,6 @@ struct urc_sub {
 	void *user_data;
 };
 
-/* One URC that a caller of modem_at_run_wait_urc() is waiting for. */
 struct urc_waiter {
 	const char *prefix;
 	char *buf;
@@ -72,11 +71,7 @@ static void on_error_line(struct modem_chat *c, char **argv, uint16_t argc, void
 static void init_script_chat(void);
 static int modem_at_init(void);
 
-/*
- * URCs routed to waiters and subscribers. A line with one of these prefixes that
- * nobody handles is collected as a response line instead, for example the
- * #XNRFCLOUD read response.
- */
+/* Read responses share these prefixes, so lines no waiter or subscriber takes are collected. */
 MODEM_CHAT_MATCHES_DEFINE(unsol_matches,
 	MODEM_CHAT_MATCH("+CEREG: ", ",", on_urc),
 	MODEM_CHAT_MATCH("#XNRFPROV: ", ",", on_urc),

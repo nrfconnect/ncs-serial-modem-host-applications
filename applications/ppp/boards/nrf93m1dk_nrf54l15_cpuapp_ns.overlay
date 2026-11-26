@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
 
-
 / {
 	aliases {
 		modem = &modem;
@@ -13,14 +12,12 @@
 		led-blue = &led0;
 	};
 	chosen {
-		/* Switch console to uart20 */
 		zephyr,console = &uart20;
 		zephyr,shell-uart = &uart20;
 		zephyr,entropy = &psa_rng;
 	};
 };
 
-/* Zephyr modem UART <-> nRF91 Serial Modem UART */
 &uart30 {
 	status = "okay";
 	current-speed = <115200>;
@@ -31,13 +28,12 @@
 &modem {
 	status = "okay";
 	zephyr,pm-device-runtime-auto;
-	/* A host reset leaves the modem powered and in CMUX mode, so the init script gets no
-	 * reply and only the recovery reset brings it back, 15 s later. Reset it on every start.
+	/* A host reset leaves the modem in CMUX mode, so the init script gets no reply until
+	 * the recovery reset 15 s later. Reset it on every start.
 	 */
 	zephyr,mdm-reset-behavior = "toggle_on_resume", "toggle_on_recovery";
-	/* CMUX runtime power save is left off. The nRF93M1 rejects the in-band PSC command, so
-	 * the link would sleep on DTR/RI alone, and a command that is slow to answer, such as
-	 * AT%WIFISCAN, then loses its reply and the PPP link drops with NO CARRIER.
+	/* No CMUX runtime power save: the nRF93M1 rejects the in-band PSC command, so a slow
+	 * reply such as AT%WIFISCAN gets lost and the PPP link drops with NO CARRIER.
 	 */
 };
 
@@ -45,15 +41,13 @@
 	status = "okay";
 };
 
-/* External SPI flash (Puya P25Q64 on board HW v0.4.0+) is unused. */
 &p25q64 {
 	status = "disabled";
 };
 
-/* Hardware fallback for CONFIG_TASK_WDT_HW_FALLBACK */
+/* Non-secure hardware watchdog, fallback for CONFIG_TASK_WDT_HW_FALLBACK. */
 &wdt31 {
 	status = "okay";
 };
 
-/* Flash/SRAM partitioning */
 #include "nrf93m1dk_partitions.dtsi"

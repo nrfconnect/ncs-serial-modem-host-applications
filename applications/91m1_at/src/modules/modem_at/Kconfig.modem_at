@@ -54,11 +54,9 @@ config APP_MODEM_AT_WAIT_TIMEOUT_SECONDS
 	int "Max time to wait for the AT channel if another module is using it"
 	default 60
 	help
-	  modem_at_run() shares one AT channel across modules. This bounds how long a
-	  call will wait for another module's in-progress command to finish before
-	  giving up. Should be at least as long as the slowest AT command timeout
-	  among the modules sharing the channel, so a caller does not give up on a
-	  still-legitimate exchange.
+	  How long modem_at_run() waits for another module's command to finish.
+	  Set it to at least the slowest AT command timeout of the modules sharing
+	  the channel.
 
 config APP_MODEM_AT_URC_SUBSCRIBERS
 	int "Maximum URC subscribers"

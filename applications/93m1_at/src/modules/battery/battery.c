@@ -35,7 +35,6 @@ ZBUS_CHAN_DEFINE(battery_chan,
 		 ZBUS_OBSERVERS_EMPTY,
 		 ZBUS_MSG_INIT(0));
 
-/* Private channel message types for the module's own sampling routine. */
 enum priv_battery_msg_type {
 	BATTERY_PRIV_SAMPLE,
 };
@@ -66,16 +65,12 @@ CHANNEL_LIST(ADD_OBSERVERS)
 static void sample_work_handler(struct k_work *work);
 static K_WORK_DELAYABLE_DEFINE(sample_work, sample_work_handler);
 
-/* Forward declarations */
-
 static int read_sensors(const struct device *charger, float *voltage, float *current,
 			float *temp, int32_t *chg_status, bool *vbus);
 static int update_charge_state(int32_t chg_status, int32_t *prev);
 static int fuel_gauge_setup(const struct device *charger, float *soc);
 static int battery_sample(const struct device *charger, int64_t *ref_time,
 			  int32_t *prev_chg_status, float *soc);
-
-/* Helper functions */
 
 static int read_sensors(const struct device *charger, float *voltage, float *current,
 			float *temp, int32_t *chg_status, bool *vbus)
@@ -227,7 +222,6 @@ static int battery_sample(const struct device *charger, int64_t *ref_time,
 	return 0;
 }
 
-/* Answers a BATTERY_PERCENT_REQUEST with the state of charge from the latest sample. */
 static void percent_respond(float soc)
 {
 	struct battery_msg msg = { .type = BATTERY_PERCENT_RESPONSE };
@@ -310,7 +304,6 @@ static void battery_thread(void)
 
 	ref_time = k_uptime_get();
 
-	/* fuel_gauge_setup() took the first sample, so the next one is due after an interval. */
 	sample_schedule();
 
 	task_wdt_id = task_wdt_add(wdt_timeout_ms, battery_wdt_callback, (void *)k_current_get());

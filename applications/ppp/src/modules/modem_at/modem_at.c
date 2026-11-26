@@ -16,11 +16,6 @@
 
 LOG_MODULE_REGISTER(modem_at, CONFIG_APP_MODEM_AT_LOG_LEVEL);
 
-/* The modem exposes a single host AT pipe (DLCI 3); this handler owns it and
- * serialises access between the `at` shell and application modules.
- * A 2nd pipe (DLCI 4) needs a modem-firmware change - see the CMUX notes.
- */
-
 struct modem_at_ctx {
 	struct modem_chat chat;
 	uint8_t chat_receive_buf[CONFIG_APP_MODEM_AT_CHAT_RECEIVE_BUF_SIZE];
@@ -31,7 +26,6 @@ struct modem_at_ctx {
 	uint8_t request_buf[CONFIG_APP_MODEM_AT_COMMAND_MAX_SIZE];
 	/* Serialises modem_at_run() and guards the collection target below. */
 	struct k_mutex run_lock;
-	/* Set by modem_at_run(); read by collect_line() callback. */
 	char *collect_buf;
 	size_t collect_size;
 	size_t collect_len;
@@ -67,12 +61,9 @@ static void collect_line(struct modem_chat *chat, char **argv, uint16_t argc, vo
 	at_ctx.collect_buf[at_ctx.collect_len] = '\0';
 }
 
-/* Mutable (not MODEM_CHAT_SCRIPT_DEFINE, which is const in flash) so the
- * per-command timeout can be set at runtime in modem_at_run().
- */
+/* Not MODEM_CHAT_SCRIPT_DEFINE, which is const, so modem_at_run() can set the timeout. */
 static void init_script_chat(void)
 {
-	/* [0] matches every line and collects it (intermediate responses). */
 	modem_chat_match_init(&at_ctx.script_matches[0]);
 	modem_chat_match_set_match(&at_ctx.script_matches[0], "");
 	modem_chat_match_set_separators(&at_ctx.script_matches[0], "");
@@ -80,7 +71,6 @@ static void init_script_chat(void)
 	modem_chat_match_set_partial(&at_ctx.script_matches[0], true);
 	modem_chat_match_enable_wildcards(&at_ctx.script_matches[0], false);
 
-	/* [1] the terminating "OK" (set per run). */
 	modem_chat_match_init(&at_ctx.script_matches[1]);
 	modem_chat_match_set_match(&at_ctx.script_matches[1], "OK");
 	modem_chat_match_set_separators(&at_ctx.script_matches[1], "");

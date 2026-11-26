@@ -48,7 +48,6 @@ enum fota_msg_type {
 
 /** @brief Message carried on @ref fota_chan. */
 struct fota_msg {
-	/** Message type. */
 	enum fota_msg_type type;
 };
 

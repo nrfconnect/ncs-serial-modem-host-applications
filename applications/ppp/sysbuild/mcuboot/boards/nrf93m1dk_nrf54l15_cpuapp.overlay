@@ -6,7 +6,6 @@
 
 / {
 	chosen {
-		/* MCUboot runs from the boot partition, not slot0. */
 		zephyr,code-partition = &boot_partition;
 	};
 };

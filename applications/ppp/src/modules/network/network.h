@@ -38,7 +38,6 @@ enum network_msg_type {
 
 /** @brief Message carried on @ref network_chan. */
 struct network_msg {
-	/** Message type. */
 	enum network_msg_type type;
 };
 

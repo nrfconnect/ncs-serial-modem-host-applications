@@ -27,7 +27,6 @@ BUILD_ASSERT(CONFIG_APP_BATTERY_WATCHDOG_TIMEOUT_SECONDS >
 #define CHG_STATUS_CC_MASK       BIT(3)
 #define CHG_STATUS_CV_MASK       BIT(4)
 
-/* Private channel message types for the module's own sampling routine. */
 enum priv_battery_msg_type {
 	BATTERY_PRIV_SAMPLE,
 };
@@ -187,9 +186,7 @@ static int fuel_gauge_setup(const struct device *charger)
 	return 0;
 }
 
-/* Owns the fuel gauge: init once, then keep it fed. Memfault reads SoC/SoH via
- * nrf_fuel_gauge_soc_get()/soh_get() on its own heartbeat.
- */
+/* Memfault reads SoC and SoH from the fuel gauge on its own heartbeat. */
 static void battery_sample(const struct device *charger, int64_t *ref_time,
 			   int32_t *prev_chg_status)
 {

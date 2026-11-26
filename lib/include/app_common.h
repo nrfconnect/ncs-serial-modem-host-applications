@@ -19,9 +19,10 @@
 extern "C" {
 #endif
 
-/** @brief Handle fatal error.
- *  @param is_watchdog_timeout Boolean indicating if the macro was called upon a watchdog timeout.
- *			       Skips k_sleep() if the fatal error is a watchdog timeout.
+/**
+ * @brief Flush the logs and assert.
+ *
+ * @param is_watchdog_timeout Nonzero skips the 10 second delay before the assert.
  */
 #define FATAL_ERROR_HANDLE(is_watchdog_timeout) do { \
 	LOG_PANIC(); \
@@ -31,14 +32,14 @@ extern "C" {
 	__ASSERT(false, "FATAL_ERROR() macro called"); \
 } while (0)
 
-/** @brief Macro used to handle fatal errors. */
+/** @brief Handle a fatal error. */
 #define FATAL_ERROR() FATAL_ERROR_HANDLE(0)
 
-/** @brief Macro used to handle watchdog timeouts.
+/**
+ * @brief Handle a watchdog timeout.
  *
- *  When Memfault is enabled, capture a coredump tagged with the "Software Watchdog"
- *  reason before rebooting. The Memfault assert handler does not return. Without
- *  Memfault, fall back to the generic fatal error handling.
+ * With Memfault, captures a coredump with the "Software Watchdog" reason and does not
+ * return. Without Memfault, same as FATAL_ERROR() without the delay.
  */
 #if defined(CONFIG_MEMFAULT)
 #define FATAL_ERROR_WATCHDOG_TIMEOUT() do { \
@@ -49,21 +50,18 @@ extern "C" {
 #define FATAL_ERROR_WATCHDOG_TIMEOUT() FATAL_ERROR_HANDLE(1)
 #endif
 
-/* Helper macro to create union member from channel and type */
 #define UNION_MEMBER(_chan, _type) _type _chan##_data_type;
 
 /**
- * @brief Macro to compute the maximum message size from a list of channel types.
+ * @brief Size of the largest message type in a channel list.
  *
- * @param _CHAN_LIST List of channels to compute the maximum message size from.
- *		     The list should be in the format: (CHANNEL_NAME, type)
+ * @param _CHAN_LIST X-macro list whose entries are X(channel, type).
  *
- * @return Maximum message size from the list of channels
+ * @return Size in bytes of the largest type in the list.
  */
 #define MAX_MSG_SIZE_FROM_LIST(_CHAN_LIST) \
 	sizeof(union { _CHAN_LIST(UNION_MEMBER) })
 
-/* Timeout for zbus channel publishing */
 #define PUB_TIMEOUT K_MSEC(100)
 
 #ifdef __cplusplus

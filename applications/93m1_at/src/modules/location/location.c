@@ -42,7 +42,6 @@ ZBUS_MSG_SUBSCRIBER_DEFINE(location);
 
 CHANNEL_LIST(ADD_OBSERVERS)
 
-/* Forward declarations */
 static bool is_coordinate(const char *s);
 static const char *location_method_str(const char *method_num);
 static void on_location(char **argv, uint16_t argc, void *user_data);
@@ -65,7 +64,7 @@ static const char *location_method_str(const char *method_num)
 	}
 }
 
-/* %NRFCLOUDLOCATION: <lat>,<lon>,<unc>,<method> — async result URC. */
+/* %NRFCLOUDLOCATION: <lat>,<lon>,<unc>,<method> */
 static void on_location(char **argv, uint16_t argc, void *user_data)
 {
 	ARG_UNUSED(user_data);

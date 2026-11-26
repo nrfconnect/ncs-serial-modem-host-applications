@@ -93,7 +93,6 @@
 	};
 };
 
-/* SRAM: 32 KB secure / 224 KB non-secure */
 &cpuapp_sram {
 	sram0_s: image_s@0 {
 		#address-cells = <1>;

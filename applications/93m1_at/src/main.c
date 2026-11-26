@@ -47,7 +47,6 @@ BUILD_ASSERT(CONFIG_APP_MAIN_WATCHDOG_TIMEOUT_SECONDS >
 
 ZBUS_MSG_SUBSCRIBER_DEFINE(main_subscriber);
 
-/* Private channel message types for internal state management. */
 enum priv_main_msg_type {
 	MAIN_PRIV_SYNC,
 };
@@ -78,7 +77,6 @@ ZBUS_CHAN_DEFINE(main_priv_chan,
 CHANNEL_LIST(ADD_OBSERVERS)
 
 #if defined(CONFIG_APP_LED)
-/** Slow red blink while the network is down. */
 static const struct led_msg led_pattern_disconnected = {
 	.type = LED_RGB_SET,
 	.red = 255,
@@ -87,7 +85,6 @@ static const struct led_msg led_pattern_disconnected = {
 	.repetitions = -1,
 };
 
-/** Fast green blink while a synchronization is running. */
 static const struct led_msg led_pattern_sync = {
 	.type = LED_RGB_SET,
 	.green = 255,
@@ -96,7 +93,6 @@ static const struct led_msg led_pattern_sync = {
 	.repetitions = -1,
 };
 
-/** Short yellow pulse every 15 seconds between synchronizations, to show the device is alive. */
 static const struct led_msg led_pattern_idle = {
 	.type = LED_RGB_SET,
 	.red = 255,
@@ -107,49 +103,22 @@ static const struct led_msg led_pattern_idle = {
 };
 #endif /* CONFIG_APP_LED */
 
-/** Application SMF states. */
 enum main_app_state {
-	/**
-	 * Top-level state. Consumes the messages that no substate acts on.
-	 * The initial substate is @ref STATE_NETWORK_DISCONNECTED.
-	 */
 	STATE_RUNNING,
-		/**
-		 * Network is down. Synchronization is not scheduled, and
-		 * synchronization triggers are ignored.
-		 */
 		STATE_NETWORK_DISCONNECTED,
-		/**
-		 * Network is up. The first synchronization runs after
-		 * CONFIG_APP_SYNC_BOOT_DELAY_SECONDS, then every CONFIG_APP_SYNC_INTERVAL.
-		 *
-		 * The initial substate is @ref STATE_SYNC_IDLE. Each synchronization
-		 * advances through the sync substates in order, waiting for each step
-		 * to complete before starting the next.
-		 */
 		STATE_NETWORK_CONNECTED,
-			/** Waiting for the next synchronization trigger. */
 			STATE_SYNC_IDLE,
 #if defined(HAS_SYNC_STEPS)
-			/**
-			 * A synchronization is running. Triggers are ignored until it
-			 * returns to @ref STATE_SYNC_IDLE. The initial substate is the
-			 * first enabled sync step.
-			 */
 			STATE_SYNCING,
 #endif /* HAS_SYNC_STEPS */
 #if defined(CONFIG_APP_LOCATION)
-				/** Requesting a location fix from the modem nRF Cloud client. */
 				STATE_SYNC_LOCATION,
 #endif /* CONFIG_APP_LOCATION */
 #if defined(CONFIG_APP_BATTERY)
-				/** Requesting the latest state of charge. */
 				STATE_SYNC_BATTERY_READ,
-				/** Reporting the state of charge to nRF Cloud. */
 				STATE_SYNC_BATTERY_SEND,
 #endif /* CONFIG_APP_BATTERY */
 #if defined(CONFIG_APP_CLOUD_OBSERVABILITY)
-				/** Uploading the modem observability data to nRF Cloud. */
 				STATE_SYNC_OBSERVABILITY,
 #endif /* CONFIG_APP_CLOUD_OBSERVABILITY */
 };
@@ -162,27 +131,23 @@ enum main_app_state {
 #define STATE_SYNC_FIRST_STEP STATE_SYNC_OBSERVABILITY
 #endif
 
-/* The step that follows the battery steps, or the end of the sync when it is the last one. */
 #if defined(CONFIG_APP_CLOUD_OBSERVABILITY)
 #define STATE_SYNC_AFTER_BATTERY STATE_SYNC_OBSERVABILITY
 #else
 #define STATE_SYNC_AFTER_BATTERY STATE_SYNC_IDLE
 #endif
 
-/* The step that follows the location step. */
 #if defined(CONFIG_APP_BATTERY)
 #define STATE_SYNC_AFTER_LOCATION STATE_SYNC_BATTERY_READ
 #else
 #define STATE_SYNC_AFTER_LOCATION STATE_SYNC_AFTER_BATTERY
 #endif
 
-/* State object for the main module. */
 struct main_state {
 	struct smf_ctx ctx;
 	const struct zbus_channel *chan;
 	uint8_t msg_buf[MAX_MSG_SIZE];
 #if defined(CONFIG_APP_BATTERY)
-	/** State of charge from the battery module, sent in @ref STATE_SYNC_BATTERY_SEND. */
 	int battery_percent;
 #endif /* CONFIG_APP_BATTERY */
 };
@@ -192,8 +157,6 @@ static const struct smf_state states[];
 
 static void sync_work_handler(struct k_work *work);
 static K_WORK_DELAYABLE_DEFINE(sync_work, sync_work_handler);
-
-/** Forward declarations */
 
 static void state_running_entry(void *obj);
 static enum smf_state_result state_running_run(void *obj);
@@ -227,7 +190,6 @@ static void state_sync_observability_entry(void *obj);
 static enum smf_state_result state_sync_observability_run(void *obj);
 #endif /* CONFIG_APP_CLOUD_OBSERVABILITY */
 
-/** SMF state table */
 static const struct smf_state states[] = {
 	[STATE_RUNNING] =
 		SMF_CREATE_STATE(state_running_entry,
@@ -293,8 +255,6 @@ static const struct smf_state states[] = {
 #endif /* CONFIG_APP_CLOUD_OBSERVABILITY */
 };
 
-/** Convenience functions */
-
 static void sync_schedule(k_timeout_t delay)
 {
 	int err;
@@ -311,9 +271,7 @@ static void sync_cancel(void)
 	(void)k_work_cancel_delayable(&sync_work);
 }
 
-/* Publishes a sync trigger and schedules the next one, so the interval is kept even when a
- * trigger arrives while a synchronization is running and is ignored.
- */
+/* Reschedules itself so the interval holds even when a trigger is ignored during a sync. */
 static void sync_work_handler(struct k_work *work)
 {
 	ARG_UNUSED(work);
@@ -401,7 +359,6 @@ static void led_pattern_set(const struct led_msg *pattern)
 #endif /* CONFIG_APP_LED */
 
 #if defined(CONFIG_APP_BUTTONS)
-/* Returns true if the message on button_chan is a Button 1 press, the sync trigger. */
 static bool is_sync_button(const struct main_state *state_object)
 {
 	const struct button_msg *msg = (const struct button_msg *)state_object->msg_buf;
@@ -409,8 +366,6 @@ static bool is_sync_button(const struct main_state *state_object)
 	return state_object->chan == &button_chan && msg->type == BUTTON_1;
 }
 #endif /* CONFIG_APP_BUTTONS */
-
-/** SMF state functions */
 
 static void state_running_entry(void *obj)
 {
@@ -435,9 +390,7 @@ static enum smf_state_result state_running_run(void *obj)
 	ARG_UNUSED(obj);
 #endif /* CONFIG_APP_BUTTONS */
 
-	/* Requests echoed back on module channels, completions that arrive after the network
-	 * went down, and link state reports that do not change the state are consumed here.
-	 */
+	/* Own requests echoed back on module channels and late completions end up here. */
 	return SMF_EVENT_HANDLED;
 }
 

@@ -3,37 +3,14 @@
  *
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  *
- * nRF54LM20B DK + nRF9151 DK.
- *
- * Default build (no shield):
- *   west build -b nrf54lm20dk/nrf54lm20b/cpuapp/ns -p
- *
- * Console uses uart30 (VCOM0) so plain and nRF7002-EB2 builds share the same
- * USB serial port.
- *
- * The Serial Modem link uses uart21 on P1.14–P1.15 (TX/RX, P2 connector) and
- * P1.23–P1.24 (RTS/CTS, P3 connector). DTR/RI/reset use P1.11/P1.12/P1.10
- * (P2 connector).
- *
- * Application button 1 is BUTTON0 and button 2 is BUTTON1. BUTTON3 is removed,
- * as it is the only button on gpio0. The DK library adds one GPIO callback to
- * every port that has a button, and linking it into both port lists drops the
- * other gpio1 callbacks (nRF70 host IRQ, Serial Modem RI).
- *
- * With nRF7002-EB2 on the P17 expansion header (Wi-Fi location), pass
- * -DSHIELD=nrf7002eb2. The shield does not conflict with uart20 (VCOM1).
- *
- * Set matching VDD on both DKs (typically 1.8 V).
- *
- * Wiring: see docs/getting-started/ppp-nrf54.md.
- *
- * RRAM/SRAM partitions: nrf54lm20_cpuapp_ns_partitions.dtsi (MCUboot + TF-M).
+ * nRF54LM20B DK + nRF9151 DK. Wiring: see docs/getting-started/ppp-nrf54.md.
  */
 
 #include "nrf54lm20_cpuapp_ns_partitions.dtsi"
 
 / {
 	chosen {
+		/* uart30 (VCOM0) so plain and nRF7002-EB2 builds share the same USB serial port. */
 		zephyr,console = &uart30;
 		zephyr,shell-uart = &uart30;
 		nordic,pm-ext-flash = &mx25r64;
@@ -45,6 +22,11 @@
 	};
 };
 
+/*
+ * BUTTON3 is the only button on gpio0. The DK library adds one GPIO callback to
+ * every port that has a button, and linking it into both port lists drops the
+ * other gpio1 callbacks (nRF70 host IRQ, Serial Modem RI).
+ */
 /delete-node/ &button3;
 
 &uart30 {

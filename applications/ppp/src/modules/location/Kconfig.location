@@ -20,9 +20,8 @@ choice APP_LOCATION_BACKEND
 	default APP_LOCATION_BACKEND_MODEM_AT if DT_HAS_NORDIC_NRF93M1_ENABLED
 	default APP_LOCATION_BACKEND_LOCATION_LIB
 
-# CONFIG_LOCATION_DATA_DETAILS is deliberately not selected: it makes
-# <modem/location.h> include <nrf_modem_gnss.h>, which is only available when the
-# nRF Modem Library is built, and the modem is external on this host.
+# Don't select CONFIG_LOCATION_DATA_DETAILS: it pulls in <nrf_modem_gnss.h>, which needs
+# the nRF Modem Library.
 config APP_LOCATION_BACKEND_LOCATION_LIB
 	bool "Location library"
 	depends on LOCATION
@@ -51,25 +50,17 @@ config APP_LOCATION_THREAD_STACK_SIZE
 	default 4096 if APP_LOCATION_BACKEND_MODEM_AT
 	default 2560
 	help
-	  The modem AT backend sizes the %BCINFO and %WIFISCAN requests over the
-	  shared AT pipe and parses their responses on this stack. Resolving the
-	  measurements to a position is the responsibility of the cloud module, so
-	  no CoAP request is built here.
+	  The modem AT backend builds the %BCINFO and %WIFISCAN requests and parses
+	  their responses on this stack.
 
 config APP_LOCATION_WATCHDOG_TIMEOUT_SECONDS
 	int "Watchdog timeout"
 	default 120
 	help
-	  Timeout in seconds for the location module watchdog.
-	  The timeout given in this option covers both:
-	    * Waiting for an incoming message in zbus_sub_wait_msg().
-	    * Time spent processing the message, defined by
-	      CONFIG_APP_LOCATION_MSG_PROCESSING_TIMEOUT_SECONDS.
-	  The Location library backend starts an asynchronous Wi-Fi scan and
-	  returns immediately; the scan result arrives later through the Location
-	  library callback. The modem AT backend blocks on its cell and Wi-Fi scans,
-	  so both backends use timeouts that cover it.
-	  Ensure that this value exceeds CONFIG_APP_LOCATION_MSG_PROCESSING_TIMEOUT_SECONDS.
+	  Timeout for the location module watchdog, covering both waiting for a
+	  message and processing it. The modem AT backend blocks on its cell and
+	  Wi-Fi scans.
+	  Must be greater than CONFIG_APP_LOCATION_MSG_PROCESSING_TIMEOUT_SECONDS.
 
 config APP_LOCATION_MSG_PROCESSING_TIMEOUT_SECONDS
 	int "Maximum message processing time"

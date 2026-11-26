@@ -34,7 +34,6 @@ BUILD_ASSERT(CONFIG_APP_MAIN_WATCHDOG_TIMEOUT_SECONDS >
 
 ZBUS_MSG_SUBSCRIBER_DEFINE(main_subscriber);
 
-/* Private channel message types for internal state management. */
 enum priv_main_msg_type {
 	MAIN_PRIV_SYNC,
 };
@@ -63,41 +62,15 @@ ZBUS_CHAN_DEFINE(main_priv_chan,
 #define ADD_OBSERVERS(_chan, _type) ZBUS_CHAN_ADD_OBS(_chan, main_subscriber, 0);
 CHANNEL_LIST(ADD_OBSERVERS)
 
-/** Application SMF states. */
 enum main_app_state {
-	/**
-	 * Top-level state. Relays the network state to the cloud module and consumes the
-	 * messages that no substate acts on. The initial substate is
-	 * @ref STATE_CLOUD_DISCONNECTED.
-	 */
 	STATE_RUNNING,
-		/**
-		 * The Serial Modem nRF Cloud client is not connected. Synchronization is
-		 * not scheduled, and synchronization triggers are ignored.
-		 */
 		STATE_CLOUD_DISCONNECTED,
-		/**
-		 * The Serial Modem nRF Cloud client is connected. The first synchronization
-		 * runs after CONFIG_APP_SYNC_BOOT_DELAY_SECONDS, then every
-		 * CONFIG_APP_SYNC_INTERVAL.
-		 *
-		 * The initial substate is @ref STATE_SYNC_IDLE. Each synchronization
-		 * advances through the sync substates in order, waiting for each step
-		 * to complete before starting the next.
-		 */
 		STATE_CLOUD_CONNECTED,
-			/** Waiting for the next synchronization trigger. */
 			STATE_SYNC_IDLE,
 #if defined(HAS_SYNC_STEPS)
-			/**
-			 * A synchronization is running. Triggers are ignored until it
-			 * returns to @ref STATE_SYNC_IDLE. The initial substate is the
-			 * first enabled sync step.
-			 */
 			STATE_SYNCING,
 #endif /* HAS_SYNC_STEPS */
 #if defined(CONFIG_APP_LOCATION)
-				/** Requesting a location fix through the Serial Modem. */
 				STATE_SYNC_LOCATION,
 #endif /* CONFIG_APP_LOCATION */
 };
@@ -106,7 +79,6 @@ enum main_app_state {
 #define STATE_SYNC_FIRST_STEP STATE_SYNC_LOCATION
 #endif /* HAS_SYNC_STEPS */
 
-/* State object for the main module. */
 struct main_state {
 	struct smf_ctx ctx;
 	const struct zbus_channel *chan;
@@ -118,8 +90,6 @@ static const struct smf_state states[];
 
 static void sync_work_handler(struct k_work *work);
 static K_WORK_DELAYABLE_DEFINE(sync_work, sync_work_handler);
-
-/** Forward declarations */
 
 static void state_running_entry(void *obj);
 static enum smf_state_result state_running_run(void *obj);
@@ -140,7 +110,6 @@ static void state_sync_location_entry(void *obj);
 static enum smf_state_result state_sync_location_run(void *obj);
 #endif /* CONFIG_APP_LOCATION */
 
-/** SMF state table */
 static const struct smf_state states[] = {
 	[STATE_RUNNING] =
 		SMF_CREATE_STATE(state_running_entry,
@@ -184,8 +153,6 @@ static const struct smf_state states[] = {
 #endif /* CONFIG_APP_LOCATION */
 };
 
-/** Convenience functions */
-
 static void sync_schedule(k_timeout_t delay)
 {
 	int err;
@@ -202,9 +169,7 @@ static void sync_cancel(void)
 	(void)k_work_cancel_delayable(&sync_work);
 }
 
-/* Publishes a sync trigger and schedules the next one, so the interval is kept even when a
- * trigger arrives while a synchronization is running and is ignored.
- */
+/* Reschedules itself so the interval holds even when a trigger is ignored during a sync. */
 static void sync_work_handler(struct k_work *work)
 {
 	ARG_UNUSED(work);
@@ -248,7 +213,6 @@ static void location_fix_request(void)
 #endif /* CONFIG_APP_LOCATION */
 
 #if defined(CONFIG_APP_BUTTONS)
-/* Returns true if the message on button_chan is a Button 1 press, the sync trigger. */
 static bool is_sync_button(const struct main_state *state_object)
 {
 	const struct button_msg *msg = (const struct button_msg *)state_object->msg_buf;
@@ -256,8 +220,6 @@ static bool is_sync_button(const struct main_state *state_object)
 	return state_object->chan == &button_chan && msg->type == BUTTON_1;
 }
 #endif /* CONFIG_APP_BUTTONS */
-
-/** SMF state functions */
 
 static void state_running_entry(void *obj)
 {
@@ -295,9 +257,7 @@ static enum smf_state_result state_running_run(void *obj)
 	}
 #endif /* CONFIG_APP_BUTTONS */
 
-	/* Requests echoed back on module channels, completions that arrive after the cloud
-	 * disconnected, and cloud state reports that do not change the state are consumed here.
-	 */
+	/* Own requests echoed back on module channels and late completions end up here. */
 	return SMF_EVENT_HANDLED;
 }
 

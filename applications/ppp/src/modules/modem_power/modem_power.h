@@ -12,11 +12,10 @@ extern "C" {
 #endif
 
 /**
- * @brief Apply the modem power saving settings.
+ * @brief Apply the modem power saving settings over the AT pipe.
  *
- * Pauses the modem driver's periodic poll, which would otherwise wake the CMUX link,
- * and sends PSM and modem specific power saving commands over the AT pipe. Failures
- * are logged and do not stop the remaining commands.
+ * Pauses the modem driver's periodic poll and sends PSM and modem specific power saving
+ * commands. Failures are logged and do not stop the remaining commands.
  *
  * Call it each time the network connects, as the modem does not retain all settings
  * across a reset.

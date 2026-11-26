@@ -32,9 +32,7 @@ static const char *const cmds[] = {
 
 void modem_power_saving_configure(void)
 {
-	/* The driver's periodic poll would wake the link every 30 s, and its response is
-	 * never read, since the location module queries the modem on demand.
-	 */
+	/* The driver's periodic poll wakes the link every 30 s for a response nothing reads. */
 	int err = cellular_modem_pause_periodic_script(DEVICE_DT_GET(DT_ALIAS(modem)));
 
 	if (err && err != -EINVAL && err != -ENOTSUP) {

@@ -17,8 +17,7 @@ config APP_MODEM_AT_SHELL
 	bool "at shell command"
 	default y if SHELL
 	help
-	  Re-adds the interactive `at "<command>"` shell on top of the shared
-	  handler.
+	  Adds the interactive `at "<command>"` shell on top of the shared handler.
 
 config APP_MODEM_AT_COMMAND_MAX_SIZE
 	int "Maximum AT command length"
@@ -43,11 +42,9 @@ config APP_MODEM_AT_PIPE_WAIT_TIMEOUT_SECONDS
 	int "Max time to wait for the AT pipe if another module is using it"
 	default 60
 	help
-	  modem_at_run() shares one AT pipe across modules. This bounds how long a
-	  call will wait for another module's in-progress command to finish before
-	  giving up. Should be at least as long as the slowest AT command timeout
-	  among the modules sharing the pipe, so a caller does not give up on a
-	  still-legitimate exchange.
+	  How long modem_at_run() waits for another module's command to finish.
+	  Set it to at least the slowest AT command timeout of the modules sharing
+	  the pipe.
 
 config APP_MODEM_AT_URC_SUBSCRIBERS
 	int "Maximum URC subscribers"

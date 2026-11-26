@@ -9,10 +9,6 @@
 
 #include "modem_at.h"
 
-/* Replacement for the in-tree CONFIG_MODEM_AT_SHELL: the application owns the
- * single AT pipe, so the stock shell is disabled and `at` is re-added here on
- * top of the shared modem_at handler.
- */
 static int cmd_at(const struct shell *sh, size_t argc, char **argv)
 {
 	static char resp[CONFIG_APP_MODEM_AT_RESPONSE_MAX_SIZE];

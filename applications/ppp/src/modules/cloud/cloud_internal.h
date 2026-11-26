@@ -25,7 +25,6 @@ struct priv_cloud_msg {
 	enum priv_cloud_msg_type type;
 };
 
-/* Private cloud channel, defined in cloud.c. */
 ZBUS_CHAN_DECLARE(priv_cloud_chan);
 
 #ifdef __cplusplus

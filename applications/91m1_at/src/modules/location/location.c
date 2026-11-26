@@ -53,7 +53,6 @@ ZBUS_CHAN_DEFINE(location_chan,
 
 #if defined(CONFIG_APP_LOCATION_GNSS)
 enum priv_location_msg_type {
-	/* The cellular request failed, try GNSS. */
 	LOCATION_PRIV_GNSS_FALLBACK,
 };
 
@@ -94,7 +93,6 @@ static struct {
 } gnss;
 #endif
 
-/* Split comma-separated URC arguments in place. Returns the number of fields. */
 static size_t split_args(char *buf, char **fields, size_t max_fields)
 {
 	size_t count = 0;
@@ -164,7 +162,7 @@ static int cell_location_request(void)
 }
 
 #if defined(CONFIG_APP_LOCATION_GNSS)
-/* Handle the #XGNSSPOS URC: latitude, longitude, altitude, accuracy, speed, heading, datetime. */
+/* #XGNSSPOS: <latitude>,<longitude>,<altitude>,<accuracy>,<speed>,<heading>,<datetime> */
 static void on_gnss_pos(char **argv, uint16_t argc, void *user_data)
 {
 	ARG_UNUSED(user_data);
@@ -190,7 +188,7 @@ static void on_gnss_pos(char **argv, uint16_t argc, void *user_data)
 	}
 }
 
-/* Handle the #XGNSS URC: GNSS service and GNSS status. */
+/* #XGNSS: <gnss_service>,<gnss_status> */
 static void on_gnss_status(char **argv, uint16_t argc, void *user_data)
 {
 	ARG_UNUSED(user_data);
@@ -239,9 +237,7 @@ static void gnss_antenna_configure(void)
 	configured = true;
 }
 
-/* Single GNSS fix with A-GNSS. Serial Modem sends the fix to nRF Cloud itself, because
- * the cloud module connects with <send_location> set.
- */
+/* The Serial Modem sends the fix to nRF Cloud, as the cloud module sets <send_location>. */
 static int gnss_location_request(void)
 {
 	char cmd[32];

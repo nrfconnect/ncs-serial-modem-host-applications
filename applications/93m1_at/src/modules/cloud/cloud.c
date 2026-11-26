@@ -19,7 +19,6 @@ LOG_MODULE_REGISTER(cloud, CONFIG_APP_CLOUD_LOG_LEVEL);
 BUILD_ASSERT(CONFIG_APP_CLOUD_WATCHDOG_TIMEOUT_SECONDS >
 	     CONFIG_APP_CLOUD_MSG_PROCESSING_TIMEOUT_SECONDS,
 	     "Watchdog timeout must exceed the maximum message processing time");
-/* AT commands a single message can run in a row, each waiting for the pipe on its own. */
 #define MAX_AT_COMMANDS_PER_MSG (IS_ENABLED(CONFIG_APP_CLOUD_OBSERVABILITY_HEARTBEAT) ? 2 : 1)
 
 BUILD_ASSERT(CONFIG_APP_CLOUD_MSG_PROCESSING_TIMEOUT_SECONDS >
@@ -45,8 +44,6 @@ ZBUS_MSG_SUBSCRIBER_DEFINE(cloud);
 #define ADD_OBSERVERS(_chan, _type) ZBUS_CHAN_ADD_OBS(_chan, cloud, 0);
 
 CHANNEL_LIST(ADD_OBSERVERS)
-
-/* Helper functions */
 
 static int cloud_send_battery(int percent)
 {
@@ -80,13 +77,6 @@ static int cloud_send_battery(int percent)
 }
 
 #if defined(CONFIG_APP_CLOUD_OBSERVABILITY)
-/*
- * Uploads the observability chunks queued on the modem. A failed heartbeat is only logged,
- * since chunks queued earlier, such as a coredump, can still be uploaded.
- *
- * Returns 0 when the upload succeeded, -EACCES when nRF Cloud rejected the modem as
- * unauthorized, and -ENETUNREACH on any other failed request.
- */
 static int cloud_send_observability(void)
 {
 	char resp[CONFIG_APP_CLOUD_OBSERVABILITY_RESPONSE_SIZE];
@@ -97,6 +87,7 @@ static int cloud_send_observability(void)
 		err = modem_at_run_coap("AT%NRFCLOUDOBSHEARTBEAT", NULL, 0,
 					CONFIG_APP_CLOUD_AT_TIMEOUT_SECONDS, NULL);
 		if (err) {
+			/* Not fatal: earlier chunks, such as a coredump, can still upload. */
 			LOG_WRN("AT%%NRFCLOUDOBSHEARTBEAT, error: %d", err);
 		}
 	}
@@ -118,7 +109,6 @@ static int cloud_send_observability(void)
 }
 #endif /* CONFIG_APP_CLOUD_OBSERVABILITY */
 
-/* Logs the outcome of a request to nRF Cloud and stops on a failure that is not the link's. */
 static void cloud_request_result(const char *what, int err)
 {
 	if (err == -EACCES) {

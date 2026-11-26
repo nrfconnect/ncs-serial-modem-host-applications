@@ -79,9 +79,8 @@ static void publish_network_status(enum network_msg_type type)
 }
 
 /*
- * The +CEREG=5 URC is "+CEREG: <stat>[,"<tac>",...]". The read response
- * "+CEREG: <n>,<stat>,..." has the same prefix; its second argument is an unquoted
- * number, while the URC's second argument, if any, is the quoted tracking area code.
+ * The URC is "+CEREG: <stat>[,"<tac>",...]" and the read response is "+CEREG: <n>,<stat>,...".
+ * Only the read response has an unquoted second argument.
  */
 static void on_cereg(char **argv, uint16_t argc, void *user_data)
 {
@@ -194,9 +193,7 @@ static void network_wdt_callback(int channel_id, void *user_data)
 	FATAL_ERROR_WATCHDOG_TIMEOUT();
 }
 
-/* Wait for Serial Modem to answer after the host has reset it, then configure LTE.
- * Settings that need the modem offline are applied before the first AT+CFUN=1.
- */
+/* Settings that need the modem offline must be applied before the first AT+CFUN=1. */
 static int modem_configure(void)
 {
 	static const char *const init_cmds[] = {

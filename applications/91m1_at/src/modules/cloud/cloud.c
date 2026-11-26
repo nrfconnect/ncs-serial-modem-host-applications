@@ -55,13 +55,9 @@ ZBUS_CHAN_DEFINE(cloud_chan,
 		 ZBUS_MSG_INIT(0));
 
 enum priv_msg_type {
-	/* Retry timer expired. */
 	PRIV_RETRY,
-	/* Start a provisioning session. */
 	PRIV_PROVISION_START,
-	/* Result of a provisioning step, value in .status. */
 	PRIV_PROVISION_STATUS,
-	/* Connect the modem's nRF Cloud client. */
 	PRIV_CONNECT,
 };
 
@@ -70,9 +66,7 @@ struct priv_msg {
 	int status;
 };
 
-/* Internal triggers. Each provisioning step is its own message, so the task watchdog
- * is fed between the steps of a session.
- */
+/* Each provisioning step is its own message, so the task watchdog is fed between steps. */
 ZBUS_CHAN_DEFINE(cloud_priv_chan,
 		 struct priv_msg,
 		 NULL,
@@ -103,11 +97,8 @@ struct cloud_state_object {
 	struct smf_ctx ctx;
 	const struct zbus_channel *chan;
 	uint8_t msg_buf[MAX_MSG_SIZE];
-	/* Main has requested a connection, tracked in every state. */
 	bool connect_requested;
-	/* Provisioning ran to completion since boot. */
 	bool provisioned;
-	/* The host took LTE offline for the provisioning session. */
 	bool lte_offline;
 };
 
@@ -134,8 +125,6 @@ static const struct smf_state states[] = {
 	[STATE_CONNECTED] = SMF_CREATE_STATE(connected_entry, connected_run, connected_exit,
 					     NULL, NULL),
 };
-
-/* Helper functions */
 
 static void publish_priv(enum priv_msg_type type, int status)
 {
@@ -181,7 +170,6 @@ static void schedule_retry(void)
 	}
 }
 
-/* Copy the text between the first pair of double quotes in @p src into @p dst. */
 static int quoted_value_get(const char *src, char *dst, size_t dst_size)
 {
 	const char *start = strchr(src, '"');
@@ -281,7 +269,6 @@ static void log_attestation_token(void)
 	LOG_INF("Attestation token: %s", token);
 }
 
-/* Run one provisioning step and report its #XNRFPROV result to the state machine. */
 static void provision_step(const char *cmd)
 {
 	char urc[URC_BUF_SIZE];
@@ -315,8 +302,6 @@ static void lte_restore(struct cloud_state_object *state)
 
 	state->lte_offline = false;
 }
-
-/* Zephyr State Machine Framework handlers */
 
 static void disconnected_entry(void *obj)
 {
@@ -400,9 +385,7 @@ static enum smf_state_result provisioning_run(void *obj)
 	const struct priv_msg *msg = (const struct priv_msg *)state->msg_buf;
 
 	if (state->chan != &cloud_priv_chan) {
-		/* Connect requests during the session are tracked by the thread; the modem
-		 * reports through #XNRFPROV when it needs the link.
-		 */
+		/* The thread tracks connect_requested, and #XNRFPROV says when LTE is needed. */
 		return SMF_EVENT_HANDLED;
 	}
 

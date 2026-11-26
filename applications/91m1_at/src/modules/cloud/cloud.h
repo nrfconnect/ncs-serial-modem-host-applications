@@ -28,8 +28,8 @@ enum cloud_msg_type {
 	 * The first time, the module onboards the Serial Modem with `AT#XNRFPROV`, which can
 	 * take LTE down and up again. It then connects the modem's nRF Cloud client with
 	 * `AT#XNRFCLOUD` and publishes @ref CLOUD_CONNECTED. A failed attempt is retried every
-	 * CONFIG_APP_CLOUD_RETRY_SECONDS until @ref CLOUD_DISCONNECT. A request while
-	 * connecting or connected is ignored.
+	 * CONFIG_APP_CLOUD_RETRY_SECONDS until @ref CLOUD_DISCONNECT. Ignored while
+	 * connecting or connected.
 	 */
 	CLOUD_CONNECT,
 	/**
@@ -37,7 +37,7 @@ enum cloud_msg_type {
 	 *
 	 * Publishes @ref CLOUD_DISCONNECTED when the module was connected. The Serial Modem
 	 * keeps its nRF Cloud session, which the next @ref CLOUD_CONNECT reuses if it is still
-	 * up. Ignored while provisioning, which takes LTE down on its own.
+	 * up. During provisioning, it takes effect when provisioning ends.
 	 */
 	CLOUD_DISCONNECT,
 };
@@ -51,8 +51,7 @@ struct cloud_msg {
  * @brief Cloud module channel.
  *
  * Carries @ref CLOUD_CONNECT and @ref CLOUD_DISCONNECT to the module, and
- * @ref CLOUD_CONNECTED and @ref CLOUD_DISCONNECTED back to its observers. The module also
- * receives its own status messages and ignores them.
+ * @ref CLOUD_CONNECTED and @ref CLOUD_DISCONNECTED back to its observers.
  */
 ZBUS_CHAN_DECLARE(cloud_chan);
 

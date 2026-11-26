@@ -9,8 +9,8 @@ menuconfig APP_CLOUD
 	default y
 	depends on APP_MODEM_AT
 	help
-	  Single owner of outbound nRF Cloud AT traffic. Forwards telemetry that other
-	  modules publish to cloud_chan while connected.
+	  Sends the telemetry that other modules publish on cloud_chan to nRF Cloud
+	  through the modem's nRF Cloud client.
 
 if APP_CLOUD
 
@@ -18,7 +18,7 @@ config APP_CLOUD_PAYLOAD_BUFFER
 	int "Payload buffer size"
 	default 96
 	help
-	  Size of buffer used to construct JSON payload sent to cloud.
+	  Size of the AT%NRFCLOUDMESSAGE command buffer, including its JSON payload.
 
 config APP_CLOUD_THREAD_STACK_SIZE
 	int "Thread stack size"
@@ -32,10 +32,9 @@ config APP_CLOUD_OBSERVABILITY
 	bool "Upload observability data"
 	default y
 	help
-	  Handles the upload request from the sync state machine by running
-	  AT%NRFCLOUDOBSUPLOAD, which sends the observability chunks queued on the modem to
-	  nRF Cloud. nRF Cloud lists the device as seen, with its hardware and software
-	  versions, only after observability data has arrived.
+	  Uploads the observability chunks queued on the modem to nRF Cloud with
+	  AT%NRFCLOUDOBSUPLOAD on each sync. nRF Cloud lists the device as seen, with its
+	  hardware and software versions, only after observability data has arrived.
 
 config APP_CLOUD_OBSERVABILITY_HEARTBEAT
 	bool "Trigger a heartbeat before each upload"
@@ -63,9 +62,9 @@ config APP_CLOUD_MSG_PROCESSING_TIMEOUT_SECONDS
 	default 190 if APP_CLOUD_OBSERVABILITY_HEARTBEAT
 	default 100
 	help
-	  modem_at_run() shares one AT pipe with other modules. This value must exceed
-	  CONFIG_APP_MODEM_AT_PIPE_WAIT_TIMEOUT_SECONDS plus CONFIG_APP_CLOUD_AT_TIMEOUT_SECONDS
-	  for every AT command a message runs, which is two for an upload with a heartbeat.
+	  Must exceed CONFIG_APP_MODEM_AT_PIPE_WAIT_TIMEOUT_SECONDS plus
+	  CONFIG_APP_CLOUD_AT_TIMEOUT_SECONDS for every AT command a message runs, which is
+	  two for an upload with a heartbeat.
 
 module = APP_CLOUD
 module-str = cloud

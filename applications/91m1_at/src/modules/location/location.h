@@ -25,10 +25,8 @@ enum location_msg_type {
 	 */
 	LOCATION_FIX_REQUEST = 0x1,
 	/**
-	 * Output: the module has finished handling a @ref LOCATION_FIX_REQUEST.
-	 *
-	 * Published once per request, after the GNSS fallback when it runs, whether a fix was
-	 * found or not. It does not carry the outcome, which is logged by the module.
+	 * Output: the module has finished handling a @ref LOCATION_FIX_REQUEST, including the
+	 * GNSS fallback, whether a fix was found or not. The outcome is only logged.
 	 */
 	LOCATION_FIX_DONE,
 };
@@ -42,7 +40,7 @@ struct location_msg {
  * @brief Location module channel.
  *
  * Carries @ref LOCATION_FIX_REQUEST to the module and @ref LOCATION_FIX_DONE back to its
- * observers. The module also receives its own @ref LOCATION_FIX_DONE and ignores it.
+ * observers.
  */
 ZBUS_CHAN_DECLARE(location_chan);
 

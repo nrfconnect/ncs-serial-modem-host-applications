@@ -49,7 +49,6 @@ static void on_error_line(struct modem_chat *c, char **argv, uint16_t argc, void
 static void init_script_chat(void);
 static int modem_at_init(void);
 
-/* URCs that arrive asynchronously on the user pipe are routed to subscribers. */
 MODEM_CHAT_MATCHES_DEFINE(unsol_matches,
 	MODEM_CHAT_MATCH("%NRFCLOUDLOCATION: ", ",", on_urc),
 	MODEM_CHAT_MATCH("%COAP: ", ",", on_coap));

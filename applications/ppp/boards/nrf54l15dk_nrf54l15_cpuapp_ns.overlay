@@ -3,14 +3,7 @@
  *
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  *
- * Based on ncs-serial-modem samples/sm_ppp_shell for nRF54L15 DK + nRF9151 DK.
- * Disable VCOM0 in Board Configurator to release uart30 (P0 connector).
- *
- * Two-DK wiring (in addition to UART/DTR/RI from sm_ppp_shell):
- *   nRF54L15 P1.10 (modem reset out) -> nRF9151 DK P5 pin 5 (RESET)
- *   Set matching VDD on both DKs in Board Configurator (typically 1.8 V).
- *
- * RRAM/SRAM partitions: nrf54l15_cpuapp_ns_partitions.dtsi (MCUboot + TF-M).
+ * nRF54L15 DK + nRF9151 DK. Wiring: see docs/getting-started/ppp-nrf54.md.
  */
 
 #include "nrf54l15_cpuapp_ns_partitions.dtsi"

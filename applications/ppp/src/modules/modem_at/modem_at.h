@@ -16,21 +16,21 @@ extern "C" {
 /**
  * @brief Run an AT command on the shared modem AT pipe (DLCI 3).
  *
- * Blocks until the modem replies OK/ERROR or the timeout elapses. Intermediate
- * response lines (everything before the final OK) are concatenated, newline
- * separated, into @p resp. Serialised internally, so the modem-at shell and
- * application modules can share the single user pipe.
+ * Blocks until the modem replies OK or ERROR, or the timeout elapses. Response lines
+ * before the final OK are collected into @p resp, newline separated. Calls are
+ * serialised, so the `at` shell and application modules can share the pipe.
  *
- * @param req       AT command string (without trailing CR).
+ * @param req       AT command string, without trailing CR.
  * @param resp      Buffer for the collected response, or NULL to ignore it.
  * @param resp_size Size of @p resp.
  * @param timeout_s Max seconds to wait for the command to complete.
  *
  * @retval 0        Modem replied OK.
- * @retval -EPERM   Pipe not ready (modem not attached yet).
- * @retval -EBUSY   Another command is already running.
- * @retval -EIO     Modem replied ERROR or the script timed out.
- * @retval -EINVAL  Invalid request.
+ * @retval -EINVAL  @p req is NULL or does not fit CONFIG_APP_MODEM_AT_COMMAND_MAX_SIZE.
+ * @retval -EPERM   AT pipe not open (modem not attached yet).
+ * @retval -EBUSY   AT pipe not available within CONFIG_APP_MODEM_AT_PIPE_WAIT_TIMEOUT_SECONDS.
+ * @retval -EAGAIN  Modem replied ERROR, the command timed out, or another modem_at_run()
+ *                  call held the pipe for CONFIG_APP_MODEM_AT_PIPE_WAIT_TIMEOUT_SECONDS.
  */
 int modem_at_run(const char *req, char *resp, size_t resp_size, uint32_t timeout_s);
 

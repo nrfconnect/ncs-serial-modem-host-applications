@@ -6,7 +6,6 @@
 
 cmake_minimum_required(VERSION 3.20.0)
 
-# Bundled nrf91-sm driver (see drivers/nrf91-sm/).
 set(NRF91SM_DRIVER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/drivers/nrf91-sm)
 list(APPEND EXTRA_ZEPHYR_MODULES ${NRF91SM_DRIVER_DIR})
 
@@ -47,8 +46,7 @@ target_sources_ifdef(CONFIG_APP_LOCATION_SHELL app PRIVATE
 	src/modules/location/location_shell.c
 )
 
-# Only the nRF91 Serial Modem is reset by the host. The nRF93M1 DK modem node also
-# has mdm-reset-gpios, but its in-tree driver owns that line.
+# Only the nRF91 Serial Modem is reset here. The nRF93M1 in-tree driver owns its reset line.
 target_sources_ifdef(CONFIG_DT_HAS_NORDIC_NRF91_SM_V2_ENABLED app PRIVATE src/modem_reset.c)
 
 target_sources_ifdef(CONFIG_APP_BATTERY app PRIVATE src/modules/battery/battery.c)
@@ -60,8 +58,7 @@ target_sources_ifdef(CONFIG_APP_LOCATION_BACKEND_MODEM_AT app PRIVATE
 	src/modules/location/location_at.c
 )
 
-# Memfault SDK guards new features with the minimum NCS version 3.4.0, which is yet to be released.
-# Remove when the sdk tags 3.4.0.
+# Memfault SDK gates this on NCS 3.4.0, which is not released yet. Remove once NCS tags 3.4.0.
 if(CONFIG_APP_BATTERY AND CONFIG_MEMFAULT_NRF_PLATFORM_BATTERY_NPM13XX
    AND "${NCS_VERSION_MAJOR}.${NCS_VERSION_MINOR}.${NCS_VERSION_PATCH}" VERSION_LESS 3.4.0)
 	zephyr_ld_options(-Wl,--wrap=nrf_fuel_gauge_init)

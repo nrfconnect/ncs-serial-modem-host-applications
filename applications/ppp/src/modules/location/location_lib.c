@@ -38,31 +38,21 @@ ZBUS_MSG_SUBSCRIBER_DEFINE(location);
 
 ZBUS_CHAN_ADD_OBS(location_chan, location, 0);
 
-/* Location module states */
 enum location_module_state {
-	/* The module is running */
 	STATE_RUNNING,
-		/* Location search is inactive. */
 		STATE_LOCATION_SEARCH_INACTIVE,
-		/* Location search is active. */
 		STATE_LOCATION_SEARCH_ACTIVE,
 };
 
-/* State object.
- * Used to transfer context data between state changes.
- */
 struct location_state_object {
-	/* This must be first */
+	/* Must be first, SMF casts the state object to struct smf_ctx. */
 	struct smf_ctx ctx;
 
-	/* Last channel type that a message was received on */
 	const struct zbus_channel *chan;
 
-	/* Last received message */
 	uint8_t msg_buf[sizeof(struct location_msg)];
 };
 
-/* Forward declarations */
 static void location_event_handler(const struct location_event_data *event_data);
 static void state_running_entry(void *obj);
 static void state_location_search_inactive_entry(void *obj);
@@ -154,8 +144,6 @@ static void cloud_request_send(const struct location_data_cloud *cloud_request)
 	}
 }
 
-/* State handlers */
-
 static void state_running_entry(void *obj)
 {
 	ARG_UNUSED(obj);
@@ -240,9 +228,8 @@ static enum smf_state_result state_location_search_active_run(void *obj)
 				LOG_ERR("location_request_cancel, error: %d", err);
 			}
 
-			/* The location library only emits LOCATION_EVT_CANCELLED when
-			 * CONFIG_LOCATION_DATA_DETAILS is enabled, which it cannot be here,
-			 * so the search is completed from this context instead.
+			/* The library only emits LOCATION_EVT_CANCELLED with
+			 * CONFIG_LOCATION_DATA_DETAILS, which can't be enabled here.
 			 */
 			message_send(LOCATION_SEARCH_DONE);
 		} else if (msg->type == LOCATION_SEARCH_DONE) {
@@ -321,10 +308,8 @@ static void location_event_handler(const struct location_event_data *event_data)
 
 		cloud_request_send(&event_data->cloud_location_request);
 
-		/* Cancel the current location request to avoid falling back to the next
-		 * location source. Treat the fact that we have found Wi-Fi APs as a successful
-		 * location request, even if we don't know whether the cloud is able to resolve
-		 * data to a location or not.
+		/* Cancel to stop the fallback to the next method. Found Wi-Fi APs count as a
+		 * successful search, whether or not the cloud can resolve them.
 		 */
 		message_send(LOCATION_SEARCH_CANCEL);
 		break;

@@ -23,15 +23,8 @@ config APP_LOCATION_METHOD
 	default 5
 	range 1 7
 	help
-	  The AT%NRFCLOUDLOCATION method parameter. See the AT command reference for details.
-	  The value is a bitmask of 1 = single-cell, 2 = multicell and 4 = Wi-Fi:
-	  1: Single-cell only
-	  2: Multicell only
-	  3: Single-cell and multicell
-	  4: Wi-Fi only
-	  5: Wi-Fi and single-cell
-	  6: Wi-Fi and multicell
-	  7: Wi-Fi, single-cell and multicell
+	  The AT%NRFCLOUDLOCATION method parameter, a bitmask of 1 = single-cell,
+	  2 = multicell and 4 = Wi-Fi. For example, 5 is Wi-Fi and single-cell.
 
 config APP_LOCATION_AT_TIMEOUT_SECONDS
 	int "AT%NRFCLOUDLOCATION timeout (seconds)"
@@ -45,9 +38,8 @@ config APP_LOCATION_MSG_PROCESSING_TIMEOUT_SECONDS
 	int "Maximum message processing time"
 	default 130
 	help
-	  modem_at_run() shares one AT pipe with other modules. This value must
-	  exceed CONFIG_APP_MODEM_AT_PIPE_WAIT_TIMEOUT_SECONDS plus
-	  CONFIG_APP_LOCATION_AT_TIMEOUT_SECONDS to cover that combined worst case.
+	  Must exceed CONFIG_APP_MODEM_AT_PIPE_WAIT_TIMEOUT_SECONDS plus
+	  CONFIG_APP_LOCATION_AT_TIMEOUT_SECONDS.
 
 module = APP_LOCATION
 module-str = location
