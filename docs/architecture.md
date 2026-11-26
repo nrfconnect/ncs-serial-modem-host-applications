@@ -69,11 +69,10 @@ Each module follows a similar design:
 - **Message channel**: Each module defines its own zbus channel. A single channel is used for all messages that are specific to a module.
 - **Message types**: Each module exposes a set of input and output message types. These can be considered events in the state machine sense and might have associated data.
 - **State machine**: Modules with state implement a state machine using SMF to manage their internal state and behavior. Simpler modules handle messages directly, as listed in [Modules per application](#modules-per-application).
-- **Thread**: Each module has its own thread, so that blocking calls in one module cannot stall another.
-- **Watchdog**: Each module thread is monitored by a task watchdog. Each thread periodically calls `task_wdt_feed()`. If a thread fails to feed its watchdog within its configured timeout, the system resets.
-- **Initialization**: Modules are initialized in their dedicated thread, which is started with `K_THREAD_DEFINE()`.
+- **Thread**: Each module that handles messages has its own thread, started with `K_THREAD_DEFINE()`, so that blocking calls in one module cannot stall another. The module initializes itself in that thread.
+- **Watchdog**: Each module thread feeds a task watchdog with `task_wdt_feed()`. If a thread fails to feed it within its configured timeout, the system resets.
 
-The modules are designed as loosely coupled units with well-defined message-based interfaces. They communicate exclusively through their zbus channels, without reference to other modules' internals. This means you can develop, test, and maintain each module independently, and every module except the Main module can be reused in other applications.
+The modules communicate only through their zbus channels, so every module except the Main module can be reused in other applications.
 
 Modules often handle state transitions based on messages they themselves publish. For example, when the Network module publishes a `NETWORK_CONNECTED` message, it also receives this message in its own state machine, allowing it to transition to the connected state with consistent handling.
 
@@ -126,14 +125,6 @@ static void network_module(void)
 }
 ```
 
-In this pattern:
-
-1. The thread feeds its task watchdog, then waits for a message using `zbus_sub_wait_msg()`.
-1. When a message arrives, it is stored in the state object's buffer along with the channel it was received on.
-1. The state machine is then executed with `smf_run_state()`, which calls the appropriate handler for the current state.
-1. The handler processes the message based on its type and the current state, potentially triggering state transitions.
-1. The loop continues, waiting for the next message.
-
 The wait is bounded rather than `K_FOREVER` so that the watchdog is fed even when no messages arrive. The timeout is the watchdog timeout minus the time budgeted for processing a single message, which leaves room for the longest possible message handling before the watchdog expires. A timeout returns `-ENOMSG`, which simply restarts the loop.
 
 ### Watchdog timeouts
@@ -149,12 +140,14 @@ Each module configures its own watchdog timeout and message processing budget wi
 | Location | 120 s / 100 s | 150 s / 130 s | 300 s / 290 s |
 | Battery | 60 s / 30 s | 30 s / 10 s | Not included |
 
-The PPP Host Application uses the same timeouts on every board. Modules whose handlers make blocking calls get long timeouts. In the PPP Host Application, the Cloud and FOTA handlers make blocking CoAP calls. In the Cloud module, a connect attempt performs a DTLS handshake, and the shadow, message, location, and remote debugging requests are blocking CoAP exchanges. In the FOTA module, the poll makes reliable CoAP calls to check for and report a job; the image download itself does not block, because the module uses the nRF Cloud FOTA poll library in non-blocking mode and drives the download from its callbacks. The AT host applications size their timeouts the same way, after the operations their own modules perform. In the nRF91 AT Host Application, each provisioning step and each location attempt waits for a Serial Modem result URC, which can take minutes.
+Modules whose handlers block get long timeouts, and modules that only publish messages or start asynchronous work get short ones that only catch a stuck thread. In the PPP Host Application, which uses the same timeouts on every board:
 
-Modules that never block in their handlers only publish messages, drive the connection manager, or start asynchronous work, all of which return immediately while results arrive later as messages or callbacks. Their timeouts are short, sized only to catch a genuinely stuck thread rather than to cover a long operation. In the PPP Host Application, the Main module is such a module. Two others have longer budgets for one blocking case each:
+- The Cloud module blocks on the DTLS handshake when connecting and on every CoAP request.
+- The FOTA module blocks on the CoAP poll for a job. The image download runs from the FOTA poll library's callbacks and does not block.
+- The Network module blocks for up to 30 seconds when it brings the interface down, while Zephyr's `modem_cellular` driver suspends the modem.
+- The Location module's modem AT backend, used on the nRF93M1 DK, blocks on its cell and Wi-Fi scans. The timeouts are sized for it.
 
-- The Network module drives the connection manager, whose calls return immediately while results arrive later as events. The exception is bringing the interface down, where Zephyr's `modem_cellular` driver blocks the thread for up to 30 seconds while it suspends the modem.
-- The Location module has two backends. The Location library backend, used on the nRF54 hosts, starts an asynchronous Wi-Fi scan that returns immediately, with the result arriving later through a callback. The modem AT backend, used on the nRF93M1 DK, blocks on its cell and Wi-Fi scans. The timeouts cover the blocking backend, so they are the same on every board.
+In the nRF91 AT Host Application, each provisioning step and each location attempt waits for a Serial Modem result URC, which can take minutes.
 
 ## Message passing with zbus
 
@@ -179,13 +172,7 @@ ZBUS_CHAN_DEFINE(network_chan,          /* Channel name, derived from module nam
 		 ZBUS_MSG_INIT(.type = NETWORK_DISCONNECTED)); /* Message initialization */
 ```
 
-The fields of the `ZBUS_CHAN_DEFINE` macro are populated in a similar way across modules:
-
-- **Channel name**: The name of the channel, derived from the module name.
-- **Message data type**: The data type used to hold message data. The name comes from the channel name.
-- **Validator function** and **User data**: Not used.
-- **Initial observers**: The initial observer list is empty. Observers are added in the relevant modules later.
-- **Message initialization**: The initial value stored in the channel. Not used, and therefore set either to the module's disconnected message type or to `ZBUS_MSG_INIT(0)`.
+All modules fill in the macro the same way: no validator or user data, an empty observer list that subscribers add to with `ZBUS_CHAN_ADD_OBS`, and an initial value that is never read.
 
 > [!IMPORTANT]
 > In the context of zbus, you can use the term "message type" to refer to the data type or structure containing the message data for a given channel, in this case `struct network_msg`. In this architecture, "message type" is used to mean the enumerated value that distinguishes different kinds of messages sent on the same channel, in this case the `type` field of `struct network_msg`.
@@ -287,10 +274,8 @@ In modules that subscribe to multiple channels, a channel list macro is used to 
 	IF_ENABLED(CONFIG_APP_LOCATION, (X(location_chan, struct location_msg))) \
 	X(main_priv_chan, struct priv_main_msg)
 
-/* Calculate the maximum message size from the list of channels */
 #define MAX_MSG_SIZE		    MAX_MSG_SIZE_FROM_LIST(CHANNEL_LIST)
 
-/* Add main_subscriber as observer to all the channels in the list. */
 #define ADD_OBSERVERS(_chan, _type) ZBUS_CHAN_ADD_OBS(_chan, main_subscriber, 0);
 
 CHANNEL_LIST(ADD_OBSERVERS)
@@ -298,25 +283,17 @@ CHANNEL_LIST(ADD_OBSERVERS)
 
 ### Private channels
 
-When a module needs internal state handling that should not be exposed to other modules, it uses a private channel. Private channels are reserved exclusively for the respective module and are not intended for external use. Otherwise, they are defined, published to, and subscribed to just like public channels. In the PPP Host Application, three modules use one:
+A module that needs to send messages to itself, for example from a callback or a timer, uses a private channel. It works like a public channel, but is defined in the module's `.c` file and never declared in a public header, so no other module can publish to it. In the PPP Host Application, three modules use one:
 
 - The Cloud module uses `priv_cloud_chan` to turn every attempt at connecting into a message, so that it can retry without blocking its state machine.
 - The FOTA module uses `priv_fota_chan` to move the nRF Cloud FOTA library callbacks, which run in the library's own context, into the module's state machine.
 - The Main module uses `main_priv_chan` to move the periodic cloud synchronization from the workqueue that runs the timer into its state machine.
 
-Private channels are defined in the module's `.c` file and are never declared in a public header, so no other module can publish to them.
-
 ## State machines
 
 The State Machine Framework (SMF) is a Zephyr library that provides a way to implement hierarchical state machines in a structured manner. In a hierarchical state machine, you can implement behavior common to multiple states in a shared parent state. In the PPP Host Application, the Main and FOTA modules and the Location library backend of the Location module use hierarchical state machines, while the Network and Cloud modules are simple enough to use flat ones.
 
-The state machines follow a run-to-completion model where:
-
-- Message processing and state machine execution, including transitions, are completed before processing any new messages.
-- Entry and exit functions are called in the correct order when transitioning states.
-- Parent state transitions are handled automatically when transitioning between child states.
-
-This model ensures predictable behavior and proper state cleanup during transitions, as there is no mechanism for interrupting or changing the state machine execution from the outside.
+The state machines run to completion: a message, including any transitions and the entry and exit functions they run, is fully handled before the next message is processed.
 
 This section covers how SMF is used in the modules. See the [SMF documentation](https://docs.nordicsemi.com/bundle/ncs-latest/page/zephyr/services/smf/index.html) for an introduction to SMF.
 
@@ -358,14 +335,7 @@ static const struct smf_state states[] = {
 
 ### State object
 
-SMF uses a data structure of type `struct smf_ctx` to track the current state of the state machine. This structure is embedded within a larger structure called the _state object_ that holds the following:
-
-- SMF's context structure.
-- The zbus channel of the latest message received.
-- The contents of the latest message received.
-- Any extended state variables needed by the module.
-
-For example, the FOTA module defines its state object structure:
+SMF tracks the current state in a `struct smf_ctx`. Each module embeds it in a _state object_ together with the latest received message and any state variables of its own. For example, the FOTA module defines its state object structure:
 
 ```c
 struct fota_state_object {
@@ -421,12 +391,3 @@ smf_set_state(SMF_CTX(state_object), &states[NEW_STATE]);
 ```
 
 A transition to another state must be the last thing happening in a state handler. This is to ensure the correct order of execution of parent state handlers. SMF automatically handles the execution of exit and entry functions for all states along the path to the new state.
-
-### State machine execution
-
-The state machine is run using `smf_run_state()`. SMF executes the run function defined for the current state, and then:
-
-- If the run function returns `SMF_EVENT_PROPAGATE`, the process is repeated for the parent state, if there is one.
-- If the run function triggers a state transition, SMF runs any relevant exit and entry functions.
-
-`smf_run_state()` is run from the module threads to process incoming messages, as described in [Module threads](#module-threads).

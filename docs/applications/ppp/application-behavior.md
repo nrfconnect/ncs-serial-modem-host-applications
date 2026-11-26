@@ -6,8 +6,6 @@ This guide describes the general runtime behavior of the [PPP Host Application](
 
 The application runs on the host MCU, an nRF54L15 or nRF54LM20B DK wired to an nRF9151 DK, or the nRF54L15 of the nRF93M1 DK, and treats the Serial Modem as a cellular data interface over the PPP. Cloud connectivity to nRF Cloud uses the CoAP secured with DTLS, terminated on the host. Credentials are stored in TF-M Protected Storage and used to sign JWTs that authenticate the CoAP session.
 
-Cooperating modules run as dedicated threads, each with its own SMF state machine, and communicate through zbus channels. See the [module overview](README.md#modules) for details about the modules and their interactions.
-
 ## Startup sequence
 
 1. **Boot** – MCUboot loads the application. On boards with a modem reset GPIO, `modem_reset.c` pulses the nRF91 reset line before the modules start. The nRF Cloud library logs the device ID (from the host hardware ID), protocol, and security tag.
@@ -31,7 +29,7 @@ While nRF Cloud is connected, main keeps a periodic timer on a dedicated workque
 
 An initial synchronization runs immediately on cloud connect. The timer is canceled when the cloud disconnects. A new periodic trigger is only acted on while main is idle between synchronizations.
 
-During the location step, the location module scans for Wi-Fi access points, on the nRF93M1 DK together with the serving cell, and publishes the result as `LOCATION_SEARCH_WIFI_CELL_RESULT`, which main forwards to the cloud module. The cloud module resolves it into a position with an nRF Cloud CoAP ground-fix request and logs the position together with a Google Maps URL. Main does not advance past the location step until `LOCATION_SEARCH_DONE` is published.
+During the location step, the location module scans for Wi-Fi access points, on the nRF93M1 DK together with the serving cell, and publishes the result as `LOCATION_SEARCH_WIFI_CELL_RESULT`, which main forwards to the cloud module. The cloud module resolves it into a position with an nRF Cloud CoAP ground-fix request and logs the position together with a Google Maps URL.
 
 ## Buttons and shell commands
 

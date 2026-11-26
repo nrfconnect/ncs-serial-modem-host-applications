@@ -32,7 +32,7 @@ The CLI needs the following values for the build:
 
 | Application | Board | `--software-type` | `--hardware-version` |
 |-------------|-------|-------------------|----------------------|
-| `ppp` | `nrf54l15dk/nrf54l15/cpuapp/ns` | `smha-91m1` | `nrf54l15dk` |
+| `ppp` | `nrf54l15dk/nrf54l15/cpuapp/ns` | `smha-91m1` | `smha-nrf54l15dk` |
 | `ppp` | `nrf54lm20dk/nrf54lm20b/cpuapp/ns` | `smha-91m1` | `smha-nrf54lm20dk` |
 | `ppp` | `nrf93m1dk/nrf54l15/cpuapp/ns` | `smha-93m1` | `smha-nrf93m1dk` |
 

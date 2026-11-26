@@ -41,7 +41,8 @@ The application follows the shared [Architecture](../../architecture.md). It con
 - **Battery module**: Samples the nPM1300 fuel gauge. Only built on the nRF93M1 DK.
 - **Buttons module**: Publishes DK button presses, and their `button` shell equivalents, on `button_chan`. It has no state machine or thread of its own. See [Buttons and shell commands](application-behavior.md#buttons-and-shell-commands).
 - **LED module**: Drives the host RGB LED with the color and blink pattern that the Main module publishes on `led_chan`. Only built on the nRF93M1 DK. See [LED indication](application-behavior.md#led-indication).
-- **Modem AT module**: Serializes access to the modem AT pipe behind `modem_at_run()`. It has no zbus channel and no state machine, and is called directly by the Location module's modem AT backend and the host shell. See [Reaching Serial Modem AT commands](#reaching-serial-modem-at-commands).
+- **Modem AT module**: Serializes access to the modem AT pipe behind `modem_at_run()`. It has no zbus channel and no state machine, and is called directly by the Location module's modem AT backend, the Modem Power module, and the host shell. See [Reaching Serial Modem AT commands](#reaching-serial-modem-at-commands).
+- **Modem Power module**: Applies PSM and modem power saving settings each time the network connects. It has no zbus channel of its own.
 
 The following diagram shows how the modules interact. Each module owns one channel, and both the requests sent to a module and the notifications it publishes go on that channel.
 
@@ -74,14 +75,6 @@ OK
 
 > [!NOTE]
 > The pipe only exists once the modem has attached. CMUX runtime power save closes it again when idle, and the command then answers `modem is not ready`, so retry it. Any host reboot resets the modem and turns logging back off.
-
-Module documentation:
-
-- [Main module](modules/main.md) — business logic, cloud synchronization, FOTA coordination
-- [Network module](modules/network.md) — PPP link to the modem
-- [Cloud module](modules/cloud.md) — nRF Cloud CoAP session, device messages, shadow
-- [FOTA module](modules/fota.md) — firmware updates of the host application
-- [Location module](modules/location.md) — Wi-Fi and cell based positioning
 
 ## References
 

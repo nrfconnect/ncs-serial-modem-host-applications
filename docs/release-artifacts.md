@@ -39,10 +39,10 @@ ppp-nrf54l15-v1.2.3/
 ├── zephyr.signed.bin
 ├── dfu_application.zip
 ├── .config
-└── serial_modem_v{VERSION}_nrf9151dk_nrf91m1.zip              firmware for the companion nRF9151 / SMA DK
+└── serial_modem_v{VERSION}_nrf9151dk_nrf91m1.zip      firmware for the companion nRF9151 / SMA DK
 ```
 
-The `ppp-nrf93m1` bundles carry no modem archive, because their board has an integrated modem. The AT host bundles (`93m1_at` and `91m1_at`) contain neither `zephyr.signed.bin` nor `dfu_application.zip`. File names are fixed so scripts and documentation stay valid after extraction.
+The `ppp-nrf93m1` bundles carry no modem archive, because their board has an integrated modem. The AT host bundles (`93m1_at` and `91m1_at`) contain neither `zephyr.signed.bin` nor `dfu_application.zip`.
 
 ### Top-level files
 
@@ -51,49 +51,20 @@ The `ppp-nrf93m1` bundles carry no modem archive, because their board has an int
 | `README.md` | Generated per bundle: the files it contains, flash commands, and console port | Flashing a downloaded zip without opening this page |
 | `merged.hex` | Full sysbuild image (TF-M, MCUboot where applicable, signed application, partition layout). Same contents as `build/merged.hex` from a local sysbuild. | Programming the device with a J-Link debugger or `nrfutil` |
 | `zephyr.elf` | ELF file with debug symbols | Debugging, coredump analysis, nRF Cloud symbol upload, `addr2line` |
-| `zephyr.signed.bin` | MCUboot-signed application image | FOTA through nRF Cloud (not included in AT host bundles) |
-| `dfu_application.zip` | DFU package wrapping the signed image with its manifest | nRF Cloud FOTA jobs (not included in AT host bundles) |
+| `zephyr.signed.bin` | MCUboot-signed application image | OTA payload for an nRF Cloud FOTA release |
+| `dfu_application.zip` | DFU package wrapping the signed image with its manifest | nRF Cloud FOTA jobs |
 | `.config` | Kconfig snapshot from the release build | Inspecting which options were enabled without rebuilding |
 | `serial_modem_*_nrf9151dk_nrf91m1.zip` | Serial Modem release tested by CI that night, exactly as published upstream | Programming the companion DK (nRF54 host bundles only) |
 
-### Full sysbuild image
+Upload `zephyr.elf` to nRF Cloud once per release build so coredumps decode correctly. The GNU build ID logged at boot must match the symbol file. See [Remote debugging with nRF Cloud](applications/ppp/remote-debugging.md).
 
-Use `merged.hex` for first-time programming or when you need to replace the full flash contents, including the bootloader and secure partitions. The PPP Host Application (`ppp`) is built with sysbuild, TF-M, and MCUboot. The merged image reflects that layout.
-
-After flashing, follow the getting-started guide for your application for hardware setup and cloud onboarding:
-
-- [PPP Host Application on an nRF54 DK](getting-started/ppp-nrf54.md)
-- [PPP Host Application on the nRF93M1 DK](getting-started/ppp-nrf93m1.md)
-- [nRF93M1 AT Host Application](getting-started/93m1-at.md)
-- [nRF91 AT Host Application](getting-started/91m1-at.md)
-
-### ELF file with debug symbols
-
-Upload `zephyr.elf` to nRF Cloud once per release build so coredumps decode correctly. The GNU build ID logged at boot must match the symbol file. See [Remote debugging with nRF Cloud](applications/ppp/remote-debugging.md) for the `ppp` flow.
-
-### Kconfig snapshot
-
-The `.config` file is useful when comparing behavior between releases or confirming that a feature (location, remote debugging, FOTA, and so on) was enabled in the build you downloaded.
-
-### MCUboot-signed application image
-
-The `zephyr.signed.bin` file is the signed, application-only payload for over-the-air (OTA) updates. CI FOTA tests build a patch-bumped copy locally; production OTA is typically managed through releases in your nRF Cloud project. This file is not produced for the AT host applications, which do not ship a signed update image in CI.
-
-### DFU package
-
-The `dfu_application.zip` file contains the same signed image, packaged with the manifest that an nRF Cloud FOTA job expects, so you can deploy a release without rebuilding. This file is not produced for the AT host applications.
-
-### Everything else from the build
-
-Only the files listed in [Top-level files](#top-level-files) ship. Per-domain MCUboot and TF-M output, `.map` and `.dts` files, and the partition metadata are not included. Build the same tag locally when you need them, as described in [Building locally instead](#building-locally-instead).
+For other build outputs, build the same tag locally as described in [Building locally instead](#building-locally-instead).
 
 ## Serial Modem firmware (nRF9151 DK)
 
-The PPP Host Application on the nRF54L15 or nRF54LM20B DK needs a separate Serial Modem image on the wired nRF9151 or nRF9151 SMA DK, configured for PPP + CMUX on UART0 for an external host MCU. Every nRF54 host `ppp` bundle carries the upstream archive CI tested that night, so there is no separate asset to download, and on-target tests flash that same archive, so what ships beside the host build is what CI verified against it.
+The PPP Host Application on the nRF54L15 or nRF54LM20B DK needs a Serial Modem image on the wired nRF9151 or nRF9151 SMA DK, configured for PPP and CMUX on UART0. Every nRF54 host `ppp` bundle carries the upstream archive that CI tested it against that night.
 
-The exact tag varies by Serial Modem Host Applications release. Each bundle's `README.md` names the Serial Modem version and links to the upstream release page. Browse [Serial Modem releases](https://github.com/nrfconnect/ncs-serial-modem/releases) for the source, or use the zip file already in your download.
-
-Besides the full-flash `.hex`, the archive holds the ELF with debug symbols, a Kconfig snapshot, the signed application and MCUboot slot images, DFU packages for programming without a debugger, and a devicetree snapshot.
+Each bundle's `README.md` names the Serial Modem version and links to its [upstream release](https://github.com/nrfconnect/ncs-serial-modem/releases).
 
 Extract it, flash the `.hex` file on the Serial Modem DK first, then flash the host bundle's `merged.hex` on the host DK:
 
@@ -146,7 +117,7 @@ See the [getting-started guide](getting-started/index.md#step-1-choose-your-appl
 
 ## Building locally instead
 
-Release zip files are convenience binaries. To modify firmware or match an unreleased commit, set up a workspace as described in [Set up the repository and toolchain](getting-started/setup.md) and build from source:
+To modify the firmware or match an unreleased commit, set up a workspace as described in [Set up the repository and toolchain](getting-started/setup.md) and build from source:
 
 ```shell
 cd applications/<app>

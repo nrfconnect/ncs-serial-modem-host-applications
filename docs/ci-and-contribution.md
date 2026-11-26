@@ -1,6 +1,6 @@
 # CI and contribution
 
-This document describes how the repository is organized and how it is built, tested, and released: the nightly and pull request pipelines, how release versions are derived, the self-hosted runners and hardware rigs that run the on-target tests, and the commit message rules contributions must follow.
+This document describes how the repository is organized, built, tested, and released, and the commit message rules contributions must follow.
 
 ## Repository structure
 
@@ -91,7 +91,7 @@ export TEST_JSON="$(PYTHONPATH=tests/on_target python3 -m ci.catalog load ppp-pr
 PYTHONPATH=tests/on_target pytest tests/on_target/tests/test_provision/ -c tests/on_target/tests/pytest.ini -v
 ```
 
-Build, compliance, and SonarCloud jobs use `self-hosted-build` (three runners for parallel matrix builds). Hardware tests and the test plan job use `self-hosted-test` on the DUT 2 rig.
+Build, compliance, and SonarCloud jobs use `self-hosted-build` (three runners for parallel matrix builds).
 
 ### Self-hosted runner setup
 
@@ -141,7 +141,7 @@ For the first-time setup of the test DUT (`CI_NRF54L15_*`), follow [Connect to n
 
 The nRF54LM20B FOTA test reuses DUT 3 (`CI_NRF54LM20B_PROVISION_*`) on the provisioning runner. The device must reach cloud connect before CI; the test calls `ensure_provisioned()` on the first run if credentials are missing and assigns the DUT to the nRF Cloud cohort `ci-91m1-test-nrf54lm20b-nrf91` (separate from the provision cohort). When provision and FOTA run in the same CI batch, the FOTA test moves the device into the test cohort automatically.
 
-The nRF54LM20B build reports nRF Cloud hardware version `smha-nrf54lm20dk` instead of the nRF Connect SDK default board name (see [`boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.conf`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/boards/nrf54lm20dk_nrf54lm20b_cpuapp_ns.conf)). The shared nRF Cloud project binds `nrf54lm20dk` to another software type, so OTA payloads for `smha-91m1` are rejected under that name. The nRF93M1 DK build reports `smha-nrf93m1dk` for the same reason (see [`boards/nrf93m1dk_nrf54l15_cpuapp_ns.conf`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/boards/nrf93m1dk_nrf54l15_cpuapp_ns.conf)): `nrf93m1dk` is bound to another software type, so OTA payloads for `smha-93m1` are rejected under that name. The nRF54L15 DK build reports `smha-nrf54l15dk` (see [`boards/nrf54l15dk_nrf54l15_cpuapp_ns.conf`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/applications/ppp/boards/nrf54l15dk_nrf54l15_cpuapp_ns.conf)) so all boards follow the same naming.
+The PPP builds report the nRF Cloud hardware versions `smha-nrf54l15dk`, `smha-nrf54lm20dk`, and `smha-nrf93m1dk` (`CONFIG_MEMFAULT_NCS_HW_VERSION` in the [board files](https://github.com/nrfconnect/ncs-serial-modem-host-applications/tree/main/applications/ppp/boards)) instead of the board names. The shared nRF Cloud project binds the plain board names to other software types, so OTA payloads for `smha-91m1` and `smha-93m1` would be rejected under them.
 
 Coredump tests connect to nRF Cloud, trigger `mflt test busfault` over the shell, and verify a new bus fault coredump for the device appears in the nRF Cloud Traces REST API. "New" means newer than the device's newest coredump recorded before the fault, so the check does not depend on the device clock agreeing with the runner. A bus fault is used because TF-M traps HardFaults before the Memfault SDK's handler runs. Every test that flashes the PPP application uploads its `zephyr.elf` to Memfault, keyed by GNU build ID, so coredumps from any test are symbolicated. To run the coredump test locally, use the following commands:
 
@@ -188,44 +188,21 @@ Every hardware test captures two consoles in parallel and uploads both in the `h
 | `hardware-serial.log` | Host DK console (VCOM1 on nRF54L15, VCOM0 on nRF54LM20B) |
 | `modem-serial.log` | Serial Modem console on the nRF9151 or nRF9151 SMA DK (UART1, VCOM1, 1000000 baud) |
 
-When a test fails, the last 200 lines of both logs are also printed into the job log, so triage needs no artifact download.
+When a test fails, the last 200 lines of both logs are also printed into the job log.
 
-#### Why the modem console needs `AT#XLOG=1`
+The Serial Modem suspends its log backend about 0.65 s after boot to save power. Once the host logs `Cloud connected`, the tests resume it with `AT#XLOG=1` through the host's `at` shell command. The command needs the CMUX AT pipe, which CMUX power save closes when idle, so `enable_modem_application_logs()` retries until the modem replies `OK`. A host reboot also resets the modem, so the command is sent again after each reboot, for example after a FOTA update.
 
-Serial Modem prints its bootloader and application banners over `uart1` and then suspends the log backend and the UART to avoid the roughly 700 µA overhead of keeping it active. Without further action the modem log therefore stops after about 0.65 s of uptime and contains nothing from the phase a test actually exercises.
+Modem capture needs VCOM1 enabled in Board Configurator on the nRF9151 or nRF9151 SMA DK, and VCOM0 and VCOM0 HWFC disconnected, as in the [hardware setup](getting-started/ppp-nrf54.md#step-3-set-up-the-hardware). A rig that misses the VCOM0 switches fails with `init_chat_script: timed out`. The console runs at 1000000 baud (`console_baudrate` in [`tests/on_target/ci/serial_modem_firmware.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/tests/on_target/ci/serial_modem_firmware.yml)), and a baud mismatch gives an empty log rather than an error. The port is resolved from the rig's `CI_*_SERIAL_MODEM_SEGGER_SN`, or set explicitly with `CI_*_SERIAL_MODEM_SERIAL_PORT`.
 
-`AT#XLOG=1` resumes it, and the tests issue that command through the host's `modem at` shell once the host reports `Cloud connected`. That is all the released image needs: its default `INF` levels carry the PPP, PDN, and AT events triage relies on.
-
-This behavior has three further consequences:
-
-- The command needs the CMUX AT pipe, which only exists after the modem attaches and which CMUX runtime power save closes again after its idle timeout. `enable_modem_application_logs()` therefore retries and confirms the modem replied `OK`, warning if it never succeeds.
-- Anything that reboots the host also pulses modem nRESET, which resets the modem and turns logging back off, so the command is reissued after each reboot (for example, after a FOTA update is applied).
-- Reissuing it only works if the image now running has the command. FOTA tests update to a *released* build, and one produced before `CONFIG_MODEM_AT_SHELL` was enabled answers `modem: command not found`, so those runs log a warning and their modem console holds nothing after the update. That resolves itself once a release containing the option exists.
-
-#### Requirements and failure modes
-
-The Serial Modem console runs at 1000000 baud, not the usual 115200. It is sized for modem traces. `console_baudrate` is recorded in [`tests/on_target/ci/serial_modem_firmware.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/tests/on_target/ci/serial_modem_firmware.yml); re-check it when upstream changes the overlay, because a baud mismatch produces an empty log rather than an error.
-
-Modem capture also requires VCOM1 enabled in Board Configurator on the nRF9151 or nRF9151 SMA DK, which is the documented [hardware setup](getting-started/ppp-nrf54.md#step-3-set-up-the-hardware).
-The same setup disconnects VCOM0 and VCOM0 HWFC, because the nRF91M1 build puts the host AT link on `uart0`, which uses the pins VCOM0 otherwise occupies. A rig that skips either switch fails with `init_chat_script: timed out`. The port is resolved from the rig's `CI_*_SERIAL_MODEM_SEGGER_SN`; set the matching `CI_*_SERIAL_MODEM_SERIAL_PORT` variable to pin it explicitly.
-
-Capture starts immediately after the modem is programmed, so the boot that programming triggers is always recorded even on rigs where the host nRESET line is not wired. Everything here is best-effort and never fails a test: if the port cannot be resolved, stays silent, or the modem never accepts `AT#XLOG=1`, the run warns and continues with host logs only. Use those warnings to tell the cases apart: a completely empty `modem-serial.log` points at VCOM1 or the baud rate, while a log holding only boot output means either `AT#XLOG=1` never got through or the captured board is not the one the host is talking to, which the next section covers.
-
-#### The wrong nRF91 DK
-
-Several nRF91 DKs share a runner, so a rig whose `CI_*_SERIAL_MODEM_SEGGER_SN` names the wrong board is the hardest failure to spot: nothing errors. That board is programmed and captured while the host talks to a different one, so the log holds the boot that programming triggered and then nothing. `AT#XLOG=1` is still acknowledged, and `AT#XLOG?` still reads back `1`, because both travel over the host's CMUX pipe to the board actually attached, and the test passes because that board does the work. Two nRF54L15 rigs had their SEGGER SNs swapped this way, which is why they never logged past boot while the nRF54LM20 rig did.
-
-Identities are therefore compared rather than assumed. `AT+CGSN=1` gives the IMEI of the modem the host is attached to, Serial Modem prints its own IMEI during boot before suspending the console, and a mismatch logs an error naming both IMEIs and the variable to correct. When that fires, find the right serial number by matching the IMEI the host reports against the boot output each candidate DK produces.
+Modem log capture is best-effort and never fails a test. An empty `modem-serial.log` points at VCOM1 or the baud rate. A log with only boot output means `AT#XLOG=1` never got through, or the SEGGER serial number names a different nRF91 DK than the one the host is wired to. To catch the second case, the tests compare the IMEI from `AT+CGSN=1` with the IMEI the Serial Modem prints at boot, and log an error naming both IMEIs and the variable to correct.
 
 #### Serial Modem release
 
 The modem image is never built from source here. Nightly CI resolves the newest published [Serial Modem](https://github.com/nrfconnect/ncs-serial-modem/releases) release that ships the nRF91M1 bundle (`*_nrf9151dk_nrf91m1.zip`, including prereleases), locks that tag for the whole pipeline run, and passes it to every nRF91M1 hardware test and to the Release workflow. Tests download the archive, cache it under `build/serial-modem-firmware/<tag>/`, and flash the `.hex` file from it. Release bundles copy the same archive unextracted into every nRF54 host `ppp` zip file, so what ships is what CI tested that night.
 
-The Serial Modem uses the nRF91M1 UART pinout. The bench is wired for it. See [Wire the DKs together](getting-started/ppp-nrf54.md#34-wire-the-dks-together).
-
 Set `SERIAL_MODEM_RELEASE` to pin a specific upstream tag when running tests or the release workflow locally. Static settings such as `console_baudrate` live in [`tests/on_target/ci/serial_modem_firmware.yml`](https://github.com/nrfconnect/ncs-serial-modem-host-applications/blob/main/tests/on_target/ci/serial_modem_firmware.yml).
 
-Full LTE and IP-level modem traces (`AT#XTRACE=1`) are a further step still, and they need a trace database to decode. Note that the UART trace backend shares `uart1` with the log backend, and the two are mutually exclusive, so capturing traces that way costs the application log; `overlay-trace-backend-cmux.conf` routes traces over a dedicated CMUX channel instead and leaves `AT#XLOG=1` usable.
+Modem traces (`AT#XTRACE=1`) need a trace database to decode. The UART trace backend shares `uart1` with the log backend and replaces it, while `overlay-trace-backend-cmux.conf` sends traces over a CMUX channel and keeps `AT#XLOG=1` usable.
 
 ## Documentation diagrams
 
@@ -235,7 +212,7 @@ The diagrams in the application documentation are PlantUML sources kept next to 
 scripts/render_diagrams.py
 ```
 
-Rendering uses a PlantUML server, so you do not need a local Java installation, and `!include` lines are resolved before the source is sent. Pass paths to render only some diagrams, and `--server` to use a local server instead of the public one:
+Rendering uses a PlantUML server, so you do not need a local Java installation. Pass paths to render only some diagrams, and `--server` to use a local server instead of the public one:
 
 ```shell
 docker run -d -p 8080:8080 plantuml/plantuml-server:jetty

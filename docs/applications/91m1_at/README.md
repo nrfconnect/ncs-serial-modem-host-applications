@@ -21,7 +21,7 @@ The Serial Modem link uses `uart21` with hardware flow control, DTR (P1.11) and 
 
 ## Modules
 
-The application follows the shared [Architecture](../../architecture.md). See [Modules per application](../../architecture.md#modules-per-application) for what each one does in this application.
+The application follows the shared [Architecture](../../architecture.md) and consists of the following modules:
 
 | Module | Role |
 |--------|------|
@@ -81,7 +81,7 @@ The following options configure the location search:
 
 Each time the network connects, the Modem Power module applies the modem power saving settings (`CONFIG_APP_MODEM_POWER`):
 
-Requests PSM with `AT+CPSMS`. The defaults ask for a 12 hour TAU and a 4 second active time (`CONFIG_APP_MODEM_POWER_PSM_TAU`, `CONFIG_APP_MODEM_POWER_PSM_ACTIVE_TIME`), and the network decides the granted values. PSM also gives the GNSS fallback time to run while LTE is idle.
+- Requests PSM with `AT+CPSMS`. The defaults ask for a 12 hour TAU and a 4 second active time (`CONFIG_APP_MODEM_POWER_PSM_TAU`, `CONFIG_APP_MODEM_POWER_PSM_ACTIVE_TIME`), and the network decides the granted values. PSM also gives the GNSS fallback time to run while LTE is idle.
 - Enables proprietary PSM with `AT%FEACONF=0,0,1`, so the modem sleeps like in PSM when the network does not grant it. The device must then always start the data exchange, because the network cannot reach it while it sleeps.
 
 ## Shell commands

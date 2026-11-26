@@ -1,6 +1,6 @@
 # Remote debugging with nRF Cloud
 
-[nRF Cloud](https://nrfcloud.nordicsemi.com/) includes device observability that complements on-device debugging. It collects crash coredumps, reboot events, stack and heap metrics, and logs from deployed devices, so you can diagnose issues without physical access. This is especially useful for sporadic faults and for problems that only appear on real networks. On the device, the data is collected by the Memfault SDK, which is part of the nRF Connect SDK.
+[nRF Cloud](https://nrfcloud.nordicsemi.com/) collects crash coredumps, reboot events, stack and heap metrics, and logs from deployed devices, so you can diagnose issues without physical access. On the device, the data is collected by the Memfault SDK, which is part of the nRF Connect SDK.
 
 ## Prerequisites
 
@@ -15,7 +15,7 @@ Complete the getting-started guide for [an nRF54 DK](../../getting-started/ppp-n
     1. In nRF Cloud, go to **Software**.
     1. Select **Symbol Files**.
     1. Select **Upload Symbol File**.
-    1. Select `build/zephyr/zephyr.elf` from your west build directory (the default output when building from `applications/ppp`).
+    1. Select `build/ppp/zephyr/zephyr.elf` from your build directory.
 
     Alternatively, upload from the command line with the [`memfault` CLI](https://docs.memfault.com/docs/ci/install-memfault-cli):
 
@@ -24,7 +24,7 @@ Complete the getting-started guide for [an nRF54 DK](../../getting-started/ppp-n
       --org-token <token> \
       --org <org> \
       --project <project> \
-      upload-mcu-symbols build/zephyr/zephyr.elf
+      upload-mcu-symbols build/ppp/zephyr/zephyr.elf
     ```
 
 1. **Verify that data is flowing** – After the device connects to nRF Cloud, periodic observability uploads run in the background (`CONFIG_MEMFAULT_PERIODIC_UPLOAD`). Look for the following log line:
